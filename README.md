@@ -30,4 +30,3 @@ https://drive.google.com/file/d/1ekfegaI2Cn4TmDck--X6vIbvEkDp2yMJ/view?usp=shari
 
 ## Precomputed bert vecs and lemmadata
 https://drive.google.com/file/d/195BOf-qxJHz-ybTORvYO26F59zP3zrCc/view?usp=sharing
-# research-wsd
