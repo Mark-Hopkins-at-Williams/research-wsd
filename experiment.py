@@ -6,7 +6,7 @@ from train import train_net
 from networks import SimpleClassifier, DropoutClassifier
 from util import cudaify
 from lemmas import all_sense_histograms, sample_sense_pairs
-
+from compare import getExampleSentencesBySense
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
         return a[torch.randperm(a.size()[0])]        
@@ -63,7 +63,11 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, verbose=Tr
             sense2 = sense_hist[1][1]   
             print(lemma)
             print(sense1)
-            print(sense2)                     
+            for sent in getExampleSentencesBySense(sense1):
+                print(sent)
+            print(sense2)               
+            for sent in getExampleSentencesBySense(sense2):
+                print(sent)                     
             data = sample_sense_pairs(300, lemma, sense1, sense2, n_fold)
 
             sum_acc = 0

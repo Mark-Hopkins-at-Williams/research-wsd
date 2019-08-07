@@ -1,3 +1,5 @@
 aux
 *_pycache_*
 lemmadata
+googledata.json
+completedata.json
