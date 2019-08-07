@@ -123,7 +123,7 @@ def contextualized_vectors_by_sense(lemma, use_cached = False):
     return dict(sense_vectors)    
 
          
-def sample_sense_pairs(n_pairs, lemma, sense1, sense2, train_percent = 0.8, n_fold):
+def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8):
     """
     Creates training and test data for classifying whether two SenseInstances
     of a particular lemma correspond to the same sense (positive) or a
