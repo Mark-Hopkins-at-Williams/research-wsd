@@ -168,7 +168,25 @@ def getFormattedData(docnames):
             print("finished processing the document: " + document["docname"])
     with open("completedataV2.json", "w") as json_file:
         json.dump(formatted_data, json_file, indent=4)
+
+def getExampleSentencesBySense(sense, num_examples=3):
+    with open("data/completedata.json") as data:
+        file_data = json.load(data)
     
+    examples = []
+    for document in file_data:
+        doc = document["doc"]
+        for sent_object in doc:
+            for word_with_sense in sent_object["senses"]:
+                if len(examples) == num_examples:
+                    print(examples)
+                    return examples
+                if word_with_sense["sense"] == sense:
+                    examples.append(sent_object["natural_sent"])
+    print("insufficient examples found in getExampleSentencesBySense")
+    return examples
+
+
 
 def createSentenceDictionaries(document_data, list_to_modify):
     """
