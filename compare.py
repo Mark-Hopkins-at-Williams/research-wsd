@@ -179,7 +179,6 @@ def getExampleSentencesBySense(sense, num_examples=3):
         for sent_object in doc:
             for word_with_sense in sent_object["senses"]:
                 if len(examples) == num_examples:
-                    print(examples)
                     return examples
                 if word_with_sense["sense"] == sense:
                     examples.append(sent_object["natural_sent"])
