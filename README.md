@@ -8,12 +8,7 @@ To train lemma-specific sense classifiers, do the following:
     
 This will train sense classifiers for all lemmas whose second sense has
 between 40 and 42 instances using n-fold cross-validation with all logs on.
-<<<<<<< HEAD
      
-=======
-    
-    
->>>>>>> c46b2dfef6e24c1061bce55d74022053d0c9a62e
     
 Data Links
 ----------
