@@ -183,7 +183,6 @@ def getExampleSentencesBySense(sense, num_examples=3):
                     return examples
                 if word_with_sense["sense"] == sense:
                     examples.append(sent_object["natural_sent"])
-    print("insufficient examples found in getExampleSentencesBySense")
     return examples
 
 
