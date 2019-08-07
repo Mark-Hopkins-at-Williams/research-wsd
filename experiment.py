@@ -35,15 +35,16 @@ def test_training(d, k):
               verbose=True)
 
 
-def create_and_train_net(training_data, test_data):
+def create_and_train_net(training_data, test_data, verbose):
     training_data = cudaify(training_data)
     test_data = cudaify(test_data)
     print("training size:", training_data.shape)
     print("testing size:", test_data.shape)
     classifier = cudaify(DropoutClassifier(1536, 700, 2))
-    train_net(classifier, training_data, test_data, tensor_batcher,
+    best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
                 batch_size=96, n_epochs=30, learning_rate=0.001,
-                verbose=True)
+                verbose)
+    return best_acc
     
 def train_from_csv(train_csv, dev_csv):
     print('loading train')
@@ -54,7 +55,7 @@ def train_from_csv(train_csv, dev_csv):
     print('dev size: {}'.format(dev.shape[0]))
     return create_and_train_net(train, dev)
 
-def train_lemma_classifiers(min_sense2_freq, max_sense2_freq):
+def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, verbose=True):
     for (lemma, sense_hist) in all_sense_histograms():
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
             sense1 = sense_hist[0][1]
@@ -62,7 +63,14 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq):
             print(lemma)
             print(sense1)
             print(sense2)                     
-            training_data, test_data = sample_sense_pairs(300, lemma, sense1, sense2)
-            create_and_train_net(training_data, test_data)
+            data = sample_sense_pairs(300, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                avg_acc += create_and_train_net(training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
 
    

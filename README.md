@@ -4,10 +4,10 @@ Disambiguation
 To train lemma-specific sense classifiers, do the following:
 
     from experiment import *
-    train_lemma_classifiers(40, 42)
+    train_lemma_classifiers(40, 42, n, verbose=True)
     
 This will train sense classifiers for all lemmas whose second sense has
-between 40 and 42 instances.
+between 40 and 42 instances using n-fold cross-validation with all logs on.
     
     
     
