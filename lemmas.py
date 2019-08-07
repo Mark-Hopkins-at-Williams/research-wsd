@@ -123,7 +123,7 @@ def contextualized_vectors_by_sense(lemma, use_cached = False):
     return dict(sense_vectors)    
 
          
-def sample_sense_pairs(n_pairs, lemma, sense1, sense2, train_percent = 0.8):
+def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8):
     """
     Creates training and test data for classifying whether two SenseInstances
     of a particular lemma correspond to the same sense (positive) or a
@@ -154,6 +154,13 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, train_percent = 0.8):
         cutoff = int(percent_train * len(vecs))
         return vecs[:cutoff], vecs[cutoff:]
     
+    def train_test_split_nfold(vecs, percent_train, nthfold, n_fold):
+        random.shuffle(vecs)
+        cutoff_start = int((nthfold / n_fold) * len(vecs))
+        cutoff_end = int(((nthfold + 1) / n_fold) * len(vecs))
+        return (vecs[:cutoff_start] + vecs[cutoff_end:]), vecs[cutoff_start:cutoff_end]
+
+
     def sample(sense1_vecs, sense2_vecs):
         vecs = [sense1_vecs, sense2_vecs]
         positives = torch.stack([sample_positive_sense_pair(vecs) for 
@@ -171,11 +178,30 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, train_percent = 0.8):
     sense2_vecs = vecs_by_sense[sense2]
     print('sampling {} with senses of magnitude {} and {}'.format(lemma, 
           len(sense1_vecs), len(sense2_vecs)))
-    sense1_vecs_train, sense1_vecs_test = train_test_split(sense1_vecs,
-                                                           train_percent) 
-    sense2_vecs_train, sense2_vecs_test = train_test_split(sense2_vecs,
-                                                           train_percent)
-    train = sample(sense1_vecs_train, sense2_vecs_train)
-    test = sample(sense1_vecs_test, sense2_vecs_test)
-    return train, test
+
+    if n_fold == 1:
+        sense1_vecs_train, sense1_vecs_test = train_test_split(sense1_vecs,
+                                                               train_percent) 
+        sense2_vecs_train, sense2_vecs_test = train_test_split(sense2_vecs,
+                                                               train_percent)
+        train = sample(sense1_vecs_train, sense2_vecs_train)
+        test = sample(sense1_vecs_test, sense2_vecs_test)
+
+        return [(train, test)]
+    elif n_fold > 1:
+        data = []
+        for i in range(n_fold):
+            sense1_vecs_train, sense1_vecs_test = train_test_split_nfold(sense1_vecs,
+                                                               train_percent,
+                                                               i, n_fold) 
+            sense2_vecs_train, sense2_vecs_test = train_test_split_nfold(sense2_vecs,
+                                                               train_percent,
+                                                               i, n_fold)
+            train = sample(sense1_vecs_train, sense2_vecs_train)
+            test = sample(sense1_vecs_test, sense2_vecs_test)
+
+            data.append((train, test))
+
+        return data
+
     
