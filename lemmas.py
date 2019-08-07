@@ -108,6 +108,9 @@ def contextualized_vectors_by_sense(lemma, use_cached = False):
     
     def contextualized_vectors(lemma):    
         for instance in lemmadata(lemma):
+            # Bert can only handle sentences with a maximum of 512 tokens
+            if len(instance.tokens) > 511:
+                continue
             yield (instance.sense, vectorize_instance(instance))
 
     if use_cached:
