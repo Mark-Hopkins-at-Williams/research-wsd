@@ -158,7 +158,7 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0
         random.shuffle(vecs)
         cutoff_start = int((nthfold / n_fold) * len(vecs))
         cutoff_end = int(((nthfold + 1) / n_fold) * len(vecs))
-        return (vecs[:cutoff_start] + vecs[cutoff_end:]), vecs[cutoff_start:cutoff_end]
+        return ((vecs[:cutoff_start] + vecs[cutoff_end:]), vecs[cutoff_start:cutoff_end])
 
 
     def sample(sense1_vecs, sense2_vecs):
