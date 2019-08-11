@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch
 import pandas as pd
-from IPython.core.debugger import set_trace
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier
 from util import cudaify
@@ -74,7 +73,6 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample
             avg_acc = sum_acc / fold_count
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    set_trace()
     return dict(lemma_info_dict)
 
    
