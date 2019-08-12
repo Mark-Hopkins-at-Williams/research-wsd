@@ -13,6 +13,19 @@ def cudaify(x):
         print("using cpu")
         return x
 
+
+def generate_sense_to_pofs_dict():
+    with open("googledata.json", "r") as f:
+        data = json.load(f)
+    d = {}
+    for doc in data:
+        print("processing", doc["docname"], "...")
+        for word in doc["doc"]:
+            if "lemma" in word.keys() and "sense" in word.keys() and "pos" in word.keys():
+                d[word["sense"]] = word["pos"]
+    with open("sense_to_pofs_dict.json", "w") as f:
+        json.dump(d, f, indent=4)
+
 class Cd:
     """Context manager for changing the current working directory"""
     def __init__(self, newPath):
