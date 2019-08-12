@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch
 import pandas as pd
-from IPython.core.debugger import set_trace
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier
 from util import cudaify
