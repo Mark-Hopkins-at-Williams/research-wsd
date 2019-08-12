@@ -2,6 +2,10 @@ from util import delete_last_line
 import pandas as pd
 import os
 import random
+import seaborn as sns
+from compare import getExampleSentencesBySense
+import matplotlib.pyplot as plt
+
 
 #Note: 12 is the largest valid indice
 def generate_random_layers_i(max_num_layers_to_average):
@@ -24,7 +28,6 @@ def generate_random_layers_i(max_num_layers_to_average):
         else:
             continue
         i += 1
-    print(layers_i, add_sent_encoding)
     return layers_i, add_sent_encoding
 
 
@@ -54,8 +57,7 @@ def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_com
     Calls train_lemma_classifier with a variety of values for layers_i and add_sent_encoding.
     It then writes the relevant data to a file.
     """
-    layers_i_list = [ ([x], False) for x in range(13)] + [([], True)]
-    print(layers_i_list)
+    layers_i_list = [ ([x], False) for x in range(1)]
     i = 0
     while i < num_layer_combos:
         layers_i_tuple = generate_random_layers_i(max_layers_to_average)
@@ -98,15 +100,54 @@ def store_csv_DF_from_lemma_classifier(lemma_info_dict, layers_i):
 
     df.to_csv("classifier_data"+str(num)+".csv", index=False)
 
-def present_csv_DF_data(num_lemmas, good_threshold, bad_threshold, num_example_sentences):
+def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
     """
     num_lemmas controls the total number of lemmas that will be included
     good_threshold controls the minimum average accuracy a lemma must have to 
     """
     
-    df = pd.read_csv("classifier_data.csv")
-    mean = df.mean()
-    print(mean)
+    
+    
+    df = pd.read_csv("classifier_data3.csv")
+    sns.set(style="whitegrid")
+
+    specs = sns.barplot(x="spec", y="best_avg_acc", data=df)
+    plt.xticks(rotation=45)
+    plt.show()
+
+    lemmas = sns.barplot(x="lemma", y="best_avg_acc", data=df)
+    plt.xticks(rotation=45)
+    plt.show()
+
+
+    df = pd.read_csv("classifier_data4.csv")
+    
+    best = df[df["best_avg_acc"] >= 0.85]
+    print(best.values.tolist())
+    worst = df[df["best_avg_acc"] <= 0.54]
+    combined = pd.concat([best, worst])
+    comb_lemmas = sns.barplot(x="lemma", y="best_avg_acc",data=combined)
+    plt.xticks(rotation=45)
+    plt.show()
+    
+    df_list = combined.values.tolist()
+
+    def printSentences(sents):
+        for sent in sents:
+            print(sent)
+        print()
+
+    while True:
+        lemma = input("\nenter a lemma to see its sentences:\n")
+        for row in df_list:
+            if row[1] == lemma:
+                printSentences(getExampleSentencesBySense(row[3], 3))
+                printSentences(getExampleSentencesBySense(row[4], 3))
+
+
+
+
 
 if __name__ == "__main__":
-    train_lemma_classifier_with_diff_layers(4, 2, 40, 40, 5, 600)
+    present_csv_DF_data(1,1,1)
+    #train_lemma_classifier_with_diff_layers(1, 0, 40, 100, 10, 1000)
