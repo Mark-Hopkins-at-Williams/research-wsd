@@ -33,7 +33,6 @@ def generate_random_layers_i(max_num_layers_to_average):
         i += 1
     return layers_i, add_sent_encoding
 
->>>>>>> 364d6d1b6f4e2158a4b9f9ddadbf974e8fca1d72
 
 def train_lemma_classifier_with_vec(layers_i, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, 
                                     verbose=True, add_sent_encoding=False):
