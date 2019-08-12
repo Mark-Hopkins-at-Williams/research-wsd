@@ -1,4 +1,5 @@
 from util import delete_last_line
+import pprint
 import pandas as pd
 import os
 import random
@@ -48,9 +49,19 @@ def train_lemma_classifier_with_vec(layers_i, min_sense2_freq, max_sense2_freq, 
         lemma_info_dict = train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose)
     finally:
         delete_last_line("bert.py")
-        if add_sent_encoding == True:
+    if add_sent_encoding == True:
             layers_i.append(True)
     return lemma_info_dict, layers_i
+
+def test_single_layer(min_sense2, max_sense2):
+    layers = []
+    for i in range(13):
+        curr_dict = train_lemma_classifier_with_vec([i], min_sense2, max_sense2, 10, 600, verbose = False)
+        accs = [lemma[0] for lemma in list(curr_dict.values())]
+        layers.append(accs)
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(layers)
+    return layers
     
 def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_combos, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size):
     """
