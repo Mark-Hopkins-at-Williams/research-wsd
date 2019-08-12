@@ -122,9 +122,8 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
 
     df = pd.read_csv("classifier_data4.csv")
     
-    best = df[df["best_avg_acc"] >= 0.85]
-    print(best.values.tolist())
-    worst = df[df["best_avg_acc"] <= 0.54]
+    best = df[df["best_avg_acc"] >= 0.7]
+    worst = df[df["best_avg_acc"] <= 0.53]
     combined = pd.concat([best, worst])
     comb_lemmas = sns.barplot(x="lemma", y="best_avg_acc",data=combined)
     plt.xticks(rotation=45)
@@ -149,5 +148,5 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
 
 
 if __name__ == "__main__":
-    present_csv_DF_data(1,1,1)
-    #train_lemma_classifier_with_diff_layers(1, 0, 40, 100, 10, 1000)
+    #present_csv_DF_data(1,1,1)
+    train_lemma_classifier_with_diff_layers(1, 0, 40, 10000000, 10, 1000)
