@@ -4,7 +4,7 @@ import pandas as pd
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier
 from util import cudaify
-from lemmas import all_sense_histograms, sample_sense_pairs
+from lemmas import all_sense_histograms, sample_sense_pairs, specified_sense_historgrams
 from compare import getExampleSentencesBySense
 from collections import defaultdict
 def tensor_batcher(t, batch_size):
@@ -73,6 +73,24 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample
             avg_acc = sum_acc / fold_count
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)
+
+def train_lemma_classifiers_on_specific_lemmas(lemmas_list, n_fold, max_sample_size, verbose=True):
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in specified_sense_historgrams(lemmas_list):
+        #print(lemma, sense_hist)
+        sense1 = sense_hist[0][1]
+        sense2 = sense_hist[1][1]   
+        print(lemma)                    
+        data = sample_sense_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
+        sum_acc = 0
+        fold_count = 0
+        for training_data, test_data in data:
+            sum_acc += create_and_train_net(training_data, test_data, verbose)
+            fold_count += 1
+        avg_acc = sum_acc / fold_count
+        lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+        print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
     return dict(lemma_info_dict)
 
    
