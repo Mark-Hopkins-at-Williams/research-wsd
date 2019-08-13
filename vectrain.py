@@ -6,6 +6,7 @@ import random
 import seaborn as sns
 from compare import getExampleSentencesBySense
 import matplotlib.pyplot as plt
+import torch
 
 
 #Note: 12 is the largest valid indice
@@ -215,6 +216,22 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
             if row[1] == lemma:
                 printSentences(getExampleSentencesBySense(row[3], 3))
                 printSentences(getExampleSentencesBySense(row[4], 3))
+
+classifier_data_#
+spec, lemma, best_avg_acc, sense1, sense2
+def high_acc_test(threshold_high, threshold_low, filename):
+    df = pd.read_csv(filename)
+    high_acc_df = df[df["best_avg_acc"] >= threshold_high]
+    low_acc_df = df[df["best_avg_acc"] <= threshold_low]
+    data = pd.concat([high_acc_df, low_acc_df]).sample(frac=1)
+    
+    high_stats = []
+    low_stats = []
+    for i in data.index:
+        pos1 = 
+
+
+
 
 
 
