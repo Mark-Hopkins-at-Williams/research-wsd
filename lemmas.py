@@ -83,10 +83,21 @@ def all_sense_histograms():
         sense_freqs = reversed(sorted([(histogram[sense], sense) for 
                               sense in histogram]))
         yield (lemma, list(sense_freqs))
-            
-   
 
-    
+def specified_sense_historgrams(lemmas):
+    """
+    Iterates through each lemma in the list, each call to 'next returns a tuple
+    (lemma, histogram), where histogram is a list of pairs of the
+    form (k, sense) such that there are k SenseInstances of sense corresponding
+    to the lemma. This list is sorted by k, from greatest to least.
+    """
+    for (other_lemma, data) in lemmadata_iter():
+        if other_lemma in lemmas:
+            histogram = sense_histogram(data)
+            sense_freqs = reversed(sorted([(histogram[sense], sense) for
+                                    sense in histogram]))
+            lemma = other_lemma
+            yield (lemma, list(sense_freqs))
 
 def contextualized_vectors_by_sense(lemma, use_cached = False):
     """
