@@ -7,6 +7,7 @@ import seaborn as sns
 from compare import getExampleSentencesBySense
 import matplotlib.pyplot as plt
 import torch
+import json
 
 
 #Note: 12 is the largest valid indice
@@ -155,18 +156,151 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
                 printSentences(getExampleSentencesBySense(row[3], 3))
                 printSentences(getExampleSentencesBySense(row[4], 3))
 
-classifier_data_#
-spec, lemma, best_avg_acc, sense1, sense2
-def high_acc_test(threshold_high, threshold_low, filename):
+#classifier_data_
+#spec, lemma, best_avg_acc, sense1, sense2
+def human_acc_test(threshold_high, threshold_low, filename):
     df = pd.read_csv(filename)
     high_acc_df = df[df["best_avg_acc"] >= threshold_high]
     low_acc_df = df[df["best_avg_acc"] <= threshold_low]
     data = pd.concat([high_acc_df, low_acc_df]).sample(frac=1)
-    
-    high_stats = []
-    low_stats = []
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+
+    correct_count_high = 0
+    correct_count_low = 0
+    diff_pos_count_high = 0
+    diff_pos_count_low = 0
+    exports = []
+
+    username = input("input your username: ")
+
     for i in data.index:
-        pos1 = 
+        acc = data["best_avg_acc"][i]
+        lemma = data["lemma"][i]
+        sense1 = data["sense1"][i]
+        sense2 = data["sense2"][i]
+
+        pos1 = sense_pos_dict[sense1]
+        pos2 = sense_pos_dict[sense2]
+        same_pos = True if pos1 == pos2 else False
+
+        if not same_pos:
+            if acc >= threshold_high:
+                diff_pos_count_high += 1
+            if acc <= threshold_low:
+                diff_pos_count_low += 1
+
+        sentences1 = getExampleSentencesBySense(sense1, 3)
+        sentences2 = getExampleSentencesBySense(sense2, 3)
+
+        sentences = sentences1 + sentences2
+        random.shuffle(sentences)
+        sentences_pair = random.sample(sentences, 2)
+
+        if (sentences_pair[0] in sentences1 and sentences_pair[1] in sentences1) or (sentences_pair[0] in sentences2 and sentences_pair[1] in sentences2):
+            correct_answer = True
+        else:
+            correct_answer = False
+
+        print(lemma + ": ")
+        print("sentence 1: " + sentences_pair[0])
+        print("sentence 2: " + sentences_pair[1])
+        answer = input("Do the sentences have the same sense for the lemma?(y/n) ")
+        while not(answer == "y" or answer == "n"):
+            print("answer input can only be y or n")
+            answer = input("Do the sentences have the same sense for the lemma?(y/n) ")
+        answer = True if answer == "y" else False
+
+        if_correct = True if answer == correct_answer else False
+
+        if if_correct: print("correct!")
+        else: print("wrong!")
+
+        export = [lemma, sentences_pair[0], sentences_pair[1], if_correct, sense1, sense2]
+        exports.append(export)
+
+        if if_correct:
+            if acc >= threshold_high: correct_count_high += 1
+            if acc <= threshold_low: correct_count_low += 1
+
+    human_acc_high = correct_count_high / len(high_acc_df.index)
+    diff_perc_high = diff_pos_count_high / len(high_acc_df.index)
+    print("high accuracy stats:")
+    print("percentage of different POS: {:.3f}".format(diff_perc_high))
+    print("human disambiguation accuracy: {:.3f}".format(human_acc_high))
+
+    human_acc_low = diff_pos_count_low / len(low_acc_df.index)
+    diff_perc_low = correct_count_low / len(low_acc_df.index)
+    print("low accuracy stats:")
+    print("percentage of different POS: {:.3f}".format(diff_perc_low))
+    print("human disambiguation accuracy: {:.3f}".format(human_acc_low))
+
+    exports = pd.DataFrame(exports, columns = ["lemma", "sent1", "sent2", "if_correct", "sense1", "sense2"])
+    exports.to_csv("data/human_test_logs/" + username + ".csv", index=False)
+
+    result_d = {}
+    result_d["human_acc_high"] = human_acc_high
+    result_d["diff_perc_high"] = diff_perc_high
+    result_d["human_acc_low"] = human_acc_low
+    result_d["diff_perc_low"] = diff_perc_low
+    with open("data/human_test_results/" + username + ".json", "w") as f:
+        json.dump(result_d)
+
+
+
+        """
+        for sent in sentences1:
+            sentences.append((sent, sense1))
+        for sent in sentences2:
+            sentences.append((sent, sense2))
+
+        random.shuffle(sentences)
+
+        print(lemma + ": ")
+        for j, sent in enumerate(sentences):
+            print("sentence " + str(j) + ": " + sent[0])
+        print("")
+
+        response = input("There are two senses of the lemma, three of each. Type in the number label of the sentences that has the same sense. e.g. \"123\".\n")
+        
+        six = list(range(6))
+        nums = []
+        for c in response:
+            nums.append(int(c))
+        all_correct = True
+        correct_sense = sentences[nums[0]][1]
+        for n in nums:
+            if_correct = True if sentences[n][1] == correct_sense else False
+            if not if_correct: all_correct = False
+            exports.append([username, lemma, sentences[n][0], if_correct, sentences[n][1]])
+            six.remove(n)
+        if correct_sense == sense1:
+            correct_sense = sense2
+        else:
+            correct_sense = sense1
+        for n in six:
+            if_correct = True if sentences[n][1] == correct_sense else False
+            exports.append([username, lemma, sentences[n][0], if_correct, sentences[n][1]])
+        if data["best_avg_acc"][i] >= threshold_high:
+            if all_correct:
+                correct_count_high += 1
+                print("correct!")
+            else: print("wrong!")
+            if not same_pos: diff_pos_count_high += 1
+        if data["best_avg_acc"][i] <= threshold_low:
+            if all_correct: 
+                correct_count_low += 1
+                print("correct!")
+            else: print("wrong!")
+            if not same_pos: diff_pos_count_low += 1
+
+    exports = pd.DataFrame(exports, columns = ["user", "lemma", "sent", "if_correct", "sense"])
+    exports.to_csv("data/" + username + ".csv", index=False)
+    """
+
+
+
+
 
 
 

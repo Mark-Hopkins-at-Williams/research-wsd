@@ -1,5 +1,6 @@
 import torch
 import os
+import json
 
 def cudaify(x):
     if torch.cuda.is_available():
@@ -15,7 +16,7 @@ def cudaify(x):
 
 
 def generate_sense_to_pofs_dict():
-    with open("googledata.json", "r") as f:
+    with open("data/googledata.json", "r") as f:
         data = json.load(f)
     d = {}
     for doc in data:
@@ -23,7 +24,7 @@ def generate_sense_to_pofs_dict():
         for word in doc["doc"]:
             if "lemma" in word.keys() and "sense" in word.keys() and "pos" in word.keys():
                 d[word["sense"]] = word["pos"]
-    with open("sense_to_pofs_dict.json", "w") as f:
+    with open("data/sense_to_pofs_dict.json", "w") as f:
         json.dump(d, f, indent=4)
 
 class Cd:
