@@ -220,10 +220,14 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
 
 #classifier_data_
 #spec, lemma, best_avg_acc, sense1, sense2
-def human_acc_test(threshold_high, threshold_low, filename):
+def human_acc_test(threshold_high, threshold_low, filename, test_size):
     df = pd.read_csv(filename)
     high_acc_df = df[df["best_avg_acc"] >= threshold_high]
     low_acc_df = df[df["best_avg_acc"] <= threshold_low]
+    cutoff = min(test_size, len(high_acc_df.index), len(low_acc_df.index))
+    high_acc_df = high_acc_df.iloc[:cutoff]
+    low_acc_df = low_acc_df.iloc[:cutoff]
+
     data = pd.concat([high_acc_df, low_acc_df]).sample(frac=1)
     with open("data/sense_to_pofs_dict.json") as f:
         sense_pos_dict = json.load(f)
@@ -255,49 +259,57 @@ def human_acc_test(threshold_high, threshold_low, filename):
         sentences1 = getExampleSentencesBySense(sense1, 3)
         sentences2 = getExampleSentencesBySense(sense2, 3)
 
-        sentences = sentences1 + sentences2
-        random.shuffle(sentences)
-        sentences_pair = random.sample(sentences, 2)
+        is_same = True if random.random() >= 0.5 else False
 
-        if (sentences_pair[0] in sentences1 and sentences_pair[1] in sentences1) or (sentences_pair[0] in sentences2 and sentences_pair[1] in sentences2):
-            correct_answer = True
+        if is_same:
+            one_or_two = True if random.random() >= 0.5 else False
+            if one_or_two: pair = random.sample(sentences1, 2)
+            else: pair = random.sample(sentences2, 2)
         else:
-            correct_answer = False
+            pair = random.sample(sentences1, 1) + random.sample(sentences2, 1)
+
+
+        correct_answer = is_same
 
         print(lemma + ": ")
-        print("sentence 1: " + sentences_pair[0])
-        print("sentence 2: " + sentences_pair[1])
-        answer = input("Do the sentences have the same sense for the lemma?(y/n) ")
+        print("sentence 1: " + pair[0])
+        print("sentence 2: " + pair[1])
+        answer = input("Do the sentences have the same definition for the lemma word?(y/n) ")
         while not(answer == "y" or answer == "n"):
             print("answer input can only be y or n")
-            answer = input("Do the sentences have the same sense for the lemma?(y/n) ")
+            answer = input("Do the sentences have the same definition for the lemma word?(y/n) ")
         answer = True if answer == "y" else False
 
         if_correct = True if answer == correct_answer else False
 
-        if if_correct: print("correct!")
-        else: print("wrong!")
-
-        export = [lemma, sentences_pair[0], sentences_pair[1], if_correct, sense1, sense2]
+        export = [lemma, pair[0], pair[1], if_correct, sense1, sense2, is_same]
         exports.append(export)
 
         if if_correct:
             if acc >= threshold_high: correct_count_high += 1
             if acc <= threshold_low: correct_count_low += 1
+    if len(high_acc_df.index) > 0:
+        human_acc_high = correct_count_high / len(high_acc_df.index)
+        diff_perc_high = diff_pos_count_high / len(high_acc_df.index)
+    else:
+        human_acc_high = 0
+        diff_perc_high = 0
+    if len(low_acc_df.index) > 0:
+        human_acc_low = correct_count_low / len(low_acc_df.index)
+        diff_perc_low = diff_pos_count_low / len(low_acc_df.index)
+    else:
+        human_acc_low = 0
+        diff_perc_low = 0
 
-    human_acc_high = correct_count_high / len(high_acc_df.index)
-    diff_perc_high = diff_pos_count_high / len(high_acc_df.index)
     print("high accuracy stats:")
     print("percentage of different POS: {:.3f}".format(diff_perc_high))
     print("human disambiguation accuracy: {:.3f}".format(human_acc_high))
 
-    human_acc_low = diff_pos_count_low / len(low_acc_df.index)
-    diff_perc_low = correct_count_low / len(low_acc_df.index)
     print("low accuracy stats:")
     print("percentage of different POS: {:.3f}".format(diff_perc_low))
     print("human disambiguation accuracy: {:.3f}".format(human_acc_low))
 
-    exports = pd.DataFrame(exports, columns = ["lemma", "sent1", "sent2", "if_correct", "sense1", "sense2"])
+    exports = pd.DataFrame(exports, columns = ["lemma", "sent1", "sent2", "if_correct", "sense1", "sense2", "is_same"])
     exports.to_csv("data/human_test_logs/" + username + ".csv", index=False)
 
     result_d = {}
@@ -306,7 +318,7 @@ def human_acc_test(threshold_high, threshold_low, filename):
     result_d["human_acc_low"] = human_acc_low
     result_d["diff_perc_low"] = diff_perc_low
     with open("data/human_test_results/" + username + ".json", "w") as f:
-        json.dump(result_d)
+        json.dump(result_d, f)
 
 
 

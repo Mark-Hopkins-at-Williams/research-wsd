@@ -169,19 +169,19 @@ def getFormattedData(docnames):
     with open("completedataV2.json", "w") as json_file:
         json.dump(formatted_data, json_file, indent=4)
 
-def getExampleSentencesBySense(sense, num_examples=3):
+def getExampleSentencesBySense(sense, num_examples):
     with open("data/completedata.json") as data:
-        file_data = json.load(data)
-    
+        file_data = json.load(data)   
+
     examples = []
     for document in file_data:
         doc = document["doc"]
         for sent_object in doc:
             for word_with_sense in sent_object["senses"]:
-                if len(examples) == num_examples:
-                    return examples
                 if word_with_sense["sense"] == sense:
                     examples.append(sent_object["natural_sent"])
+    if len(examples) >= num_examples:
+        examples = random.sample(examples, num_examples)
     return examples
 
 
