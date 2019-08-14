@@ -321,68 +321,6 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
         json.dump(result_d, f)
 
 
-
-        """
-        for sent in sentences1:
-            sentences.append((sent, sense1))
-        for sent in sentences2:
-            sentences.append((sent, sense2))
-
-        random.shuffle(sentences)
-
-        print(lemma + ": ")
-        for j, sent in enumerate(sentences):
-            print("sentence " + str(j) + ": " + sent[0])
-        print("")
-
-        response = input("There are two senses of the lemma, three of each. Type in the number label of the sentences that has the same sense. e.g. \"123\".\n")
-        
-        six = list(range(6))
-        nums = []
-        for c in response:
-            nums.append(int(c))
-        all_correct = True
-        correct_sense = sentences[nums[0]][1]
-        for n in nums:
-            if_correct = True if sentences[n][1] == correct_sense else False
-            if not if_correct: all_correct = False
-            exports.append([username, lemma, sentences[n][0], if_correct, sentences[n][1]])
-            six.remove(n)
-        if correct_sense == sense1:
-            correct_sense = sense2
-        else:
-            correct_sense = sense1
-        for n in six:
-            if_correct = True if sentences[n][1] == correct_sense else False
-            exports.append([username, lemma, sentences[n][0], if_correct, sentences[n][1]])
-        if data["best_avg_acc"][i] >= threshold_high:
-            if all_correct:
-                correct_count_high += 1
-                print("correct!")
-            else: print("wrong!")
-            if not same_pos: diff_pos_count_high += 1
-        if data["best_avg_acc"][i] <= threshold_low:
-            if all_correct: 
-                correct_count_low += 1
-                print("correct!")
-            else: print("wrong!")
-            if not same_pos: diff_pos_count_low += 1
-
-    exports = pd.DataFrame(exports, columns = ["user", "lemma", "sent", "if_correct", "sense"])
-    exports.to_csv("data/" + username + ".csv", index=False)
-    """
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
     #present_csv_DF_data(1,1,1)
     #train_lemma_classifier_with_diff_layers(1, 0, 20, 1000000, 10, 1000)
