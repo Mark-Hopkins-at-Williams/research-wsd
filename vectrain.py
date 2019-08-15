@@ -102,8 +102,8 @@ def train_lemma_classifier_with_diff_layers_specific_lemmas(max_layers_to_averag
         i += 1
     
     data = []
-    for layers_i_tuple in layers_i_list:
-        print("hre")
+    for index, layers_i_tuple in enumerate(layers_i_list):
+        print(str(index)+" of "+str(len(layers_i_list)))
         lemma_info_dict, layers_i = train_lemma_classifier_with_vec_specific_lemmas(layers_i_tuple[0], lemmas, n_fold, max_sample_size, 
                                         verbose=True, add_sent_encoding=layers_i_tuple[1])
         for key in lemma_info_dict.keys():
@@ -183,7 +183,7 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
     good_threshold controls the minimum average accuracy a lemma must have to 
     """
     
-    df = pd.read_csv("classifier_data3.csv")
+    df = pd.read_csv("classifier_data_spec8.csv")
     sns.set(style="whitegrid")
 
     specs = sns.barplot(x="spec", y="best_avg_acc", data=df)
@@ -306,16 +306,47 @@ def human_acc_test(threshold_high, threshold_low, filename):
     result_d["human_acc_low"] = human_acc_low
     result_d["diff_perc_low"] = diff_perc_low
     with open("data/human_test_results/" + username + ".json", "w") as f:
-        json.dump(result_d)
+        json.dump(result_d,f)
 
+
+def diff_pos_perc(threshold_high, threshold_low, filename):
+    df = pd.read_csv(filename)
+    high_acc_df = df[df["best_avg_acc"] >= threshold_high]
+    low_acc_df = df[df["best_avg_acc"] <= threshold_low]
+    data = pd.concat([high_acc_df, low_acc_df]).sample(frac=1)
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+    
+    diff_pos_count_high = 0
+    diff_pos_count_low = 0
+    
+    for i in data.index:
+        sense1 = data["sense1"][i]
+        sense2 = data["sense2"][i]
+        acc = data["best_avg_acc"][i]
+        pos1 = sense_pos_dict[sense1]
+        pos2 = sense_pos_dict[sense2]
+        same_pos = True if pos1 == pos2 else False
+
+        if not same_pos:
+            if acc >= threshold_high:
+                diff_pos_count_high += 1
+            if acc <= threshold_low:
+                diff_pos_count_low += 1
+
+    
+    diff_perc_high = diff_pos_count_high / len(high_acc_df.index)
+    diff_perc_low = diff_pos_count_low / len(low_acc_df.index)
+    print(diff_perc_high)
+    print(diff_perc_low)
 
 if __name__ == "__main__":
-    #present_csv_DF_data(1,1,1)
+    present_csv_DF_data(1,1,1)
     #train_lemma_classifier_with_diff_layers(1, 0, 20, 1000000, 10, 1000)
     """ l = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
     print(len(l))
     lemma_info_dict, layers_i = train_lemma_classifier_with_vec_specific_lemmas([0],l, 1, 50)
     store_csv_DF_from_lemma_classifier(lemma_info_dict, layers_i)
     print("done") """
-    lemmas = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
-    train_lemma_classifier_with_diff_layers_specific_lemmas(4, 1, lemmas, 10, 1000)
+    #lemmas = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
+    #train_lemma_classifier_with_diff_layers_specific_lemmas(4, 6, lemmas, 10, 1000)
