@@ -221,6 +221,17 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
 #classifier_data_
 #spec, lemma, best_avg_acc, sense1, sense2
 def human_acc_test(threshold_high, threshold_low, filename, test_size):
+    input("In this test you are asked to tell if two words with shared lemma have the same or different meanings in their respective sentences. (press enter to continue)")
+    input("simply type in \"y\" or \"n\" when prompted. (press enter to continue)")
+    input("Note that lemma means the root-form of a word. e.g. could, can't, canned have the same lemma can. (press enter to continue)")
+    input("Ready? press enter to continue to the test!")
+    print()
+    if not os.path.exists("data/human_test_logs"):
+        os.makedirs("data/human_test_logs")
+
+    if not os.path.exists("data/human_test_results"):
+        os.makedirs("data/human_test_results")
+
     df = pd.read_csv(filename)
     high_acc_df = df[df["best_avg_acc"] >= threshold_high]
     low_acc_df = df[df["best_avg_acc"] <= threshold_low]
@@ -268,9 +279,10 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
         else:
             pair = random.sample(sentences1, 1) + random.sample(sentences2, 1)
 
-
         correct_answer = is_same
 
+        print()
+        print("progress: word " + str(i) + "/" + str(test_size))
         print(lemma + ": ")
         print("sentence 1: " + pair[0])
         print("sentence 2: " + pair[1])
