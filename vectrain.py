@@ -218,28 +218,49 @@ def present_csv_DF_data(good_threshold, bad_threshold, num_example_sentences):
                 printSentences(getExampleSentencesBySense(row[3], 3))
                 printSentences(getExampleSentencesBySense(row[4], 3))
 
-#classifier_data_
-#spec, lemma, best_avg_acc, sense1, sense2
-def human_acc_test(threshold_high, threshold_low, filename, test_size):
+
+def initial_info():
     input("In this test you are asked to tell if two words with shared lemma have the same or different meanings in their respective sentences. (press enter to continue)")
     input("simply type in \"y\" or \"n\" when prompted. (press enter to continue)")
     input("Note that lemma means the root-form of a word. e.g. could, can't, canned have the same lemma can. (press enter to continue)")
     input("Ready? press enter to continue to the test!")
     print()
+
+def create_test_folders_if_dne():
     if not os.path.exists("data/human_test_logs"):
         os.makedirs("data/human_test_logs")
 
     if not os.path.exists("data/human_test_results"):
         os.makedirs("data/human_test_results")
 
+def get_valid_answer():
+    answer = input("Do the sentences have the same definition for the lemma word?(y/n) ")
+    while not(answer == "y" or answer == "n"):
+        print("answer input can only be y or n")
+        answer = input("Do the sentences have the same definition for the lemma word?(y/n) ")
+    return answer == "y"
+#classifier_data_
+#spec, lemma, best_avg_acc, sense1, sense2
+def human_acc_test(threshold_high, threshold_low, filename, test_size):
+
+    initial_info()
+
+    create_test_folders_if_dne()
+
+
     df = pd.read_csv(filename)
+
     high_acc_df = df[df["best_avg_acc"] >= threshold_high]
     low_acc_df = df[df["best_avg_acc"] <= threshold_low]
+
     cutoff = min(test_size, len(high_acc_df.index), len(low_acc_df.index))
+
     high_acc_df = high_acc_df.iloc[:cutoff]
     low_acc_df = low_acc_df.iloc[:cutoff]
 
     data = pd.concat([high_acc_df, low_acc_df]).sample(frac=1)
+
+
     with open("data/sense_to_pofs_dict.json") as f:
         sense_pos_dict = json.load(f)
 
@@ -250,7 +271,10 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
     exports = []
 
     username = input("input your username: ")
-
+    while username == "" or len(username) < 3:
+        username = input("please enter your full-length username:")
+    
+    lemma_num = 1
     for i in data.index:
         acc = data["best_avg_acc"][i]
         lemma = data["lemma"][i]
@@ -270,36 +294,37 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
         sentences1 = getExampleSentencesBySense(sense1, 3)
         sentences2 = getExampleSentencesBySense(sense2, 3)
 
-        is_same = True if random.random() >= 0.5 else False
+        is_same = random.random() >= 0.5
 
         if is_same:
-            one_or_two = True if random.random() >= 0.5 else False
-            if one_or_two: pair = random.sample(sentences1, 2)
-            else: pair = random.sample(sentences2, 2)
+            if random.random() >= 0.5:
+                pair = random.sample(sentences1, 2)
+            else:
+                pair = random.sample(sentences2, 2)
         else:
             pair = random.sample(sentences1, 1) + random.sample(sentences2, 1)
 
         correct_answer = is_same
 
         print()
-        print("progress: word " + str(i) + "/" + str(test_size))
+        print("progress: word " + str(lemma_num) + "/" + str(test_size*2))
         print(lemma + ": ")
-        print("sentence 1: " + pair[0])
-        print("sentence 2: " + pair[1])
-        answer = input("Do the sentences have the same definition for the lemma word?(y/n) ")
-        while not(answer == "y" or answer == "n"):
-            print("answer input can only be y or n")
-            answer = input("Do the sentences have the same definition for the lemma word?(y/n) ")
-        answer = True if answer == "y" else False
+        print("sentence 1: " + pair[0]+"\n")
+        print("sentence 2: " + pair[1]+"\n")
+        
+        answer = get_valid_answer()
 
-        if_correct = True if answer == correct_answer else False
+        is_correct = answer == correct_answer
 
-        export = [lemma, pair[0], pair[1], if_correct, sense1, sense2, is_same]
+        export = [lemma, pair[0], pair[1], is_correct, sense1, sense2, is_same]
         exports.append(export)
 
-        if if_correct:
+        if is_correct:
             if acc >= threshold_high: correct_count_high += 1
             if acc <= threshold_low: correct_count_low += 1
+        lemma_num += 1
+
+
     if len(high_acc_df.index) > 0:
         human_acc_high = correct_count_high / len(high_acc_df.index)
         diff_perc_high = diff_pos_count_high / len(high_acc_df.index)
@@ -321,7 +346,7 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
     print("percentage of different POS: {:.3f}".format(diff_perc_low))
     print("human disambiguation accuracy: {:.3f}".format(human_acc_low))
 
-    exports = pd.DataFrame(exports, columns = ["lemma", "sent1", "sent2", "if_correct", "sense1", "sense2", "is_same"])
+    exports = pd.DataFrame(exports, columns = ["lemma", "sent1", "sent2", "is_correct", "sense1", "sense2", "is_same"])
     exports.to_csv("data/human_test_logs/" + username + ".csv", index=False)
 
     result_d = {}
@@ -330,7 +355,7 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
     result_d["human_acc_low"] = human_acc_low
     result_d["diff_perc_low"] = diff_perc_low
     with open("data/human_test_results/" + username + ".json", "w") as f:
-        json.dump(result_d,f)
+        json.dump(result_d, f)
 
 
 def diff_pos_perc(threshold_high, threshold_low, filename):
