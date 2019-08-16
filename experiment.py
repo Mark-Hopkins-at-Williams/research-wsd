@@ -89,6 +89,8 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]   
             print(lemma)                    
+            
+            data = sample_inputids_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
 
             sum_acc = 0
             fold_count = 0
