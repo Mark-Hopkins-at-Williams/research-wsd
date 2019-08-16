@@ -357,6 +357,126 @@ def human_acc_test(threshold_high, threshold_low, filename, test_size):
     with open("data/human_test_results/" + username + ".json", "w") as f:
         json.dump(result_d, f)
 
+def human_acc_test_same_pos(threshold_high, threshold_low, filename, test_size):
+
+    initial_info()
+
+    create_test_folders_if_dne()
+
+    high_acc_list, low_acc_list = get_low_and_high_acc_lists_same_pos(threshold_high, threshold_low, filename)    
+    cutoff = min(test_size, len(high_acc_list), len(low_acc_list))
+    high_acc_list, low_acc_list = high_acc_list[:cutoff], low_acc_list[:cutoff]
+    high_and_low_list = high_acc_list + low_acc_list
+    random.shuffle(high_and_low_list)
+
+    # The test ends up having twice as many questions as 
+    # specificied by test_size. The assertion will fail when the
+    # specified thresholds do not contain enough instances.
+    assert len(high_and_low_list) == test_size*2
+
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+
+    def prepare_next_question(sense1, sense2):
+        """
+        Returns a pair of sentences and a flag indicating if the
+        two sentences have the same sense.
+        """
+        pos1, pos2 = sense_pos_dict[sense1], sense_pos_dict[sense2]
+
+        sentences1 = getExampleSentencesBySense(sense1, 3)
+        sentences2 = getExampleSentencesBySense(sense2, 3)
+
+        if random.random() >= 0.5:
+            if random.random() >= 0.5:
+                sentence_pair = random.sample(sentences1, 2)
+            else:
+                sentence_pair = random.sample(sentences2, 2)
+            return sentence_pair, True
+        else:
+            sentence_pair = random.sample(sentences1, 1) + random.sample(sentences2, 1)
+            return sentence_pair, False
+
+
+    correct_count_high = 0
+    correct_count_low = 0
+    exports = []
+
+    username = input("Input your username: ")
+    while username == "" or len(username) < 3:
+        username = input("Please enter your full-length username:")
+    
+    for i in range(len(high_and_low_list)):
+        if i == 0:
+            _, lemma, acc, sense1, sense2 = high_and_low_list[i]
+            sentence_pair, correct_answer = prepare_next_question(sense1, sense2)
+        
+        print("\n\nYou have completed: " + str(i) + "/" + str(test_size*2))
+        print(lemma + ": \n")
+        print("Sentence 1: " + sentence_pair[0]+"\n")
+        print("Sentence 2: " + sentence_pair[1]+"\n")
+        print("Start determining if the words have the same definition.")
+        print("We are currently loading the next question.")
+        # Preparing the next question while the user reads the current one
+        # makes the test feel much faster.
+        i += 1
+        if i < len(high_and_low_list):
+            _, n_lemma, n_acc, n_sense1, n_sense2 = high_and_low_list[i]
+            n_sentence_pair, n_correct_answer = prepare_next_question(sense1, sense2)
+
+        is_correct = correct_answer == get_valid_answer()
+
+        export = [lemma, acc, sentence_pair[0], sentence_pair[1], is_correct, sense1, sense2, correct_answer]
+        exports.append(export)
+
+        if is_correct:
+            if acc >= threshold_high:
+                correct_count_high += 1
+            else:
+                correct_count_low += 1
+        lemma, acc, sense1, sense2 = n_lemma, n_acc, n_sense1, n_sense2
+        sentence_pair, correct_answer = n_sentence_pair, n_correct_answer
+
+       
+
+    print("high accuracy stats:")
+    human_acc_high = correct_count_high/test_size
+    print("human disambiguation accuracy: {:.3f}".format(human_acc_high))
+
+    print("low accuracy stats:")
+    human_acc_low = correct_count_low/test_size
+    print("human disambiguation accuracy: {:.3f}".format(human_acc_low))
+
+    exports = pd.DataFrame(exports, columns = ["lemma", "acc", "sent1", "sent2", "is_correct", "sense1", "sense2", "is_same"])
+    exports.to_csv("data/human_test_logs/" + username + ".csv", index=False)
+
+    result_d = {}
+    result_d["human_acc_high"] = human_acc_high
+    result_d["human_acc_low"] = human_acc_low
+    with open("data/human_test_results/" + username + ".json", "w") as f:
+        json.dump(result_d, f)
+
+def get_low_and_high_acc_lists_same_pos(threshold_high, threshold_low, filename):
+    df = pd.read_csv(filename)
+    high_acc_df = df[df["best_avg_acc"] >= threshold_high]
+    low_acc_df = df[df["best_avg_acc"] <= threshold_low]
+
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+    
+    def senses_have_same_pos(row):
+        sense1_pos = sense_pos_dict[row[3]]
+        sense2_pos = sense_pos_dict[row[4]]
+        return sense1_pos == sense2_pos
+
+    high_acc_list = high_acc_df.values.tolist()
+    low_acc_list = low_acc_df.values.tolist()
+
+    high_acc_list = list(filter(senses_have_same_pos, high_acc_list))
+    low_acc_list = list(filter(senses_have_same_pos, low_acc_list))
+ 
+    return high_acc_list, low_acc_list
+
 
 def diff_pos_perc(threshold_high, threshold_low, filename):
     df = pd.read_csv(filename)
@@ -390,7 +510,7 @@ def diff_pos_perc(threshold_high, threshold_low, filename):
     print(diff_perc_low)
 
 if __name__ == "__main__":
-    present_csv_DF_data(1,1,1)
+    #present_csv_DF_data(1,1,1)
     #train_lemma_classifier_with_diff_layers(1, 0, 20, 1000000, 10, 1000)
     """ l = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
     print(len(l))
@@ -399,3 +519,4 @@ if __name__ == "__main__":
     print("done") """
     #lemmas = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
     #train_lemma_classifier_with_diff_layers_specific_lemmas(4, 6, lemmas, 10, 1000)
+    human_acc_test_same_pos(.67, .54, "classifier_data8_20-max.csv", 5)
