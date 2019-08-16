@@ -422,7 +422,7 @@ def human_acc_test_same_pos(threshold_high, threshold_low, filename, test_size):
         i += 1
         if i < len(high_and_low_list):
             _, n_lemma, n_acc, n_sense1, n_sense2 = high_and_low_list[i]
-            n_sentence_pair, n_correct_answer = prepare_next_question(sense1, sense2)
+            n_sentence_pair, n_correct_answer = prepare_next_question(n_sense1, n_sense2)
 
         is_correct = correct_answer == get_valid_answer()
 
