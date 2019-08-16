@@ -519,4 +519,4 @@ if __name__ == "__main__":
     print("done") """
     #lemmas = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
     #train_lemma_classifier_with_diff_layers_specific_lemmas(4, 6, lemmas, 10, 1000)
-    human_acc_test_same_pos(.67, .54, "classifier_data8_20-max.csv", 5)
+    human_acc_test_same_pos(.67, .54, "classifier_data8_20-max.csv", 25)
