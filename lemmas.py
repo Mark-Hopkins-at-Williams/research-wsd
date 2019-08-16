@@ -9,9 +9,10 @@ from pytorch_transformers import BertModel, BertConfig, BertTokenizer
 import random
 
 from os.path import join
-import pandas as pd 
-from bert import vectorize_instance
+import pandas as pd
 from wordsense import SenseInstance
+
+from bert import vectorize_instance
 
 config = BertConfig.from_pretrained('bert-base-uncased')
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -133,6 +134,23 @@ def contextualized_vectors_by_sense(lemma, use_cached = False):
         sense_vectors[sense].append(vec)
     return dict(sense_vectors)    
 
+def tokens_to_ids_by_sense(lemma):
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    def idized_vecs(lemma):
+        for instance in lemmadata(lemma):
+            # Bert can only handle sentences with a maximum of 512 tokens
+            if len(instance.tokens) > 511:
+                continue
+            tokens = ["CLS"] + instance.tokens + ["SEP"]
+            input_ids = tokenizer.convert_tokens_to_ids(tokens)
+            input_ids += [0] * (511 - len(input_ids))
+            yield (instance.sense, instance.pos, torch.tensor(input_ids))
+
+    sense_vectors = defaultdict(list)
+    for (sense, position, ids) in idized_vecs(lemma):
+        sense_vectors[sense].append(torch.cat([torch.tensor([position]), ids]))
+    return dict(sense_vectors)
+
          
 def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8):
     """
@@ -155,7 +173,7 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0
        
     def sample_positive_sense_pair(sense_vecs):
         # Currently may break if every sense doesn't have at least two vectors.
-        assert len(sense_vecs) >= 1, "sample_positive_sense_pair cannot be called with zero senses!"
+        assert len(sense_vecs) >= 2, "sample_positive_sense_pair cannot be called with zero senses!"
         sense = random.choice(list(range(len(sense_vecs))))
         vec1, vec2 = random.sample(sense_vecs[sense], 2)
         return torch.cat([vec1, vec2])
@@ -214,5 +232,77 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0
             data.append((train, test))
 
         return data
+
+def sample_inputids_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8):
+
+    def train_test_split(vecs, percent_train):
+        random.shuffle(vecs)
+        cutoff = int(percent_train * len(vecs))
+        return vecs[:cutoff], vecs[cutoff:]
+    
+    def train_test_split_nfold(vecs, percent_train, nthfold, n_fold):
+        random.shuffle(vecs)
+        cutoff_start = int((nthfold / n_fold) * len(vecs))
+        cutoff_end = int(((nthfold + 1) / n_fold) * len(vecs))
+        return ((vecs[:cutoff_start] + vecs[cutoff_end:]), vecs[cutoff_start:cutoff_end])
+
+    def sample(sense1_vecs, sense2_vecs):
+        vecs = [sense1_vecs, sense2_vecs]
+        positives = torch.stack([sample_positive_sense_pair(vecs) for 
+                                 _ in range(n_pairs)])
+        negatives = torch.stack([sample_negative_sense_pair(vecs) for
+                                 _ in range(n_pairs)])
+        positives = torch.cat([torch.ones(len(positives), 1, dtype=torch.long), positives], 
+                               dim=1)
+        negatives = torch.cat([torch.zeros(len(negatives), 1, dtype=torch.long), negatives], 
+                               dim=1)
+        return torch.cat([negatives, positives])
+
+    def sample_negative_sense_pair(sense_vecs):
+        assert len(sense_vecs) >= 2, "sample_negative_sense_pair cannot be called with only one sense!"
+        sense1, sense2 = random.sample(list(range(len(sense_vecs))), 2)
+        vec1 = random.choice(sense_vecs[sense1])
+        vec2 = random.choice(sense_vecs[sense2])
+        return torch.cat([vec1[:1], vec2[:1], vec1[1:], vec2[1:]])
+       
+    def sample_positive_sense_pair(sense_vecs):
+        # Currently may break if every sense doesn't have at least two vectors.
+        assert len(sense_vecs) >= 2, "sample_positive_sense_pair cannot be called with zero senses!"
+        sense = random.choice(list(range(len(sense_vecs))))
+        vec1, vec2 = random.sample(sense_vecs[sense], 2)
+        return torch.cat([vec1[:1], vec2[:1], vec1[1:], vec2[1:]])
+
+
+    idized_vecs_by_sense = tokens_to_ids_by_sense(lemma)
+    sense1_vecs = idized_vecs_by_sense[sense1]
+    sense2_vecs = idized_vecs_by_sense[sense2]
+    print('sampling {} with senses of magnitude {} and {}'.format(lemma, 
+          len(sense1_vecs), len(sense2_vecs)))
+
+    if n_fold == 1:
+        sense1_vecs_train, sense1_vecs_test = train_test_split(sense1_vecs,
+                                                               train_percent) 
+        sense2_vecs_train, sense2_vecs_test = train_test_split(sense2_vecs,
+                                                               train_percent)
+        train = sample(sense1_vecs_train, sense2_vecs_train)
+        test = sample(sense1_vecs_test, sense2_vecs_test)
+
+        return [(train, test)]
+
+    elif n_fold > 1:
+        data = []
+        for i in range(n_fold):
+            sense1_vecs_train, sense1_vecs_test = train_test_split_nfold(sense1_vecs,
+                                                               train_percent,
+                                                               i, n_fold) 
+            sense2_vecs_train, sense2_vecs_test = train_test_split_nfold(sense2_vecs,
+                                                               train_percent,
+                                                               i, n_fold)
+            train = sample(sense1_vecs_train, sense2_vecs_train)
+            test = sample(sense1_vecs_test, sense2_vecs_test)
+
+            data.append((train, test))
+        return data
+
 
     

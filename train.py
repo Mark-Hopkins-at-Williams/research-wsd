@@ -58,7 +58,6 @@ def train_net(net, train, dev, batcher, batch_size, n_epochs, learning_rate, ver
     
     """  
     def log(text):
-        if verbose:
             sys.stdout.write(text)
                 
     loss = torch.nn.CrossEntropyLoss()    

@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+import torch
 from torch import nn
 import torch.nn.functional as F
+from pytorch_transformers import BertModel
+from pytorch_transformers.modeling_bert import BertPreTrainedModel
+from bert import generate_vectorization
+from wordsense import SenseInstance
 
 
 class SimpleClassifier(nn.Module): 
@@ -97,5 +102,36 @@ class DropoutClassifier7(nn.Module):
         nextout = nextout.clamp(min=0)
         nextout = self.linear7(nextout)
         return F.log_softmax(nextout, dim=1)
+
+class BertForSenseDisambiguation(BertPreTrainedModel):
+    def __init__(self, config, classifier=DropoutClassifier(1536, 100, 2)):
+        super(BertForSenseDisambiguation, self).__init__(config)
+        config.output_hidden_states = True
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = classifier
+        self.apply(self.init_weights)
+        
+
+    def forward(self, input_ids_pair):
+        input_ids1, positions1 = input_ids_pair[:, 3:515], input_ids_pair[:, 1:2]
+        input_ids2, positions2 = input_ids_pair[:, 515:], input_ids_pair[:, 2:3]
+
+        final_layer1 = self.bert(input_ids1)[0]
+        final_layer2 = self.bert(input_ids2)[0]
+
+        index1 = torch.cat([positions1.unsqueeze(2)] * final_layer1.shape[2], dim=2)
+        index2 = torch.cat([positions2.unsqueeze(2)] * final_layer2.shape[2], dim=2)
+
+        vecs1 = final_layer1.gather(1, index1).squeeze(1)
+        vecs2 = final_layer2.gather(1, index2).squeeze(1)
+
+        vecs = torch.cat([vecs1, vecs2], dim=1)
+        
+
+        result = self.classifier(vecs)
+
+        return result
+
 
 

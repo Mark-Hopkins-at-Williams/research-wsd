@@ -2,11 +2,12 @@
 import torch
 import pandas as pd
 from train import train_net
-from networks import SimpleClassifier, DropoutClassifier
+from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
-from lemmas import all_sense_histograms, sample_sense_pairs, specified_sense_historgrams
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs
 from compare import getExampleSentencesBySense
 from collections import defaultdict
+from pytorch_transformers import BertConfig
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
         return a[torch.randperm(a.size()[0])]        
@@ -35,15 +36,15 @@ def test_training(d, k):
               verbose=True)
 
 
-def create_and_train_net(training_data, test_data, verb):
+def create_and_train_net(net, training_data, test_data, verb):
     training_data = cudaify(training_data)
     test_data = cudaify(test_data)
     if verb:
         print("training size:", training_data.shape)
         print("testing size:", test_data.shape)
-    classifier = cudaify(DropoutClassifier(1536, 700, 2))
+    classifier = cudaify(net)
     best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
-                batch_size=96, n_epochs=30, learning_rate=0.001,
+                batch_size=96, n_epochs=10, learning_rate=0.001,
                 verbose=verb)
     return best_acc
     
@@ -54,7 +55,7 @@ def train_from_csv(train_csv, dev_csv):
     print('loading dev')
     dev = torch.tensor(pd.read_csv(dev_csv).values).float()
     print('dev size: {}'.format(dev.shape[0]))
-    return create_and_train_net(train, dev)
+    return create_and_train_net(DropoutClassifier(1536, 100, 2), train, dev)
 
 def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
     lemma_info_dict = defaultdict(tuple)
@@ -68,29 +69,36 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
-                sum_acc += create_and_train_net(training_data, test_data, verbose)
+                sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
     return dict(lemma_info_dict)
 
-def train_lemma_classifiers_on_specific_lemmas(lemmas_list, n_fold, max_sample_size, verbose=True):
-    lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in specified_sense_historgrams(lemmas_list):
-        #print(lemma, sense_hist)
-        sense1 = sense_hist[0][1]
-        sense2 = sense_hist[1][1]   
-        print(lemma)                    
-        data = sample_sense_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
-        sum_acc = 0
-        fold_count = 0
-        for training_data, test_data in data:
-            sum_acc += create_and_train_net(training_data, test_data, verbose)
-            fold_count += 1
-        avg_acc = sum_acc / fold_count
-        lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
-        print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    return dict(lemma_info_dict)
 
+def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+    config = BertConfig.from_pretrained('bert-base-uncased')
+    config.output_hidden_states = True
+
+    net = BertForSenseDisambiguation(config)
+
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in all_sense_histograms():
+        if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]   
+            print(lemma)                    
+            data = sample_inputids_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                sum_acc += create_and_train_net(net, training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)
    

@@ -32,5 +32,4 @@ def generate_vectorization(layers_i, add_sent):
 
     return vectorize_instance
 
-
-vectorize_instance = generate_vectorization([0], False)
+vectorize_instance = generate_vectorization([12], False)
