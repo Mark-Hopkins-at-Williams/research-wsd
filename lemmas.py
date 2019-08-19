@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import torch
 
-from pytorch_transformers import BertModel, BertConfig, BertTokenizer
+from pytorch_transformers import BertTokenizer
 import random
 
 from os.path import join
@@ -13,10 +13,6 @@ import pandas as pd
 from wordsense import SenseInstance
 
 from bert import vectorize_instance
-
-config = BertConfig.from_pretrained('bert-base-uncased')
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-bert = BertModel(config)    
 
 def lemmadata_iter():
     """
@@ -144,7 +140,7 @@ def tokens_to_ids_by_sense(lemma):
             tokens = ["CLS"] + instance.tokens + ["SEP"]
             input_ids = tokenizer.convert_tokens_to_ids(tokens)
             input_ids += [0] * (511 - len(input_ids))
-            yield (instance.sense, instance.pos, torch.tensor(input_ids))
+            yield (instance.sense, instance.pos + 1, torch.tensor(input_ids))
 
     sense_vectors = defaultdict(list)
     for (sense, position, ids) in idized_vecs(lemma):

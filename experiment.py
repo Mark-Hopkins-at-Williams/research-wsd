@@ -8,6 +8,7 @@ from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pai
 from compare import getExampleSentencesBySense
 from collections import defaultdict
 from pytorch_transformers import BertConfig
+
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
         return a[torch.randperm(a.size()[0])]        

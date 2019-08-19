@@ -108,17 +108,16 @@ class BertForSenseDisambiguation(BertPreTrainedModel):
         super(BertForSenseDisambiguation, self).__init__(config)
         config.output_hidden_states = True
         self.bert = BertModel(config)
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = classifier
         self.apply(self.init_weights)
         
 
     def forward(self, input_ids_pair):
-        input_ids1, positions1 = input_ids_pair[:, 3:515], input_ids_pair[:, 1:2]
-        input_ids2, positions2 = input_ids_pair[:, 515:], input_ids_pair[:, 2:3]
-
-        final_layer1 = self.bert(input_ids1)[0]
-        final_layer2 = self.bert(input_ids2)[0]
+        input_ids1, positions1 = input_ids_pair[:, 2:513], input_ids_pair[:, :1]
+        input_ids2, positions2 = input_ids_pair[:, 513:], input_ids_pair[:, 1:2]
+        
+        final_layer1 = self.bert(input_ids1.long())[0]
+        final_layer2 = self.bert(input_ids2.long())[0]
 
         index1 = torch.cat([positions1.unsqueeze(2)] * final_layer1.shape[2], dim=2)
         index2 = torch.cat([positions2.unsqueeze(2)] * final_layer2.shape[2], dim=2)
