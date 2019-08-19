@@ -8,6 +8,8 @@ from compare import getExampleSentencesBySense
 import matplotlib.pyplot as plt
 import torch
 import json
+from experiment import train_lemma_classifiers_with_vec
+from  bert import generate_vectorization
 
 
 #Note: 12 is the largest valid indice
@@ -34,8 +36,8 @@ def generate_random_layers_i(max_num_layers_to_average):
     return layers_i, add_sent_encoding
 
 
-def train_lemma_classifier_with_vec(layers_i, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, 
-                                    verbose=True, add_sent_encoding=False):
+def train_lemma_classifier_with_vec(layers_i, add_sent, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, 
+                                    verbose=True):
     """
     train the lemma classifier with a specified vectorization patter
 
@@ -44,16 +46,9 @@ def train_lemma_classifier_with_vec(layers_i, min_sense2_freq, max_sense2_freq, 
 
     For the rest of the parameters see train_lemma_classifiers in experiment.py
     """
-    with open("bert.py", "a") as f:
-        f.write("\nvectorize_instance = generate_vectorization(" + str(layers_i) + ", " +  str(add_sent_encoding) + ")")
-    try:
-        from experiment import train_lemma_classifiers
-        lemma_info_dict = train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose)
-    finally:
-        delete_last_line("bert.py")
-    if add_sent_encoding == True:
-            layers_i.append(True)
-    return lemma_info_dict, layers_i
+    assert isinstance(layers_i, list), "layers_i must be a list, instead got " + str(type(layers_i))
+    vectorize = generate_vectorization(layers_i, add_sent)
+    lemma_info_dict = train_lemma_classifiers_with_vec(vectorize, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose)
 
 def train_lemma_classifier_with_vec_specific_lemmas(layers_i, lemmas_list, n_fold, max_sample_size, 
                                     verbose=True, add_sent_encoding=False):

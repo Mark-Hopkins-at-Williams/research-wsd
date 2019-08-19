@@ -4,7 +4,7 @@ import pandas as pd
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
-from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs, sample_sense_pairs_with_vec
 from compare import getExampleSentencesBySense
 from collections import defaultdict
 from pytorch_transformers import BertConfig
@@ -76,6 +76,25 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
     return dict(lemma_info_dict)
+
+def train_lemma_classifiers_with_vec(vectorization, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in all_sense_histograms():
+        if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]   
+            print(lemma)                    
+            data = sample_sense_pairs_with_vec(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)    
 
 
 def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
