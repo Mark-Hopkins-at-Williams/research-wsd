@@ -504,14 +504,102 @@ def diff_pos_perc(threshold_high, threshold_low, filename):
     print(diff_perc_high)
     print(diff_perc_low)
 
+def getLemmaPosLists(filename):
+    df = pd.read_csv(filename)
+    print(len(df))
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+    
+    def senses_have_same_pos(row):
+        sense1_pos = sense_pos_dict[row[3]]
+        sense2_pos = sense_pos_dict[row[4]]
+        return sense1_pos == sense2_pos
+
+    def senses_have_dif_pos(row):
+        sense1_pos = sense_pos_dict[row[3]]
+        sense2_pos = sense_pos_dict[row[4]]
+        return sense1_pos != sense2_pos
+
+    df_as_list = df.values.tolist()
+    lemmas_with_same_pos = [ row[1] for row in df_as_list if senses_have_same_pos(row) ]
+    lemmas_with_dif_pos = [ row[1] for row in df_as_list if senses_have_dif_pos(row) ]
+    
+    assert len(lemmas_with_same_pos) + len(lemmas_with_dif_pos) == len(df_as_list)
+
+    return lemmas_with_same_pos, lemmas_with_dif_pos
+
+def getLemmaPosPairsList(filename):
+    df = pd.read_csv(filename)
+    
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+
+    pairs_dict = {}
+
+    def get_pair_type(row):
+        sense1_pos = sense_pos_dict[row[3]]
+        sense2_pos = sense_pos_dict[row[4]]
+        if sense1_pos < sense2_pos:
+            sense1_pos, sense2_pos = sense2_pos, sense1_pos
+        return sense1_pos, sense2_pos
+
+    for row in df.values.tolist():
+        key = get_pair_type(row)
+        if not key in pairs_dict.keys():
+            pairs_dict[key] = []
+        pairs_dict[key].append(row[1])
+
+    return pairs_dict
+
+def update_df_format(df, max_samp):
+    """
+    Returns a dataframe with three new columns: pos1, pos2, and max_samp.
+    pos1 is the part of speech of sense1
+    pos2 is the part of speech of sense2
+    max_samp is the value of max samp this data was generated with
+    Note: this function does not write the df to a file, If this is desired, 
+    the caller will be responsible for this. 
+    """
+    df = add_pos_columns(df)
+    if not "max_samp" in df.columns:
+        df["max_samp"] = max_samp
+    return df
+
+
+def add_pos_columns(df):
+    """
+    Returns a new df that has two additional columns: pos1 and pos2.
+    pos1 is the part of speech of sense1
+    pos2 is the part of speech of sense2
+    """
+    with open("data/sense_to_pofs_dict.json") as f:
+        sense_pos_dict = json.load(f)
+    def get_pos(sense):
+        return sense_pos_dict[sense]
+    df = pd.concat([df, df["sense1"].apply(get_pos).rename("pos1")], axis=1)
+    df = pd.concat([df, df["sense2"].apply(get_pos).rename("pos2")], axis=1)
+    return df
+
+def manually_convert_format():
+    df = pd.read_csv("classifier_data8_20-max.csv")
+    df = update_df_format(df, 1000)
+    df.to_csv("all_lemmas_20-max_layer_0.csv")
+
+def makeGraph(data_file_name, lemmas_list, axis1, axis2):
+    df = pd.read_csv(data_file_name)
+    sns.set(style="whitegrid")
+
+    relevant_rows = []
+    append = relevant_rows.append
+    for row in df.values.tolist():
+        if row[1] in lemmas_list:
+            append(row)
+    relevant_data = pd.DataFrame(relevant_rows, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
+
+    specs = sns.barplot(x=axis1, y=axis2, data=relevant_data)
+    plt.xticks(rotation=45)
+    plt.show()
+
 if __name__ == "__main__":
-    #present_csv_DF_data(1,1,1)
-    #train_lemma_classifier_with_diff_layers(1, 0, 20, 1000000, 10, 1000)
-    """ l = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
-    print(len(l))
-    lemma_info_dict, layers_i = train_lemma_classifier_with_vec_specific_lemmas([0],l, 1, 50)
-    store_csv_DF_from_lemma_classifier(lemma_info_dict, layers_i)
-    print("done") """
-    #lemmas = get_list_learnable_lemmas(0.7, "classifier_data8_20-max.csv")
-    #train_lemma_classifier_with_diff_layers_specific_lemmas(4, 6, lemmas, 10, 1000)
-    human_acc_test_same_pos(.67, .54, "classifier_data8_20-max.csv", 25)
+    pass
+
