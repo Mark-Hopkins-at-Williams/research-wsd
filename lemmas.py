@@ -2,7 +2,7 @@
 import json
 import os
 from collections import defaultdict
-
+import copy
 import torch
 
 from pytorch_transformers import BertTokenizer
@@ -182,7 +182,7 @@ def tokens_to_ids_by_sense(lemma):
     return dict(sense_vectors)
 
          
-def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8):
+def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, cached=True, train_percent = 0.8):
     """
     Creates training and test data for classifying whether two SenseInstances
     of a particular lemma correspond to the same sense (positive) or a
@@ -232,7 +232,7 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0
                                dim=1)
         return torch.cat([negatives, positives])
 
-    vecs_by_sense = contextualized_vectors_by_sense(lemma)
+    vecs_by_sense = contextualized_vectors_by_sense(lemma, use_cached=cached)
     sense1_vecs = vecs_by_sense[sense1]
     sense2_vecs = vecs_by_sense[sense2]
     print('sampling {} with senses of magnitude {} and {}'.format(lemma, 
@@ -416,4 +416,28 @@ def sample_sense_pairs_with_vec(vectorization, n_pairs, lemma, sense1, sense2, n
         return data
 
 
-    
+def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
+    def get_lemmas(threshold):
+        data = pd.read_csv("data/classifier_data8_20-max.csv")
+        lemmas = []
+        for i in data.index:
+            if data.iloc[i]["best_avg_acc"] >= threshold:
+                lemmas.append(data.iloc[i]["lemma"])
+        return lemmas
+
+    lemmas = get_lemmas(threshold)
+    print(len(lemmas))
+    n_fold_data = [None] * n_fold
+    for (lemma, sense_hist) in all_sense_histograms():
+        if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in lemmas:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]
+            lemma_data = sample_sense_pairs(n_pairs_each_lemma, lemma, sense1, sense2, n_fold, cached=True)
+            for i, (train, test) in enumerate(lemma_data):
+                if n_fold_data[i] == None:
+                    n_fold_data[i] = (train, test)
+                else:
+                    n_fold_data[i] = (torch.cat([n_fold_data[i][0], train]), torch.cat([n_fold_data[i][1], test]))
+    for i in range(len(n_fold_data)):
+        n_fold_data[i] = (random.shuffle(n_fold_data[i][0])[:3000], random.shuffle(n_fold_data[i][1])[:3000])
+    return n_fold_data

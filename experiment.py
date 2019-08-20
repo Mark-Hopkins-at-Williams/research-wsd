@@ -4,7 +4,7 @@ import pandas as pd
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
-from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs, sample_sense_pairs_with_vec
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs, sample_sense_pairs_with_vec, sample_cross_lemma
 from compare import getExampleSentencesBySense
 from collections import defaultdict
 from pytorch_transformers import BertConfig
@@ -101,8 +101,6 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
     config = BertConfig.from_pretrained('bert-base-uncased')
     config.output_hidden_states = True
 
-    net = BertForSenseDisambiguation(config)
-
     lemma_info_dict = defaultdict(tuple)
     for (lemma, sense_hist) in all_sense_histograms():
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
@@ -115,11 +113,24 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
-                sum_acc += create_and_train_net(net, training_data, test_data, verbose)
+                sum_acc += create_and_train_net(BertForSenseDisambiguation(config), net, training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
 
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
     return dict(lemma_info_dict)
-   
+
+def train_cross_lemmas(threshold, n_fold, n_pairs_per_lemma, verbose=True):
+    config = BertConfig.from_pretrained('bert-base-uncased')
+    config.output_hidden_states = True
+
+    data = sample_cross_lemma(threshold, n_fold, n_pairs_per_lemma)
+    sum_acc = 0
+    for training_data, test_data in data:
+        sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
+    avg_acc = sum_acc / n_fold
+    print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    with open("generality_result.txt", "w") as f:
+        f.write("accuracy across lemmas is: " + str(avg_acc))
+

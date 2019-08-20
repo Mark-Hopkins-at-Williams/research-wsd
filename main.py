@@ -1,7 +1,4 @@
-from experiment import train_finetune
+from experiment import train_finetune, train_cross_lemmas
 import json
 if __name__ == "__main__":
-    result = train_finetune(20,1000000000,10,1000)
-    with open("finetune_result.txt", "w") as f:
-        json.dump(result, f)
-
+    train_cross_lemmas(0.65, 10, 100)

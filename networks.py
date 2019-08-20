@@ -106,7 +106,6 @@ class DropoutClassifier7(nn.Module):
 class BertForSenseDisambiguation(BertPreTrainedModel):
     def __init__(self, config, classifier=DropoutClassifier(1536, 100, 2)):
         super(BertForSenseDisambiguation, self).__init__(config)
-        config.output_hidden_states = True
         self.bert = BertModel(config)
         self.classifier = classifier
         self.apply(self.init_weights)
