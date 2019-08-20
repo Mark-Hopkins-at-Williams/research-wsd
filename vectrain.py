@@ -120,7 +120,8 @@ def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_com
     Calls train_lemma_classifier with a variety of values for layers_i and add_sent_encoding.
     It then writes the relevant data to a file.
     """
-    layers_i_list = """ [ ([x], False) for x in range(13)] """ [([12], False)]
+    """ [ ([x], False) for x in range(13)] """
+    layers_i_list =  [([12], False)]
     i = 0
     while i < num_layer_combos:
         layers_i_tuple = generate_random_layers_i(max_layers_to_average)
@@ -132,8 +133,8 @@ def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_com
     
     data = []
     for layers_i_tuple in layers_i_list:
-        lemma_info_dict, layers_i = train_lemma_classifier_with_vec(layers_i_tuple[0], min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, 
-                                        verbose=True, add_sent_encoding=layers_i_tuple[1])
+        lemma_info_dict, layers_i = train_lemma_classifier_with_vec(layers_i_tuple[0], layers_i_tuple[1], min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, 
+                                        verbose=True)
         for key in lemma_info_dict.keys():
             lemma_info = lemma_info_dict[key]
             data.append([layers_i, key, lemma_info[0], lemma_info[1], lemma_info[2]])
