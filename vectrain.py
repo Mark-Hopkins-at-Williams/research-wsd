@@ -8,6 +8,7 @@ from compare import getExampleSentencesBySense
 import matplotlib.pyplot as plt
 import torch
 import json
+from lemmas import create_sense_freq_dict
 from experiment import train_lemma_classifiers_with_vec
 from  bert import generate_vectorization
 
@@ -110,6 +111,8 @@ def train_lemma_classifier_with_diff_layers_specific_lemmas(max_layers_to_averag
     while os.path.exists("classifier_data"+str(num)+".csv"):
         num += 1
 
+    df = update_df_format(df, max_sample_size)
+
     df.to_csv("classifier_data_spec"+str(num)+".csv", index=False)
 
 def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_combos, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size):
@@ -117,7 +120,7 @@ def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_com
     Calls train_lemma_classifier with a variety of values for layers_i and add_sent_encoding.
     It then writes the relevant data to a file.
     """
-    layers_i_list = [ ([x], False) for x in range(13)]
+    layers_i_list = """ [ ([x], False) for x in range(13)] """ [([12], False)]
     i = 0
     while i < num_layer_combos:
         layers_i_tuple = generate_random_layers_i(max_layers_to_average)
@@ -137,10 +140,12 @@ def train_lemma_classifier_with_diff_layers(max_layers_to_average, num_layer_com
     df = pd.DataFrame(data, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
 
     num = 1
-    while os.path.exists("classifier_data"+str(num)+".csv"):
+    while os.path.exists("last_layer_all_lemmas_2000_"+str(num)+".csv"):
         num += 1
-
+    df = update_df_format(df, max_sample_size)
     df.to_csv("classifier_data"+str(num)+".csv", index=False)
+
+
 
 def store_csv_DF_from_lemma_classifier(lemma_info_dict, layers_i):
     """
@@ -553,14 +558,17 @@ def getLemmaPosPairsList(filename):
 
 def update_df_format(df, max_samp):
     """
-    Returns a dataframe with three new columns: pos1, pos2, and max_samp.
+    Returns a dataframe with more columns: pos1, pos2, sense1_freq, sense2_freq, and max_samp.
     pos1 is the part of speech of sense1
     pos2 is the part of speech of sense2
+    sense1_freq is the number of instances of the first sense
+    sense2_freq is the number of instances of the second sense
     max_samp is the value of max samp this data was generated with
     Note: this function does not write the df to a file, If this is desired, 
     the caller will be responsible for this. 
     """
     df = add_pos_columns(df)
+    df = add_sense_frequency_cols(df)
     if not "max_samp" in df.columns:
         df["max_samp"] = max_samp
     return df
@@ -580,26 +588,22 @@ def add_pos_columns(df):
     df = pd.concat([df, df["sense2"].apply(get_pos).rename("pos2")], axis=1)
     return df
 
+def add_sense_frequency_cols(df):
+    """
+    Returns a dataframe with two new columns sense1_freq and sense2_freq
+    """
+    freq_dict = create_sense_freq_dict()
+    def get_freq(sense):
+        return freq_dict[sense]
+    df = pd.concat([df, df["sense1"].apply(get_freq).rename("sense1_freq")], axis=1)
+    df = pd.concat([df, df["sense2"].apply(get_freq).rename("sense2_freq")], axis=1)
+    return df
+
 def manually_convert_format():
     df = pd.read_csv("classifier_data8_20-max.csv")
     df = update_df_format(df, 1000)
     df.to_csv("all_lemmas_20-max_layer_0.csv")
 
-def makeGraph(data_file_name, lemmas_list, axis1, axis2):
-    df = pd.read_csv(data_file_name)
-    sns.set(style="whitegrid")
-
-    relevant_rows = []
-    append = relevant_rows.append
-    for row in df.values.tolist():
-        if row[1] in lemmas_list:
-            append(row)
-    relevant_data = pd.DataFrame(relevant_rows, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
-
-    specs = sns.barplot(x=axis1, y=axis2, data=relevant_data)
-    plt.xticks(rotation=45)
-    plt.show()
-
 if __name__ == "__main__":
-    pass
+    train_lemma_classifier_with_diff_layers(0, 0, 20, 100000000, 10, 2000)
 
