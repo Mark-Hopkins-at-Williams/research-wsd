@@ -63,6 +63,12 @@ def sense_histogram(instances):
         result[instance.sense] += 1
     return result
 
+def create_sense_freq_dict():
+    result = defaultdict(int)
+    for (_, instances) in lemmadata_iter():
+        for instance in instances:
+            result[instance.sense] += 1
+    return result
 
 def all_sense_histograms():
     """
