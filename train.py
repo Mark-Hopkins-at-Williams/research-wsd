@@ -2,8 +2,7 @@ from torch import optim
 import torch
 import sys
 import json
-
-
+import IPython 
 
 def evaluate(net, dev, batcher):
     """
@@ -27,7 +26,7 @@ def evaluate(net, dev, batcher):
             if labels[i] == output.argmax():
                 correct += 1            
         return correct, total, misclassified
-    val_loader = batcher(dev, 128)
+    val_loader = batcher(dev, 1)
     total_val_loss = 0
     correct = 0
     total = 0
@@ -60,7 +59,7 @@ def train_net(net, train, dev, batcher, batch_size, n_epochs, learning_rate, ver
     def log(text):
             sys.stdout.write(text)
                 
-    loss = torch.nn.CrossEntropyLoss()    
+       
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)    
     best_net = net
     best_acc = 0.0
@@ -68,9 +67,12 @@ def train_net(net, train, dev, batcher, batch_size, n_epochs, learning_rate, ver
     for epoch in range(n_epochs):      
         train_loader = batcher(train, batch_size)
         log("  Epoch {} Accuracy = ".format(epoch))
+       
         running_loss = 0.0
         total_train_loss = 0       
         net.train()
+
+        loss = torch.nn.CrossEntropyLoss() 
         for i, data in enumerate(train_loader, 0):
             inputs = data[:,1:]
             labels = torch.clamp(data[:,0], min=0).long()
@@ -87,5 +89,6 @@ def train_net(net, train, dev, batcher, batch_size, n_epochs, learning_rate, ver
             best_net = net
             best_acc = acc
         log("{:.2f}\n".format(acc))
+        torch.cuda.empty_cache()
     return best_net, best_acc
 

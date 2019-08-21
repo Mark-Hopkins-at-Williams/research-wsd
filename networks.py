@@ -6,6 +6,7 @@ from pytorch_transformers import BertModel
 from pytorch_transformers.modeling_bert import BertPreTrainedModel
 from bert import generate_vectorization
 from wordsense import SenseInstance
+import IPython
 
 
 class SimpleClassifier(nn.Module): 
@@ -103,20 +104,24 @@ class DropoutClassifier7(nn.Module):
         nextout = self.linear7(nextout)
         return F.log_softmax(nextout, dim=1)
 
-class BertForSenseDisambiguation(BertPreTrainedModel):
-    def __init__(self, config, classifier=DropoutClassifier(1536, 100, 2)):
-        super(BertForSenseDisambiguation, self).__init__(config)
-        self.bert = BertModel(config)
-        self.classifier = classifier
-        self.apply(self.init_weights)
-        
+class BertForSenseDisambiguation(torch.nn.Module):
+    def __init__(self, classifier=DropoutClassifier(1536, 100, 2)):
+        super(BertForSenseDisambiguation, self).__init__()
 
+        self.model = BertModel.from_pretrained('bert-base-uncased')
+        self.classifier = classifier
+        self.count = 0
+
+        
     def forward(self, input_ids_pair):
+        print("Forward " + str(self.count))
+
         input_ids1, positions1 = input_ids_pair[:, 2:513], input_ids_pair[:, :1]
         input_ids2, positions2 = input_ids_pair[:, 513:], input_ids_pair[:, 1:2]
-        
-        final_layer1 = self.bert(input_ids1.long())[0]
-        final_layer2 = self.bert(input_ids2.long())[0]
+        #IPython.terminal.debugger.set_trace()
+        final_layer1 = self.model(input_ids1.long())[0]
+        #print("hrerse")
+        final_layer2 = self.model(input_ids2.long())[0]
 
         index1 = torch.cat([positions1.unsqueeze(2)] * final_layer1.shape[2], dim=2)
         index2 = torch.cat([positions2.unsqueeze(2)] * final_layer2.shape[2], dim=2)
@@ -128,6 +133,9 @@ class BertForSenseDisambiguation(BertPreTrainedModel):
         
 
         result = self.classifier(vecs)
+
+        self.count += 1
+        torch.cuda.empty_cache()
 
         return result
 
