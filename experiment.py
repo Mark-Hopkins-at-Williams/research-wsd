@@ -7,7 +7,7 @@ from util import cudaify
 from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs, sample_sense_pairs_with_vec, sample_cross_lemma
 from compare import getExampleSentencesBySense
 from collections import defaultdict
-from pytorch_transformers import BertConfig
+from pytorch_transformers import BertConfig, BertTokenizer, BertModel
 
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
@@ -45,7 +45,7 @@ def create_and_train_net(net, training_data, test_data, verb):
         print("testing size:", test_data.shape)
     classifier = cudaify(net)
     best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
-                batch_size=96, n_epochs=10, learning_rate=0.001,
+                batch_size=96, n_epochs=30, learning_rate=0.001,
                 verbose=verb)
     return best_acc
     
@@ -113,7 +113,7 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
-                sum_acc += create_and_train_net(BertForSenseDisambiguation(config), net, training_data, test_data, verbose)
+                sum_acc += create_and_train_net(BertForSenseDisambiguation(config), training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
 
@@ -133,4 +133,163 @@ def train_cross_lemmas(threshold, n_fold, n_pairs_per_lemma, verbose=True):
     print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
     with open("generality_result.txt", "w") as f:
         f.write("accuracy across lemmas is: " + str(avg_acc))
+
+def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verbose=True):
+    specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
+    assert specification in specification_space, "parameter specification can only be one of the following: " + str(specification_space)
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    config = BertConfig.from_pretrained('bert-base-uncased')
+    config.output_hidden_states = True
+    bert = BertModel.from_pretrained('bert-base-uncased')
+
+    def vectorize_avg_both(instance):
+        position = instance.pos + 1
+        tokens = instance.tokens
+        tokens = ["CLS"] + tokens + ["SEP"]
+        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
+        results = bert(input_ids)
+        final_hidden_layers = results[0].squeeze(0)
+        prev_token_vec = final_hidden_layers[position - 1]
+        token_vec = final_hidden_layers[position]
+        next_token_vec = final_hidden_layers[position + 1]
+        avged = torch.mean(torch.stack([prev_token_vec, token_vec, next_token_vec]), dim=0)
+        return avged.detach()
+    
+    def vectorize_avg_left(instance):
+        tokens = instance.tokens
+        tokens = ["CLS"] + tokens + ["SEP"]
+        position = instance.pos + 1
+        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
+        results = bert(input_ids)
+        final_hidden_layers = results[0].squeeze(0)
+        prev_token_vec = final_hidden_layers[position - 1]
+        token_vec = final_hidden_layers[position]
+        avged = torch.mean(torch.stack([prev_token_vec, token_vec]), dim=0)
+        return avged.detach()
+    
+    def vectorize_avg_right(instance):
+        tokens = instance.tokens
+        position = instance.pos + 1
+        tokens = ["CLS"] + tokens + ["SEP"]
+        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
+        results = bert(input_ids)
+        final_hidden_layers = results[0].squeeze(0)
+        token_vec = final_hidden_layers[position]
+        next_token_vec = final_hidden_layers[position + 1]
+        avged = torch.mean(torch.stack([token_vec, next_token_vec]), dim=0)
+        return avged.detach()
+    
+    def vectorize_concat_both(instance):
+        position = instance.pos + 1
+        tokens = instance.tokens
+        tokens = ["CLS"] + tokens + ["SEP"]
+        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
+        results = bert(input_ids)
+        final_hidden_layers = results[0].squeeze(0)
+        prev_token_vec = final_hidden_layers[position - 1]
+        token_vec = final_hidden_layers[position]
+        next_token_vec = final_hidden_layers[position + 1]
+        concat = torch.cat([prev_token_vec, token_vec, next_token_vec])
+        return concat.detach()
+
+    def vectorize_concat_left(instance):
+        position = instance.pos + 1
+        tokens = instance.tokens
+        tokens = ["CLS"] + tokens + ["SEP"]
+        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
+        results = bert(input_ids)
+        final_hidden_layers = results[0].squeeze(0)
+        prev_token_vec = final_hidden_layers[position - 1]
+        token_vec = final_hidden_layers[position]
+        concat = torch.cat([prev_token_vec, token_vec])
+        return concat.detach()
+
+    def vectorize_concat_right(instance):
+        position = instance.pos + 1
+        tokens = instance.tokens
+        tokens = ["CLS"] + tokens + ["SEP"]
+        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
+        results = bert(input_ids)
+        final_hidden_layers = results[0].squeeze(0)
+        token_vec = final_hidden_layers[position]
+        next_token_vec = final_hidden_layers[position + 1]
+        concat = torch.cat([token_vec, next_token_vec])
+        return concat.detach()
+    
+    def get_lemmas(threshold):
+        data = pd.read_csv("data/classifier_data8_20-max.csv")
+        lemmas = []
+        for i in data.index:
+            if data.iloc[i]["best_avg_acc"] >= threshold:
+                lemmas.append(data.iloc[i]["lemma"])
+        return lemmas
+
+    if specification.startswith("avg"):
+        net = DropoutClassifier(768*2, 100, 2)
+        if specification == "avg_both": vectorization = vectorize_avg_both
+        if specification == "avg_left": vectorization = vectorize_avg_left
+        if specification == "avg_right": vectorization = vectorize_avg_right
+    else:
+        if not specification.endswith("both"):
+            net = DropoutClassifier(768*2*2, 100, 2)
+        else:
+            net = DropoutClassifier(768*3*2, 100, 2)
+        if specification == "concat_both": vectorization = vectorize_concat_both
+        if specification == "concat_left": vectorization = vectorize_concat_left
+        if specification == "concat_right": vectorization = vectorize_concat_right
+    
+    lemmas = get_lemmas(0.7)
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in all_sense_histograms():
+        if not lemma in lemmas: continue
+        if len(sense_hist) > 1 and sense_hist[1][0] >= 21:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]
+            print(lemma)
+            
+            data = sample_sense_pairs_with_vec(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                if specification.startswith("avg"):
+                    net = DropoutClassifier(768*2, 100, 2)
+                else:
+                    if not specification.endswith("both"):
+                        net = DropoutClassifier(768*2*2, 100, 2)
+                    else:
+                        net = DropoutClassifier(768*3*2, 100, 2)
+                sum_acc += create_and_train_net(net, training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)
+
+
+def neighbors_test():
+    spec_acc_dict = defaultdict(int)
+    specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
+        
+    with open("neighbor_test_result.json", "w") as f:
+        f.write("")
+
+    for spec in specification_space:
+        print()
+        print("training spec: " + spec)
+        print()
+        lemma_info_dict = train_with_neighbors(spec, 0.7, 10, 2000, verbose=True)
+        score = 0
+        for lemma in lemma_info_dict.keys():
+            score += lemma_info_dict[lemma][0]
+        score /= len(lemma_info_dict.keys())
+        spec_acc_dict[spec] = score
+        
+        with open("neighbor_test_result.json", "w") as f:
+            json.dump(spec_acc_dict, f)
+    
+    return spec_acc_dict
 

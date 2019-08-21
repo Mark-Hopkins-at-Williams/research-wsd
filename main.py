@@ -1,4 +1,6 @@
-from experiment import train_finetune, train_cross_lemmas
+from experiment import train_finetune, train_cross_lemmas, neighbors_test
 import json
 if __name__ == "__main__":
-    train_cross_lemmas(0.65, 10, 100)
+    d = neighbors_test()
+    print(d)
+
