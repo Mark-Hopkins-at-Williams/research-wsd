@@ -15,7 +15,8 @@ def generate_vectorization(layers_i, add_sent):
         
         """
         tokens = instance.tokens
-        position = instance.pos
+        tokens = ["CLS"] + tokens + ["SEP"]
+        position = instance.pos + 1
         input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
         results = bert(input_ids)
         hidden_layers = results[2]

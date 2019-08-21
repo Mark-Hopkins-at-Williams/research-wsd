@@ -340,7 +340,7 @@ def sample_inputids_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent 
             data.append((train, test))
         return data
 
-def sample_sense_pairs_with_vec(vectorization, n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8):
+def sample_sense_pairs_with_vec(vectorization, n_pairs, lemma, sense1, sense2, n_fold, train_percent = 0.8, cached=True):
     """
     Creates training and test data for classifying whether two SenseInstances
     of a particular lemma correspond to the same sense (positive) or a
@@ -446,5 +446,7 @@ def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
                 else:
                     n_fold_data[i] = (torch.cat([n_fold_data[i][0], train]), torch.cat([n_fold_data[i][1], test]))
     for i in range(len(n_fold_data)):
-        n_fold_data[i] = (random.shuffle(n_fold_data[i][0])[:3000], random.shuffle(n_fold_data[i][1])[:3000])
+        random.shuffle(n_fold_data[i][0])
+        random.shuffle(n_fold_data[i][1])
+        n_fold_data[i] = (n_fold_data[i][0][:1000], n_fold_data[i][1][:1000])
     return n_fold_data
