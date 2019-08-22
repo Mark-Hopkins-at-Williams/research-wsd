@@ -26,7 +26,7 @@ def evaluate(net, dev, batcher):
             if labels[i] == output.argmax():
                 correct += 1            
         return correct, total, misclassified
-    val_loader = batcher(dev, 1)
+    val_loader = batcher(dev, 512)
     total_val_loss = 0
     correct = 0
     total = 0
@@ -36,7 +36,7 @@ def evaluate(net, dev, batcher):
         inputs = data[:,1:]
         labels = torch.clamp(data[:,0], min=0).long()
 
-        val_outputs = net(inputs)            
+        val_outputs = net(inputs)
         val_loss_size = loss(val_outputs, labels)
 
         correct_inc, total_inc, misclassified_inc = accuracy(val_outputs, 

@@ -44,12 +44,9 @@ def create_and_train_net(net, training_data, test_data, verb):
         print("training size:", training_data.shape)
         print("testing size:", test_data.shape)
     classifier = cudaify(net)
+
     best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
-<<<<<<< HEAD
-                batch_size=1, n_epochs=10, learning_rate=0.001,
-=======
-                batch_size=96, n_epochs=30, learning_rate=0.001,
->>>>>>> 02b63e0e419e455245847fcf56426678317f14e4
+                batch_size=512, n_epochs=30, learning_rate=0.001,
                 verbose=verb)
     return best_acc
     
@@ -114,11 +111,7 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
-<<<<<<< HEAD
                 sum_acc += create_and_train_net(BertForSenseDisambiguation(), training_data, test_data, verbose)
-=======
-                sum_acc += create_and_train_net(BertForSenseDisambiguation(config), training_data, test_data, verbose)
->>>>>>> 02b63e0e419e455245847fcf56426678317f14e4
                 fold_count += 1
             avg_acc = sum_acc / fold_count
 

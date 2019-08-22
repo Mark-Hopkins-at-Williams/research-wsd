@@ -606,5 +606,5 @@ def manually_convert_format():
     df.to_csv("all_lemmas_20-max_layer_0.csv")
 
 if __name__ == "__main__":
-    train_lemma_classifier_with_diff_layers(0, 0, 21, 22, 10, 2000)
+    train_lemma_classifier_with_diff_layers(0, 0, 21, 1000000, 10, 2000)
 
