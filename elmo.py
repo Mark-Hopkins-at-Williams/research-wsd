@@ -20,8 +20,6 @@ def elmo_vectorize(instance):
     elmo_ids = batch_to_ids([tokens])
     outputs_dict = elmo(elmo_ids)
     representations = outputs_dict["elmo_representations"]
-    print(len(representations))
-    print(representations[0].shape)
 
     representations_summed = sum(representations).squeeze(0)
 
