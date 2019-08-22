@@ -8,7 +8,7 @@ tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 bert = BertModel(config)
 
 
-def generate_vectorization(layers_i, add_sent, nearby):
+def generate_vectorization(layers_i, add_sent):
     def vectorize_instance(instance):
         """
         Converts a SenseInstance into a tensor.

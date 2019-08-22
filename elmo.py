@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from allennlp.modules.elmo import Elmo, batch_to_ids
 from pytorch_transformers import BertTokenizer
+from IPython.core.debugger import set_trace
 
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -10,14 +11,19 @@ weight_file = "https://allennlp.s3.amazonaws.com/models/elmo/2x4096_512_2048cnn_
 N_REPRESENTATIONS = 3
 elmo = Elmo(options_file, weight_file, N_REPRESENTATIONS, dropout=0.05)
 def elmo_vectorize(instance):
-    tokens = instance.tokens
+    tokens = instance.tokens.copy()
     sense = instance.sense
     position = instance.pos
+    
+    tokens += ["<S>"] * (511 - len(tokens))
 
     elmo_ids = batch_to_ids([tokens])
-    embeddings = elmo(elmo_ids)
+    outputs_dict = elmo(elmo_ids)
+    representations = outputs_dict["elmo_representations"]
+    print(len(representations))
+    print(representations[0].shape)
 
-    representation_summed = sum(embeddings).squeeze(0)
+    representations_summed = sum(representations).squeeze(0)
 
-    return representation_summed[position].detach()
+    return representations_summed[position].detach()
 
