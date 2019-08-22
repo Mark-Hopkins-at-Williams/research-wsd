@@ -11,6 +11,7 @@ import json
 from lemmas import create_sense_freq_dict
 from experiment import train_lemma_classifiers_with_vec
 from  bert import generate_vectorization
+from elmo import elmo_vectorize
 
 
 #Note: 12 is the largest valid indice
@@ -50,6 +51,23 @@ def train_lemma_classifier_with_vec(layers_i, add_sent, min_sense2_freq, max_sen
     assert isinstance(layers_i, list), "layers_i must be a list, instead got " + str(type(layers_i))
     vectorize = generate_vectorization(layers_i, add_sent)
     lemma_info_dict = train_lemma_classifiers_with_vec(vectorize, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose)
+    return lemma_info_dict, layers_i
+
+def train_lemma_classifiers_with_elmo(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size):
+    vectorize = elmo_vectorize
+    lemma_info_dict = train_lemma_classifiers_with_vec(vectorize, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size)
+    lemma_info_dict, "elmo"
+    
+    for key in lemma_info_dict.keys():
+        lemma_info = lemma_info_dict[key]
+        data.append(["elmo", key, lemma_info[0], lemma_info[1], lemma_info[2]])
+    df = pd.DataFrame(data, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
+
+    num = 1
+    while os.path.exists("elmo_2000_"+str(num)+".csv"):
+        num += 1
+    df = update_df_format(df, max_sample_size)
+    df.to_csv("elmo_2000"+str(num)+".csv", index=False)
 
 def train_lemma_classifier_with_vec_specific_lemmas(layers_i, lemmas_list, n_fold, max_sample_size, 
                                     verbose=True, add_sent_encoding=False):
@@ -606,5 +624,4 @@ def manually_convert_format():
     df.to_csv("all_lemmas_20-max_layer_0.csv")
 
 if __name__ == "__main__":
-    train_lemma_classifier_with_diff_layers(0, 0, 21, 1000000, 10, 2000)
-
+    train_lemma_classifiers_with_elmo(43,43, 1, 20)

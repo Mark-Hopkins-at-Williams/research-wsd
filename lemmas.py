@@ -466,5 +466,3 @@ def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
         n_fold_test[i] = n_fold_test[i][torch.randperm(n_fold_test[i].shape[0])]
         n_fold_data[i] = (n_fold_train[i][:10000], n_fold_test[i][:10000])
     return n_fold_data
-
-def elmo_vectorize()
