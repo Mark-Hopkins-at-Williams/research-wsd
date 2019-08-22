@@ -8,6 +8,7 @@ from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pai
 from compare import getExampleSentencesBySense
 from collections import defaultdict
 from pytorch_transformers import BertConfig, BertTokenizer, BertModel
+import json
 
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
@@ -274,9 +275,6 @@ def neighbors_test():
     spec_acc_dict = defaultdict(int)
     specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
         
-    with open("neighbor_test_result.json", "w") as f:
-        f.write("")
-
     for spec in specification_space:
         print()
         print("training spec: " + spec)

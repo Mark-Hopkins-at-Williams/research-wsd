@@ -236,7 +236,7 @@ def sample_sense_pairs(n_pairs, lemma, sense1, sense2, n_fold, cached=True, trai
                                dim=1)
         negatives = torch.cat([torch.zeros(len(negatives), 1), negatives], 
                                dim=1)
-        return torch.cat([negatives, positives])
+        return torch.cat([negatives, positives]).detach()
 
     vecs_by_sense = contextualized_vectors_by_sense(lemma, use_cached=cached)
     sense1_vecs = vecs_by_sense[sense1]
@@ -432,20 +432,39 @@ def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
         return lemmas
 
     lemmas = get_lemmas(threshold)
+    cutoff = int(0.8 * len(lemmas))
+    train_lemmas = lemmas[:cutoff]
+    test_lemmas = lemmas[cutoff:]
     print(len(lemmas))
+    n_fold_train = [None] * n_fold
+    n_fold_test = [None] * n_fold
     n_fold_data = [None] * n_fold
+    # sample train data
     for (lemma, sense_hist) in all_sense_histograms():
-        if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in lemmas:
+        if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in train_lemmas:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]
-            lemma_data = sample_sense_pairs(n_pairs_each_lemma, lemma, sense1, sense2, n_fold, cached=True)
-            for i, (train, test) in enumerate(lemma_data):
-                if n_fold_data[i] == None:
-                    n_fold_data[i] = (train, test)
+            train_data = sample_sense_pairs(n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold, cached=True)
+            for i, fold in enumerate(train_data):
+                if n_fold_train[i] is None:
+                    n_fold_train[i] = torch.cat([train_data[i][0], train_data[i][1]]) 
                 else:
-                    n_fold_data[i] = (torch.cat([n_fold_data[i][0], train]), torch.cat([n_fold_data[i][1], test]))
-    for i in range(len(n_fold_data)):
-        random.shuffle(n_fold_data[i][0])
-        random.shuffle(n_fold_data[i][1])
-        n_fold_data[i] = (n_fold_data[i][0][:1000], n_fold_data[i][1][:1000])
+                    n_fold_train[i] = torch.cat([n_fold_train[i], train_data[i][0], train_data[i][1]]) 
+    # sample test data
+    for (lemma, sense_hist) in all_sense_histograms():
+        if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in test_lemmas:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]
+            test_data = sample_sense_pairs(n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold, cached=True)
+            for i, fold in enumerate(test_data):
+                if n_fold_test[i] is None:
+                    n_fold_test[i] = torch.cat([test_data[i][0], test_data[i][1]]) 
+                else:
+                    n_fold_test[i] = torch.cat([n_fold_test[i], test_data[i][0], test_data[i][1]]) 
+    for i in range(len(n_fold_train)):
+        n_fold_train[i] = n_fold_train[i][torch.randperm(n_fold_train[i].shape[0])]
+        n_fold_test[i] = n_fold_test[i][torch.randperm(n_fold_test[i].shape[0])]
+        n_fold_data[i] = (n_fold_train[i][:10000], n_fold_test[i][:10000])
     return n_fold_data
+
+def elmo_vectorize()

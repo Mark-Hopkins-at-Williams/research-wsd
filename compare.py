@@ -117,6 +117,44 @@ def createLemmaData(file_):
         with open("id_to_sent.json", "w") as id_to_sent_file:
             json.dump(id_sent_dict, id_to_sent_file)
 
+def createLemmaData_elmo(file_):
+    with open(file_) as f:
+        file_data = json.load(f)
+
+    with open("data/word_lemma_dict.json", "r") as f:
+        word_lemma_dict = json.load(f)
+    id_sent_dict = {}
+    with Cd("lemmadata_elmo"): 
+        sent_id = 0
+        for document in file_data:
+            doc_body = document["doc"]
+            for sent_object in doc_body:
+                words_with_sense = sent_object["senses"]
+                id_sent_dict[sent_id] = sent_object["sent"]
+                print(sent_id)
+                for word_object in words_with_sense:
+                    if not word_object["word"] in word_lemma_dict:
+                        continue
+                    lemma = word_lemma_dict[word_object["word"]]
+                    lemma_instance = {}
+                    lemma_instance["sent_id"] = sent_id
+                    lemma_instance["pos"] = word_object["pos"] 
+                    lemma_instance["sense"] = word_object["sense"]
+                    lemma_file_name = lemma+".json"
+
+                    if os.path.exists(lemma_file_name):
+                        with open(lemma_file_name, "r") as lemma_file:
+                            lemma_instance_list = json.load(lemma_file)
+                        lemma_instance_list.append(lemma_instance)
+                        with open(lemma_file_name, "w") as lemma_file:
+                            json.dump(lemma_instance_list, lemma_file)
+                    else:
+                        lemma_instance_list = [lemma_instance]
+                        with open(lemma_file_name, "w") as lemma_file:
+                            json.dump(lemma_instance_list, lemma_file)
+                sent_id += 1
+        with open("id_to_sent.json", "w") as id_to_sent_file:
+            json.dump(id_sent_dict, id_to_sent_file)
 
 def createCsvData():
     config = BertConfig.from_pretrained('bert-base-uncased')
@@ -341,3 +379,7 @@ def sampleTrainingDataFromFile(size, file):
     else:
         result = torch.stack(t)
     return result
+
+if __name__ == "__main__":
+    createLemmaData_elmo("data/completedata.json")
+

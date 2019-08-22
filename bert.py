@@ -8,15 +8,14 @@ tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 bert = BertModel(config)
 
 
-def generate_vectorization(layers_i, add_sent):
+def generate_vectorization(layers_i, add_sent, nearby):
     def vectorize_instance(instance):
         """
         Converts a SenseInstance into a tensor.
         
         """
         tokens = instance.tokens
-        tokens = ["CLS"] + tokens + ["SEP"]
-        position = instance.pos + 1
+        position = instance.pos
         input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
         results = bert(input_ids)
         hidden_layers = results[2]
