@@ -180,11 +180,11 @@ def tokens_to_ids_by_sense(lemma):
             tokens = ["CLS"] + instance.tokens + ["SEP"]
             input_ids = tokenizer.convert_tokens_to_ids(tokens)
             input_ids += [0] * (511 - len(input_ids))
-            yield (instance.sense, instance.pos + 1, torch.tensor(input_ids))
+            yield (instance.sense, instance.pos + 1, torch.tensor(input_ids).detach())
 
     sense_vectors = defaultdict(list)
     for (sense, position, ids) in idized_vecs(lemma):
-        sense_vectors[sense].append(torch.cat([torch.tensor([position]), ids]))
+        sense_vectors[sense].append(torch.cat([torch.tensor([position]), ids]).detach())
     return dict(sense_vectors)
 
          
@@ -292,21 +292,21 @@ def sample_inputids_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent 
                                dim=1)
         negatives = torch.cat([torch.zeros(len(negatives), 1, dtype=torch.long), negatives], 
                                dim=1)
-        return torch.cat([negatives, positives])
+        return torch.cat([negatives, positives]).detach()
 
     def sample_negative_sense_pair(sense_vecs):
         assert len(sense_vecs) >= 2, "sample_negative_sense_pair cannot be called with only one sense!"
         sense1, sense2 = random.sample(list(range(len(sense_vecs))), 2)
         vec1 = random.choice(sense_vecs[sense1])
         vec2 = random.choice(sense_vecs[sense2])
-        return torch.cat([vec1[:1], vec2[:1], vec1[1:], vec2[1:]])
+        return torch.cat([vec1[:1], vec2[:1], vec1[1:], vec2[1:]]).detach()
        
     def sample_positive_sense_pair(sense_vecs):
         # Currently may break if every sense doesn't have at least two vectors.
         assert len(sense_vecs) >= 2, "sample_positive_sense_pair cannot be called with zero senses!"
         sense = random.choice(list(range(len(sense_vecs))))
         vec1, vec2 = random.sample(sense_vecs[sense], 2)
-        return torch.cat([vec1[:1], vec2[:1], vec1[1:], vec2[1:]])
+        return torch.cat([vec1[:1], vec2[:1], vec1[1:], vec2[1:]]).detach()
 
 
     idized_vecs_by_sense = tokens_to_ids_by_sense(lemma)

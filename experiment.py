@@ -34,7 +34,7 @@ def test_training(d, k):
     #test = nth_dim_positive_data(2, d, 500)   
     classifier = SimpleClassifier(d,100,2)
     train_net(classifier, train, dev, tensor_batcher,
-              batch_size=96, n_epochs=30, learning_rate=0.001,
+              batch_size=1, n_epochs=30, learning_rate=0.001,
               verbose=True)
 
 
@@ -45,8 +45,9 @@ def create_and_train_net(net, training_data, test_data, verb):
         print("training size:", training_data.shape)
         print("testing size:", test_data.shape)
     classifier = cudaify(net)
+
     best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
-                batch_size=96, n_epochs=30, learning_rate=0.001,
+                batch_size=512, n_epochs=30, learning_rate=0.001,
                 verbose=verb)
     return best_acc
     
@@ -99,9 +100,6 @@ def train_lemma_classifiers_with_vec(vectorization, min_sense2_freq, max_sense2_
 
 
 def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
-    config = BertConfig.from_pretrained('bert-base-uncased')
-    config.output_hidden_states = True
-
     lemma_info_dict = defaultdict(tuple)
     for (lemma, sense_hist) in all_sense_histograms():
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
@@ -114,7 +112,7 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
-                sum_acc += create_and_train_net(BertForSenseDisambiguation(config), training_data, test_data, verbose)
+                sum_acc += create_and_train_net(BertForSenseDisambiguation(), training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
 
