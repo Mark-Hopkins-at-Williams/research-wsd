@@ -118,6 +118,17 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
 
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    lemma_info_dict = dict(lemma_info_dict)
+    for key in lemma_info_dict.keys():
+        lemma_info = lemma_info_dict[key]
+        data.append(["fine_tune", key, lemma_info[0], lemma_info[1], lemma_info[2]])
+        df = pd.DataFrame(data, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
+
+    num = 1
+    while os.path.exists("fine_tune_2000_"+str(num)+".csv"):
+        num += 1
+    df = update_df_format(df, max_sample_size)
+    df.to_csv("fine_tune_2000"+str(num)+".csv", index=False)
     return dict(lemma_info_dict)
 
 def train_cross_lemmas(threshold, n_fold, n_pairs_per_lemma, verbose=True):
