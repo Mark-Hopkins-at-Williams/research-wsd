@@ -7,7 +7,7 @@ import torch
 
 from pytorch_transformers import BertTokenizer
 import random
-
+import pandas as pd
 from os.path import join
 import pandas as pd
 from wordsense import SenseInstance
@@ -36,6 +36,7 @@ def lemmadata_iter():
                         inst_sent_id = instance["sent_id"]
                         inst_sense = instance["sense"]
                         inst_sent = sent_id_dict[str(inst_sent_id)]
+                        if len(inst_sent) > 511: continue
                         result.append(SenseInstance(inst_sent, 
                                                     instance['pos'], 
                                                     inst_sense))
@@ -63,6 +64,7 @@ def lemmadata_elmo_iter():
                         inst_sent_id = instance["sent_id"]
                         inst_sense = instance["sense"]
                         inst_sent = sent_id_dict[str(inst_sent_id)]
+                        if len(inst_sent) > 511: continue
                         result.append(SenseInstance(inst_sent, 
                                                     instance['pos'], 
                                                     inst_sense))
@@ -247,17 +249,44 @@ def contextualized_vectors_by_sense_with_vec_elmo(lemma, vectorize):
     computed from scratch.
     
     """
-    def contextualized_vectors(lemma):    
+    def contextualized_vectors(lemma, batch_size=48):
+        count = 0
+        vecs = []
+        positions = []
+        senses = []
         for instance in lemmadata_elmo(lemma):
             # Bert can only handle sentences with a maximum of 512 tokens
             if len(instance.tokens) > 511:
                 continue
-            yield (instance.sense, vectorize(instance))
+            if count >= batch_size:
+                count = 0
+                embeddings = vectorize(positions, vecs)
+                print(embeddings.shape)
+                print(len(senses))
+                yield (pd.DataFrame(data={"senses": senses, "vecs": list(embeddings)}))
+                senses = []
+                vecs = []
+                positions = []
+            senses.append(instance.sense)
+            positions.append(instance.pos)
+            vecs.append(instance.tokens + (511 - len(instance.tokens)) * ["<S>"])
+            count += 1
+        if len(senses) > 0 and len(positions) > 0 and len(vecs) > 0:
+            embeddings = vectorize(positions, vecs)
+            print(embeddings.shape)
+            print(len(senses))
+            yield (pd.DataFrame(data={"senses": senses, "vecs": list(embeddings)}))
 
     context_vecs = contextualized_vectors
     sense_vectors = defaultdict(list)
-    for (sense, vec) in context_vecs(lemma):
-        sense_vectors[sense].append(vec)
+    for df in context_vecs(lemma):
+        senses = df.senses.unique().tolist()
+        sense0_vecs = list(df.loc[df["senses"] == senses[0]]["vecs"].values)
+        if len(senses) > 1:
+            sense1_vecs = list(df.loc[df["senses"] == senses[1]]["vecs"].values)
+        sense_vectors[senses[0]] += list(sense0_vecs)
+        if len(senses) > 1:
+            sense_vectors[senses[1]] += list(sense1_vecs)
     return dict(sense_vectors)
 
 def tokens_to_ids_by_sense(lemma):

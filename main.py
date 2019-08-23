@@ -5,4 +5,4 @@ def run_main():
     train_finetune(21,21, 10, 20)
 
 if __name__ == "__main__":
-    train_lemma_classifiers_with_vec_elmo(elmo_vectorize, 21, 21, 2, 20)
+    train_lemma_classifiers_with_vec_elmo(elmo_vectorize, 21, 10000000000, 10, 2000)

@@ -26,7 +26,7 @@ def evaluate(net, dev, batcher):
             if labels[i] == output.argmax():
                 correct += 1            
         return correct, total, misclassified
-    val_loader = batcher(dev, 512)
+    val_loader = batcher(dev, 96)
     total_val_loss = 0
     correct = 0
     total = 0
@@ -89,6 +89,5 @@ def train_net(net, train, dev, batcher, batch_size, n_epochs, learning_rate, ver
             best_net = net
             best_acc = acc
         log("{:.2f}\n".format(acc))
-        torch.cuda.empty_cache()
     return best_net, best_acc
 

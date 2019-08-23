@@ -34,7 +34,7 @@ def test_training(d, k):
     #test = nth_dim_positive_data(2, d, 500)   
     classifier = SimpleClassifier(d,100,2)
     train_net(classifier, train, dev, tensor_batcher,
-              batch_size=1, n_epochs=30, learning_rate=0.001,
+              batch_size=96, n_epochs=30, learning_rate=0.001,
               verbose=True)
 
 
@@ -301,12 +301,12 @@ def train_lemma_classifiers_with_vec_elmo(vectorization, min_sense2_freq, max_se
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
-                sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
+                sum_acc += create_and_train_net(DropoutClassifier(1024 * 2, 100, 2), training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    with open("elmo_" + str(min_sense2_freq) + "_" + str(max_sense2_freq) + "_result.json", "w") as f:
+    with open("elmo_" + str(min_sense2_freq) + "_max" + "_result.json", "w") as f:
         json.dump(dict(lemma_info_dict), f) 
     return dict(lemma_info_dict)    
 
