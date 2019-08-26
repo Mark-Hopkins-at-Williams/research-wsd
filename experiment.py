@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import torch
 import pandas as pd
+from vectrain import update_df_format
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
@@ -9,7 +10,7 @@ from compare import getExampleSentencesBySense
 from collections import defaultdict
 from pytorch_transformers import BertConfig, BertTokenizer, BertModel
 import json
-
+import os
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
         return a[torch.randperm(a.size()[0])]        
@@ -296,17 +297,25 @@ def train_lemma_classifiers_with_vec_elmo(vectorization, min_sense2_freq, max_se
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1] 
             print(lemma)        
-            data = sample_sense_pairs_with_vec_elmo(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
+            lemma_data = sample_sense_pairs_with_vec_elmo(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
 
             sum_acc = 0
             fold_count = 0
-            for training_data, test_data in data:
+            for training_data, test_data in lemma_data:
                 sum_acc += create_and_train_net(DropoutClassifier(1024 * 2, 100, 2), training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    with open("elmo_" + str(min_sense2_freq) + "_max" + "_result.json", "w") as f:
-        json.dump(dict(lemma_info_dict), f) 
+    data = []
+    for key in lemma_info_dict.keys():
+        lemma_info = lemma_info_dict[key]
+        data.append(["elmo", key, lemma_info[0], lemma_info[1], lemma_info[2]])
+    df = pd.DataFrame(data, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
+    num = 1
+    while os.path.exists("elmo_2000_"+str(num)+".csv"):
+        num += 1
+    df = update_df_format(df, max_sample_size)
+    df.to_csv("elmo_2000"+str(num)+".csv", index=False)
     return dict(lemma_info_dict)    
 
