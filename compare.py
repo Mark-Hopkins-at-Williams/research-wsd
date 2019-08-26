@@ -15,28 +15,6 @@ import operator
 
 total_size = 0
 
-
-training_files_list = ["/written/letters/112C-L014.txt", 
-                      "/written/blog/Acephalous-Internet.txt",
-                      "/written/email/lists-003-2144868.txt",
-                      "/written/essays/Madame_White_Snake.txt",
-                      "/written/ficlets/1403.txt",
-                      "/written/fiction/A_Wasted_Day.txt",
-                      "/written/govt-docs/chapter-10.txt",
-                      "/written/jokes/jokes7.txt",
-                      "/written/journal/Article247_327.txt",
-                      "/written/movie-script/JurassicParkIV-Scene_3.txt",
-                      "/written/newspaper:newswire/NYTnewswire9.txt",
-                      "/written/non-fiction/chZ.txt",
-                      "/written/spam/111410.txt",
-                      "/written/technical/1471-230X-2-21.txt",
-                      "/written/travel-guides/HistoryGreek.txt",
-                      "/written/twitter/tweets1.txt",
-                      "/spoken/face-to-face/RindnerBonnie.txt",
-                      "/spoken/telephone/sw2015-ms98-a-trans.txt"
-                      ]
-test_files_list = ["/spoken/debate-transcript/2nd_Gore-Bush.txt"]
-
 def vectorizeWordInContext(sentence, pos, tokenizer, model):
     """
     take a word and its bert-style tokenized sentence to compute the vectorization in the context of a sentence.

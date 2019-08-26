@@ -55,7 +55,6 @@ def train_lemma_classifier_with_vec(layers_i, add_sent, min_sense2_freq, max_sen
 def train_lemma_classifiers_with_elmo(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size):
     vectorize = elmo_vectorize
     lemma_info_dict = train_lemma_classifiers_with_vec(vectorize, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size)
-    lemma_info_dict, "elmo"
     
     for key in lemma_info_dict.keys():
         lemma_info = lemma_info_dict[key]

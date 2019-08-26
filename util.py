@@ -6,7 +6,7 @@ def cudaify(x):
     if torch.cuda.is_available():
         print("using gpu")
         if torch.cuda.device_count() > 2:
-            cuda = torch.device('cuda:2')
+            cuda = torch.device('cuda:1')
         else:
             cuda = torch.device('cuda:0')
         return x.cuda(cuda)
