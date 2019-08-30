@@ -281,12 +281,8 @@ def contextualized_vectors_by_sense_with_vec_elmo(lemma, vectorize):
     sense_vectors = defaultdict(list)
     for df in context_vecs(lemma):
         senses = df.senses.unique().tolist()
-        sense0_vecs = list(df.loc[df["senses"] == senses[0]]["vecs"].values)
-        if len(senses) > 1:
-            sense1_vecs = list(df.loc[df["senses"] == senses[1]]["vecs"].values)
-        sense_vectors[senses[0]] += list(sense0_vecs)
-        if len(senses) > 1:
-            sense_vectors[senses[1]] += list(sense1_vecs)
+        for sense in senses:
+            sense_vectors[sense] += list(df.loc[df["senses"] == sense]["vecs"].values)
     return dict(sense_vectors)
 
 def tokens_to_ids_by_sense(lemma):

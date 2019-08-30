@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import torch
 import json
 from lemmas import create_sense_freq_dict
-from experiment import train_lemma_classifiers_with_vec
 from  bert import generate_vectorization
 from elmo import elmo_vectorize
 
