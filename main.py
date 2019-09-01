@@ -4,4 +4,5 @@ def run_main():
     train_finetune(21,21, 10, 20)
 
 if __name__ == "__main__":
-    d = train_lemma_classifiers_with_vec_elmo(elmo_vectorize, 21, 100000000000, 5, 2000)
+    neighbors_test("elmo")
+
