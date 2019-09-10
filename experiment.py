@@ -37,7 +37,7 @@ def test_training(d, k):
     #test = nth_dim_positive_data(2, d, 500)   
     classifier = SimpleClassifier(d,100,2)
     train_net(classifier, train, dev, tensor_batcher,
-              batch_size=96, n_epochs=30, learning_rate=0.001,
+              batch_size=2, n_epochs=30, learning_rate=0.001,
               verbose=True)
 
 
@@ -50,7 +50,7 @@ def create_and_train_net(net, training_data, test_data, verb):
     classifier = cudaify(net)
 
     best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
-                batch_size=512, n_epochs=30, learning_rate=0.001,
+                batch_size=2, n_epochs=30, learning_rate=0.001,
                 verbose=verb)
     return best_acc
     
@@ -104,8 +104,11 @@ def train_lemma_classifiers_with_vec(vectorization, min_sense2_freq, max_sense2_
 
 def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
     lemma_info_dict = defaultdict(tuple)
+    i = 1
     for (lemma, sense_hist) in all_sense_histograms():
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
+            i +=1
+            print("lemma: "+str(i)+" of 379")
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]   
             print(lemma)                    
