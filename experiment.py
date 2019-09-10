@@ -119,6 +119,10 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
 
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+            storeable_dict = dict(lemma_info_dict)
+            with open("finetuning_progress.json", "w") as f:
+                json.dump(storeable_dict, f)
+
     lemma_info_dict = dict(lemma_info_dict)
     for key in lemma_info_dict.keys():
         lemma_info = lemma_info_dict[key]
