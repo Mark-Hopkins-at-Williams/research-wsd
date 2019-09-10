@@ -13,6 +13,7 @@ import pandas as pd
 from wordsense import SenseInstance
 
 from bert import vectorize_instance
+from elmo import elmo_vectorize
 
 def lemmadata_iter():
     """
@@ -617,7 +618,12 @@ def sample_sense_pairs_with_vec_elmo(vectorization, n_pairs, lemma, sense1, sens
 
         return data
 
-def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
+def sample_cross_lemma(vec, threshold, n_fold, n_pairs_each_lemma):
+    if vec == elmo_vectorize:
+        sample_sense_pairs = sample_sense_pairs_with_vec_elmo
+    else: 
+        sample_sense_pairs = sample_sense_pairs_with_vec
+
     def get_lemmas(threshold):
         data = pd.read_csv("data/classifier_data8_20-max.csv")
         lemmas = []
@@ -627,6 +633,7 @@ def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
         return lemmas
 
     lemmas = get_lemmas(threshold)
+    print("# of lemmas: " + str(len(lemmas)))
     cutoff = int(0.8 * len(lemmas))
     train_lemmas = lemmas[:cutoff]
     test_lemmas = lemmas[cutoff:]
@@ -639,7 +646,7 @@ def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
         if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in train_lemmas:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]
-            train_data = sample_sense_pairs(n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold, cached=True)
+            train_data = sample_sense_pairs(vec, n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold)
             for i, fold in enumerate(train_data):
                 if n_fold_train[i] is None:
                     n_fold_train[i] = torch.cat([train_data[i][0], train_data[i][1]]) 
@@ -650,7 +657,7 @@ def sample_cross_lemma(threshold, n_fold, n_pairs_each_lemma):
         if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in test_lemmas:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]
-            test_data = sample_sense_pairs(n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold, cached=True)
+            test_data = sample_sense_pairs(vec, n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold, cached=True)
             for i, fold in enumerate(test_data):
                 if n_fold_test[i] is None:
                     n_fold_test[i] = torch.cat([test_data[i][0], test_data[i][1]]) 

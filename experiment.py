@@ -11,6 +11,8 @@ from collections import defaultdict
 from pytorch_transformers import BertConfig, BertTokenizer, BertModel
 import json
 import os
+from elmo import *
+
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
         return a[torch.randperm(a.size()[0])]        
@@ -136,18 +138,19 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
     df.to_csv("fine_tune_2000"+str(num)+".csv", index=False)
     return dict(lemma_info_dict)
 
-def train_cross_lemmas(threshold, n_fold, n_pairs_per_lemma, verbose=True):
-    config = BertConfig.from_pretrained('bert-base-uncased')
-    config.output_hidden_states = True
-
-    data = sample_cross_lemma(threshold, n_fold, n_pairs_per_lemma)
+def train_cross_lemmas(vec, threshold, n_fold, n_pairs_per_lemma, verbose=True):
+    name = vec.__name__
+    if vec.__name__.startswith("elmo"):
+        input_size = 1024 * 2
+    else: input_size = 768 * 2
+    data = sample_cross_lemma(vec, threshold, n_fold, n_pairs_per_lemma)
     sum_acc = 0
     for training_data, test_data in data:
-        sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
+        sum_acc += create_and_train_net(DropoutClassifier(input_size, 100, 2), training_data, test_data, verbose)
     avg_acc = sum_acc / n_fold
     print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    with open("generality_result.txt", "w") as f:
-        f.write("accuracy across lemmas is: " + str(avg_acc))
+    with open("data/generality_result_" + name + ".txt", "w") as f:
+        f.write(str(avg_acc))
 
 def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verbose=True):
     specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
@@ -234,7 +237,7 @@ def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verb
         return concat.detach()
     
     def get_lemmas(threshold):
-        data = pd.read_csv("data/classifier_data8_20-max.csv")
+        data = pd.read_csv(filename)
         lemmas = []
         for i in data.index:
             if data.iloc[i]["best_avg_acc"] >= threshold:
@@ -242,15 +245,10 @@ def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verb
         return lemmas
 
     if specification.startswith("avg"):
-        net = DropoutClassifier(768*2, 100, 2)
         if specification == "avg_both": vectorization = vectorize_avg_both
         if specification == "avg_left": vectorization = vectorize_avg_left
         if specification == "avg_right": vectorization = vectorize_avg_right
     else:
-        if not specification.endswith("both"):
-            net = DropoutClassifier(768*2*2, 100, 2)
-        else:
-            net = DropoutClassifier(768*3*2, 100, 2)
         if specification == "concat_both": vectorization = vectorize_concat_both
         if specification == "concat_left": vectorization = vectorize_concat_left
         if specification == "concat_right": vectorization = vectorize_concat_right
@@ -285,24 +283,75 @@ def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verb
     return dict(lemma_info_dict)
 
 
-def neighbors_test():
+def train_with_neighbors_elmo(specification, threshold, n_fold, max_sample_size, verbose=True):
+    specification_space = ["default", "avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
+    assert specification in specification_space, "parameter specification can only be one of the following: " + str(specification_space)
+
+    def get_lemmas(threshold):
+        data = pd.read_csv("data/elmo_all_lemmas_data.csv")
+        lemmas = []
+        for i in data.index:
+            if data.iloc[i]["best_avg_acc"] >= threshold:
+                lemmas.append(data.iloc[i]["lemma"])
+        return lemmas
+    if specification == "default":
+        vectorization = elmo_vectorize
+    if specification.startswith("avg"):
+        if specification == "avg_both": vectorization = elmo_vectorize_avg_both
+        if specification == "avg_left": vectorization = elmo_vectorize_avg_left
+        if specification == "avg_right": vectorization = elmo_vectorize_avg_right
+    else:
+        if specification == "concat_both": vectorization = elmo_vectorize_concat_both
+        if specification == "concat_left": vectorization = elmo_vectorize_concat_left
+        if specification == "concat_right": vectorization = elmo_vectorize_concat_right
+    
+    lemmas = get_lemmas(0.7)
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in all_sense_histograms():
+        if not lemma in lemmas: continue
+        if len(sense_hist) > 1 and sense_hist[1][0] >= 21:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]
+            print(lemma)
+            
+            data = sample_sense_pairs_with_vec_elmo(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                if specification.startswith("avg") or specification == "default":
+                    net = DropoutClassifier(1024 * 2, 100, 2)
+                else:
+                    if not specification.endswith("both"):
+                        net = DropoutClassifier(1024*2*2, 100, 2)
+                    else:
+                        net = DropoutClassifier(1024*3*2, 100, 2)
+                sum_acc += create_and_train_net(net, training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)
+
+def neighbors_test(style):
+    if style == "elmo": train_with_neighbors = train_with_neighbors_elmo
     spec_acc_dict = defaultdict(int)
-    specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
-        
+    specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]   
     for spec in specification_space:
         print()
         print("training spec: " + spec)
         print()
-        lemma_info_dict = train_with_neighbors(spec, 0.7, 10, 2000, verbose=True)
+        lemma_info_dict = train_with_neighbors(spec, 0.7, 5, 2000, verbose=True)
         score = 0
         for lemma in lemma_info_dict.keys():
             score += lemma_info_dict[lemma][0]
         score /= len(lemma_info_dict.keys())
         spec_acc_dict[spec] = score
         
-        with open("neighbor_test_result.json", "w") as f:
-            json.dump(spec_acc_dict, f)
-    
+        with open("neighbor_test_" + style +".json", "w") as f:
+            json.dump(dict(spec_acc_dict), f)
+    print(spec_acc_dict)
     return spec_acc_dict
 
 def train_lemma_classifiers_with_vec_elmo(vectorization, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
