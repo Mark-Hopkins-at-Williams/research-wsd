@@ -9,6 +9,18 @@ To train lemma-specific sense classifiers, do the following:
 This will train sense classifiers for all lemmas whose second sense has
 between 40 and 42 instances using n-fold cross-validation with all logs on.
 
+To run the general lemma test(in contrast to single-lemma training and testing) on words with 0.7 accuracy or higher with 5-fold cross-validation and 2000 training examples per lemma:
+1. Make sure there is "word_lemma_dict.json" under a the "data" folder.
+    For ELMo:	
+	from elmo import elmo_vectorize
+	from experiment import train_cross_lemmas
+	createLemmaData_elmo()
+	train_cross_lemmas(elmo_vectorize, 0.7, 5, 2000, verbose=True)
+    For BERT:
+	from bert import vectorize_instance
+	from experiment import train_cross_lemma
+	createLemmaData()
+	train_cross_lemmas(vectorize_instance, 0.7, 5, 2000, verbose=True)
 
 TEST TAKERS! Read Here!
 
@@ -41,3 +53,6 @@ https://drive.google.com/file/d/1f547LZsS5CAYPWTNwRl9HGpf00T0TknH/view?usp=shari
 
 ## sense_to_pofs_dict.json
 https://drive.google.com/file/d/1RCWEWwCu4i1vXZLPtbZtLcoh8EUMpT31/view?usp=sharing
+
+## word_lemma_dict.json
+https://drive.google.com/file/d/1_2Z-rYVX4pDAp1pfDp0s3YAnHBvi2F7Q/view?usp=sharing
