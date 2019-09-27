@@ -1,166 +1,166 @@
-	import torch
-	import pandas as pd
-	from pytorch_transformers import BertConfig, BertTokenizer, BertModel
-	import json
-	import unicodedata
-	import os
-	import string
-	import csv
-	import random
-	import numpy
-	from util import Cd
-	from itertools import product
-	import math
-	import operator
+import torch
+import pandas as pd
+from pytorch_transformers import BertConfig, BertTokenizer, BertModel
+import json
+import unicodedata
+import os
+import string
+import csv
+import random
+import numpy
+from util import Cd
+from itertools import product
+import math
+import operator
 
-	total_size = 0
+total_size = 0
 
-	def vectorizeWordInContext(sentence, pos, tokenizer, model):
-	    """
-	    take a word and its bert-style tokenized sentence to compute the vectorization in the context of a sentence.
-	    return the vector representation of the word
-	    """
-	    input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(sentence)).unsqueeze(0)
-	    outputs = model(input_ids)
-	    final_layer = outputs[0].squeeze(0)
-	    return final_layer[pos]
+def vectorizeWordInContext(sentence, pos, tokenizer, model):
+    """
+    take a word and its bert-style tokenized sentence to compute the vectorization in the context of a sentence.
+    return the vector representation of the word
+    """
+    input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(sentence)).unsqueeze(0)
+    outputs = model(input_ids)
+    final_layer = outputs[0].squeeze(0)
+    return final_layer[pos]
 
 
-	def breakToString(break_level):
-	    """
-	    This helper function returns the correct string to use when creating the
-	    natural sentence, based on the specified break level.
-	    """
-	    if break_level == "NO_BREAK" or break_level == "SENTENCE_BREAK":
-		return ""
-	    else:
-		return " "   
+def breakToString(break_level):
+    """
+    This helper function returns the correct string to use when creating the
+    natural sentence, based on the specified break level.
+    """
+    if break_level == "NO_BREAK" or break_level == "SENTENCE_BREAK":
+    return ""
+    else:
+    return " "   
 
-	def getJsonSentences(data):
-	    """
-	    This function processes a single documents data. It scans through the words
-	    until it finds a sentence break and uses this to return a list of all the sentences
-	    in the document, where each sentence is a list of words.
-	    """
-	    sentence = []
-	    sentences = []
-	    for word in data:
-		word["text"] = unicodeToAscii(word["text"])
-		if word["break_level"] == "SENTENCE_BREAK":
-		    sentences.append(sentence)
-		    sentence = []
-		if word["text"] != "":
-		    sentence.append(word)
-	    return sentences
+def getJsonSentences(data):
+    """
+    This function processes a single documents data. It scans through the words
+    until it finds a sentence break and uses this to return a list of all the sentences
+    in the document, where each sentence is a list of words.
+    """
+    sentence = []
+    sentences = []
+    for word in data:
+    word["text"] = unicodeToAscii(word["text"])
+    if word["break_level"] == "SENTENCE_BREAK":
+        sentences.append(sentence)
+        sentence = []
+    if word["text"] != "":
+        sentence.append(word)
+    return sentences
 
-	def createLemmaData():
-	    with open("data/googledata.json") as f:
-		file_data = json.load(f)
+def createLemmaData():
+    with open("data/googledata.json") as f:
+    file_data = json.load(f)
 
-	    with open("word_lemma_dict.json", "r") as f:
-		word_lemma_dict = json.load(f)
-	    id_sent_dict = {}
-	    with Cd("lemmadata"): 
-		sent_id = 0
-		for document in file_data:
-		    doc_body = document["doc"]
-		    for sent_object in doc_body:
-			words_with_sense = sent_object["senses"]
-			id_sent_dict[sent_id] = sent_object["bert_sent"]
-			tracking = sent_object["tracking"]
-			print(sent_id)
-			for word_object in words_with_sense:
-			    if not word_object["word"] in word_lemma_dict:
-				continue
-			    lemma = word_lemma_dict[word_object["word"]]
-			    lemma_instance = {}
-			    lemma_instance["sent_id"] = sent_id
-			    tracking_pos = tracking.index(word_object["pos"])
-			    lemma_instance["pos"] = tracking_pos
-			    lemma_instance["sense"] = word_object["sense"]
-			    lemma_instance["pofs"] = word_object["pofs"]
-			    lemma_file_name = lemma+".json"
+    with open("word_lemma_dict.json", "r") as f:
+    word_lemma_dict = json.load(f)
+    id_sent_dict = {}
+    with Cd("lemmadata"): 
+    sent_id = 0
+    for document in file_data:
+        doc_body = document["doc"]
+        for sent_object in doc_body:
+        words_with_sense = sent_object["senses"]
+        id_sent_dict[sent_id] = sent_object["bert_sent"]
+        tracking = sent_object["tracking"]
+        print(sent_id)
+        for word_object in words_with_sense:
+            if not word_object["word"] in word_lemma_dict:
+            continue
+            lemma = word_lemma_dict[word_object["word"]]
+            lemma_instance = {}
+            lemma_instance["sent_id"] = sent_id
+            tracking_pos = tracking.index(word_object["pos"])
+            lemma_instance["pos"] = tracking_pos
+            lemma_instance["sense"] = word_object["sense"]
+            lemma_instance["pofs"] = word_object["pofs"]
+            lemma_file_name = lemma+".json"
 
-			    if os.path.exists(lemma_file_name):
-				with open(lemma_file_name, "r") as lemma_file:
-				    lemma_instance_list = json.load(lemma_file)
-				lemma_instance_list.append(lemma_instance)
-				with open(lemma_file_name, "w") as lemma_file:
-				    json.dump(lemma_instance_list, lemma_file)
-			    else:
-				lemma_instance_list = [lemma_instance]
-				with open(lemma_file_name, "w") as lemma_file:
-				    json.dump(lemma_instance_list, lemma_file)
-			sent_id += 1
-		with open("id_to_sent.json", "w") as id_to_sent_file:
-		    json.dump(id_sent_dict, id_to_sent_file)
+            if os.path.exists(lemma_file_name):
+            with open(lemma_file_name, "r") as lemma_file:
+                lemma_instance_list = json.load(lemma_file)
+            lemma_instance_list.append(lemma_instance)
+            with open(lemma_file_name, "w") as lemma_file:
+                json.dump(lemma_instance_list, lemma_file)
+            else:
+            lemma_instance_list = [lemma_instance]
+            with open(lemma_file_name, "w") as lemma_file:
+                json.dump(lemma_instance_list, lemma_file)
+        sent_id += 1
+    with open("id_to_sent.json", "w") as id_to_sent_file:
+        json.dump(id_sent_dict, id_to_sent_file)
 
-	def createLemmaData_elmo():
-	    with open(data/googledata.json) as f:
-		file_data = json.load(f)
+def createLemmaData_elmo():
+    with open("data/googledata.json") as f:
+        file_data = json.load(f)
 
-	    with open("data/word_lemma_dict.json", "r") as f:
-		word_lemma_dict = json.load(f)
-	    id_sent_dict = {}
-	    with Cd("lemmadata_elmo"): 
-		sent_id = 0
-		for document in file_data:
-		    doc_body = document["doc"]
-		    for sent_object in doc_body:
-			words_with_sense = sent_object["senses"]
-			id_sent_dict[sent_id] = sent_object["sent"]
-			print(sent_id)
-			for word_object in words_with_sense:
-			    if not word_object["word"] in word_lemma_dict:
-				continue
-			    lemma = word_lemma_dict[word_object["word"]]
-			    lemma_instance = {}
-			    lemma_instance["sent_id"] = sent_id
-			    lemma_instance["pos"] = word_object["pos"] 
-			    lemma_instance["sense"] = word_object["sense"]
-			    lemma_file_name = lemma+".json"
+    with open("data/word_lemma_dict.json", "r") as f:
+        word_lemma_dict = json.load(f)
+    id_sent_dict = {}
+    with Cd("lemmadata_elmo"): 
+    sent_id = 0
+    for document in file_data:
+        doc_body = document["doc"]
+        for sent_object in doc_body:
+        words_with_sense = sent_object["senses"]
+        id_sent_dict[sent_id] = sent_object["sent"]
+        print(sent_id)
+        for word_object in words_with_sense:
+            if not word_object["word"] in word_lemma_dict:
+            continue
+            lemma = word_lemma_dict[word_object["word"]]
+            lemma_instance = {}
+            lemma_instance["sent_id"] = sent_id
+            lemma_instance["pos"] = word_object["pos"] 
+            lemma_instance["sense"] = word_object["sense"]
+            lemma_file_name = lemma+".json"
 
-			    if os.path.exists(lemma_file_name):
-				with open(lemma_file_name, "r") as lemma_file:
-				    lemma_instance_list = json.load(lemma_file)
-				lemma_instance_list.append(lemma_instance)
-				with open(lemma_file_name, "w") as lemma_file:
-				    json.dump(lemma_instance_list, lemma_file)
-			    else:
-				lemma_instance_list = [lemma_instance]
-				with open(lemma_file_name, "w") as lemma_file:
-				    json.dump(lemma_instance_list, lemma_file)
-			sent_id += 1
-		with open("id_to_sent.json", "w") as id_to_sent_file:
-		    json.dump(id_sent_dict, id_to_sent_file)
+            if os.path.exists(lemma_file_name):
+            with open(lemma_file_name, "r") as lemma_file:
+                lemma_instance_list = json.load(lemma_file)
+            lemma_instance_list.append(lemma_instance)
+            with open(lemma_file_name, "w") as lemma_file:
+                json.dump(lemma_instance_list, lemma_file)
+            else:
+            lemma_instance_list = [lemma_instance]
+            with open(lemma_file_name, "w") as lemma_file:
+                json.dump(lemma_instance_list, lemma_file)
+        sent_id += 1
+    with open("id_to_sent.json", "w") as id_to_sent_file:
+        json.dump(id_sent_dict, id_to_sent_file)
 
-	def createCsvData():
-	    config = BertConfig.from_pretrained('bert-base-uncased')
-	    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-	    model = BertModel(config)
-	    with Cd("lemmadata"):
-		with open("id_to_sent.json") as sent_id_dict_file:
-		    sent_id_dict = json.load(sent_id_dict_file)
-		for dir_item in os.listdir():
-		    if os.path.isfile(dir_item):
-			if dir_item.endswith(".json") and dir_item != "id_to_sent.json":
-                    print(dir_item)
-                    with open(dir_item, "r") as f:
-                        lemma_data = json.load(f)
-                    with Cd("vectors"):
-                        with open(dir_item[:-5]+".csv", "w") as vector_file:
-                            writer = csv.writer(vector_file, delimiter=",")
-                            for instance in lemma_data:
-                                inst_sent_id = instance["sent_id"]
-                                inst_sense = instance["sense"]
-                                inst_sent = sent_id_dict[str(inst_sent_id)]
-                                if(len(inst_sent) > 511):
-                                    continue 
-                                vector = vectorizeWordInContext(inst_sent, instance["pos"], tokenizer, model)
-                                vec_list = vector.detach().tolist()
-                                row_data = [inst_sent_id, instance["pos"], inst_sense] + vec_list
-                                writer.writerow(row_data)
-             
+def createCsvData():
+    config = BertConfig.from_pretrained('bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model = BertModel(config)
+    with Cd("lemmadata"):
+    with open("id_to_sent.json") as sent_id_dict_file:
+        sent_id_dict = json.load(sent_id_dict_file)
+    for dir_item in os.listdir():
+        if os.path.isfile(dir_item):
+        if dir_item.endswith(".json") and dir_item != "id_to_sent.json":
+                print(dir_item)
+                with open(dir_item, "r") as f:
+                    lemma_data = json.load(f)
+                with Cd("vectors"):
+                    with open(dir_item[:-5]+".csv", "w") as vector_file:
+                        writer = csv.writer(vector_file, delimiter=",")
+                        for instance in lemma_data:
+                            inst_sent_id = instance["sent_id"]
+                            inst_sense = instance["sense"]
+                            inst_sent = sent_id_dict[str(inst_sent_id)]
+                            if(len(inst_sent) > 511):
+                                continue 
+                            vector = vectorizeWordInContext(inst_sent, instance["pos"], tokenizer, model)
+                            vec_list = vector.detach().tolist()
+                            row_data = [inst_sent_id, instance["pos"], inst_sense] + vec_list
+                            writer.writerow(row_data)
+            
 
 
 
