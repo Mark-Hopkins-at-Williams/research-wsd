@@ -4,7 +4,6 @@ from torch import nn
 import torch.nn.functional as F
 from pytorch_transformers import BertModel
 from pytorch_transformers.modeling_bert import BertPreTrainedModel
-from bert import generate_vectorization
 from wordsense import SenseInstance
 import IPython
 

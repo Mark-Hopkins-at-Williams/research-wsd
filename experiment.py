@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import torch
 import pandas as pd
-from vectrain import update_df_format
+#from vectrain import update_df_format
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
-from lemmas import all_sense_histograms, all_sense_histograms_elmo, sample_sense_pairs, sample_inputids_pairs, sample_sense_pairs_with_vec, sample_sense_pairs_with_vec_elmo, sample_cross_lemma
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs 
+from lemmas import sample_cross_lemma
 from compare import getExampleSentencesBySense
 from collections import defaultdict
 from pytorch_transformers import BertConfig, BertTokenizer, BertModel
@@ -63,14 +64,14 @@ def train_from_csv(train_csv, dev_csv):
     print('dev size: {}'.format(dev.shape[0]))
     return create_and_train_net(DropoutClassifier(1536, 100, 2), train, dev)
 
-def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+def train_lemma_classifiers(vectorize, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, lemmadir, cached, verbose=True):
     lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in all_sense_histograms():
+    for (lemma, sense_hist) in all_sense_histograms(lemmadir):
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]   
             print(lemma)                    
-            data = sample_sense_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
+            data = sample_sense_pairs(vectorize, max_sample_size//2, lemma, lemmadir, sense1, sense2, n_fold, cached=cached)
 
             sum_acc = 0
             fold_count = 0
