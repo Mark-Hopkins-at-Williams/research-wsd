@@ -3,12 +3,14 @@ import json
 import os
 from collections import defaultdict
 import torch
-
-from pytorch_transformers import BertTokenizer
+from transformers import BertTokenizer
 import random
 import pandas as pd
 from os.path import join
+
 from wordsense import SenseInstance
+
+
 
 def lemmadata_iter(lemmadir):
     """
@@ -38,6 +40,12 @@ def lemmadata_iter(lemmadir):
                                                     inst_sense))
                     yield((dir_item[:-5], result))
 
+def make_sense_dir(lemmadir, sensedir):
+    for (lemma, instances) in lemmadata_iter(lemmadir):
+        with open(join(sensedir, lemma + ".json"), 'w') as writer:
+            data = [inst.to_json() for inst in instances]
+            writer.write(json.dumps(data, indent=4))
+
 
 def lemmadata(lemma, lemmadir):
     """
@@ -62,13 +70,6 @@ def sense_histogram(instances):
         result[instance.sense] += 1
     return result
 
-def create_sense_freq_dict(lemmadir):
-    result = defaultdict(int)
-    for (_, instances) in lemmadata_iter(lemmadir):
-        for instance in instances:
-            result[instance.sense] += 1
-    return result
-
 
 def all_sense_histograms(lemmadir):
     """
@@ -78,8 +79,7 @@ def all_sense_histograms(lemmadir):
     corresponding to the lemma. This list is sorted by k, from greatest
     to least.
     
-    """
-    
+    """ 
     lemma_iter = lemmadata_iter(lemmadir)
     for (lemma, instances) in lemma_iter:
         histogram = sense_histogram(instances)
@@ -94,6 +94,7 @@ def specified_sense_historgrams(lemmas, lemmadir):
     (lemma, histogram), where histogram is a list of pairs of the
     form (k, sense) such that there are k SenseInstances of sense corresponding
     to the lemma. This list is sorted by k, from greatest to least.
+    
     """
     for (other_lemma, data) in lemmadata_iter(lemmadir):
         if other_lemma in lemmas:
@@ -116,7 +117,7 @@ def contextualized_vectors_by_sense(lemma, vectorize, lemmadir, use_cached = Fal
     
     """
     def cached_contextualized_vectors(lemma):
-        filename = join(lemmadir, lemma + ".csv")
+        filename = join(lemmadir + "/vectors", lemma + ".csv")
         data = pd.read_csv(filename, delimiter=",")
         for k in range(len(data.index)):
             curr = data.iloc[k]
@@ -139,54 +140,7 @@ def contextualized_vectors_by_sense(lemma, vectorize, lemmadir, use_cached = Fal
     return dict(sense_vectors)    
 
 
-def contextualized_vectors_by_sense_with_vec_elmo(lemma, vectorize):
-    """
-    SEVERAL DIFFERENCES FROM contextualized_vectors_by_sense
-    
-    Returns a dictionary mapping each word sense (of a particular lemma)
-    to a list of vector encodings of its SenseInstances.
-    
-    If use_cached == True, then this assumes that a file called
-    `lemmadata/vectors/LEMMA.csv` exists and contains the serialized
-    vectors in CSV format. If use_cached == False, the vectors are
-    computed from scratch.
-    
-    """
-    def contextualized_vectors(lemma, batch_size=48):
-        count = 0
-        vecs = []
-        positions = []
-        senses = []
-        for instance in lemmadata(lemma, 'lemmadata_elmo'):
-            # Bert can only handle sentences with a maximum of 512 tokens
-            if len(instance.tokens) > 511:
-                continue
-            if count >= batch_size:
-                count = 0
-                embeddings = vectorize(positions, vecs)
-                print(embeddings.shape)
-                print(len(senses))
-                yield (pd.DataFrame(data={"senses": senses, "vecs": list(embeddings)}))
-                senses = []
-                vecs = []
-                positions = []
-            senses.append(instance.sense)
-            positions.append(instance.pos)
-            vecs.append(instance.tokens + (511 - len(instance.tokens)) * ["<S>"])
-            count += 1
-        if len(senses) > 0 and len(positions) > 0 and len(vecs) > 0:
-            embeddings = vectorize(positions, vecs)
-            print(embeddings.shape)
-            print(len(senses))
-            yield (pd.DataFrame(data={"senses": senses, "vecs": list(embeddings)}))
 
-    context_vecs = contextualized_vectors
-    sense_vectors = defaultdict(list)
-    for df in context_vecs(lemma):
-        senses = df.senses.unique().tolist()
-        for sense in senses:
-            sense_vectors[sense] += list(df.loc[df["senses"] == sense]["vecs"].values)
-    return dict(sense_vectors)
 
 def tokens_to_ids_by_sense(lemma):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -207,7 +161,7 @@ def tokens_to_ids_by_sense(lemma):
 
          
 def sample_sense_pairs(vectorize, n_pairs, lemma, lemmadir, 
-                       sense1, sense2, n_fold, cached=True, 
+                       sense1, sense2, n_fold, cached=False, 
                        train_percent = 0.8):
     """
     Creates training and test data for classifying whether two SenseInstances
@@ -372,8 +326,6 @@ def sample_inputids_pairs(n_pairs, lemma, sense1, sense2, n_fold, train_percent 
         return data
 
 
-
-
 def sample_cross_lemma(vec, threshold, n_fold, n_pairs_each_lemma):
 
     def get_lemmas(threshold):
@@ -384,6 +336,7 @@ def sample_cross_lemma(vec, threshold, n_fold, n_pairs_each_lemma):
                 lemmas.append(data.iloc[i]["lemma"])
         return lemmas
 
+    vecdir = 'lemmadata'
     lemmas = get_lemmas(threshold)
     print("# of lemmas: " + str(len(lemmas)))
     cutoff = int(0.8 * len(lemmas))
@@ -394,22 +347,23 @@ def sample_cross_lemma(vec, threshold, n_fold, n_pairs_each_lemma):
     n_fold_test = [None] * n_fold
     n_fold_data = [None] * n_fold
     # sample train data
-    for (lemma, sense_hist) in all_sense_histograms():
+    for (lemma, sense_hist) in all_sense_histograms('lemmadata'):
         if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in train_lemmas:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]
-            train_data = sample_sense_pairs(vec, n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold)
+            print("Sampling for {}".format(lemma))
+            train_data = sample_sense_pairs(vec, n_pairs_each_lemma//2, lemma, vecdir, sense1, sense2, n_fold)
             for i, fold in enumerate(train_data):
                 if n_fold_train[i] is None:
                     n_fold_train[i] = torch.cat([train_data[i][0], train_data[i][1]]) 
                 else:
                     n_fold_train[i] = torch.cat([n_fold_train[i], train_data[i][0], train_data[i][1]]) 
     # sample test data
-    for (lemma, sense_hist) in all_sense_histograms():
+    for (lemma, sense_hist) in all_sense_histograms('lemmadata'):
         if len(sense_hist) > 1 and sense_hist[1][0] >= 21 and lemma in test_lemmas:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]
-            test_data = sample_sense_pairs(vec, n_pairs_each_lemma//2, lemma, sense1, sense2, n_fold, cached=True)
+            test_data = sample_sense_pairs(vec, n_pairs_each_lemma//2, lemma, vecdir, sense1, sense2, n_fold, cached=True)
             for i, fold in enumerate(test_data):
                 if n_fold_test[i] is None:
                     n_fold_test[i] = torch.cat([test_data[i][0], test_data[i][1]]) 

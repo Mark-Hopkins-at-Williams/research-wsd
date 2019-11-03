@@ -1,7 +1,6 @@
 import unittest
 from wordsense import SenseInstance
 from bert import vectorize_instance
-from elmo import elmo_vectorize
 import torch
 from torch import tensor
 

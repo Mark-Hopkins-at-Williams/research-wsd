@@ -146,7 +146,8 @@ def train_cross_lemmas(vec, threshold, n_fold, n_pairs_per_lemma, verbose=True):
     name = vec.__name__
     if vec.__name__.startswith("elmo"):
         input_size = 1024 * 2
-    else: input_size = 768 * 2
+    else: 
+        input_size = 768 * 2
     data = sample_cross_lemma(vec, threshold, n_fold, n_pairs_per_lemma)
     sum_acc = 0
     for training_data, test_data in data:

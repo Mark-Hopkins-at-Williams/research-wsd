@@ -6,12 +6,13 @@ from transformers import BertModel, BertTokenizer
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-base-uncased')
 
-# Encode text
 def vectorize_instance(instance):
+    # Add special tokens takes care of adding [CLS], [SEP], <s>... tokens 
+    # in the right way for each model.
     input_ids = torch.tensor([tokenizer.encode(' '.join(instance.tokens), 
-                                               add_special_tokens=True)])  # Add special tokens takes care of adding [CLS], [SEP], <s>... tokens in the right way for each model.
+                                               add_special_tokens=True)])  
     with torch.no_grad():
-        last_hidden_states = model(input_ids)[0]  # Models outputs are now tuples
+        last_hidden_states = model(input_ids)[0]
         last_hidden_states = last_hidden_states.squeeze(0)
         return last_hidden_states[instance.pos]
 
