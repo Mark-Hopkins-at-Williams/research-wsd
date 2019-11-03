@@ -4,14 +4,12 @@ import json
 
 def cudaify(x):
     if torch.cuda.is_available():
-        print("using gpu")
         if torch.cuda.device_count() > 2:
             cuda = torch.device('cuda:2')
         else:
             cuda = torch.device('cuda:0')
         return x.cuda(cuda)
     else: 
-        print("using cpu")
         return x
 
 
@@ -40,6 +38,7 @@ class Cd:
 
     def __exit__(self, etype, value, traceback):
         os.chdir(self.savedPath)
+        
 def delete_last_line(file):
     with open(file, "r+", encoding = "utf-8") as file:
 

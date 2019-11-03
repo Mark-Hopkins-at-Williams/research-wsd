@@ -6,9 +6,8 @@ import random
 import seaborn as sns
 from compare import getExampleSentencesBySense
 import matplotlib.pyplot as plt
-import torch
 import json
-from lemmas import create_sense_freq_dict
+from lemmas import lemmadata_iter
 from  bert import generate_vectorization
 from elmo import elmo_vectorize
 
@@ -609,6 +608,13 @@ def add_sense_frequency_cols(df):
     """
     Returns a dataframe with two new columns sense1_freq and sense2_freq
     """
+    def create_sense_freq_dict(lemmadir):
+        result = defaultdict(int)
+        for (_, instances) in lemmadata_iter(lemmadir):
+            for instance in instances:
+                result[instance.sense] += 1
+        return result
+
     freq_dict = create_sense_freq_dict()
     def get_freq(sense):
         return freq_dict[sense]

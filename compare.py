@@ -80,7 +80,7 @@ def createLemmaData():
                     lemma_instance["sense"] = word_object["sense"]
                     lemma_instance["pofs"] = word_object["pofs"]
                     lemma_file_name = lemma+".json"
-
+        
                     if os.path.exists(lemma_file_name):
                         with open(lemma_file_name, "r") as lemma_file:
                             lemma_instance_list = json.load(lemma_file)
@@ -96,7 +96,7 @@ def createLemmaData():
             json.dump(id_sent_dict, id_to_sent_file)
 
 def createLemmaData_elmo():
-    with open("data/googledata.json") as f:
+    with open('data/completedata.json') as f:
         file_data = json.load(f)
 
     with open("data/word_lemma_dict.json", "r") as f:
@@ -119,7 +119,7 @@ def createLemmaData_elmo():
                     lemma_instance["pos"] = word_object["pos"] 
                     lemma_instance["sense"] = word_object["sense"]
                     lemma_file_name = lemma+".json"
-
+        
                     if os.path.exists(lemma_file_name):
                         with open(lemma_file_name, "r") as lemma_file:
                             lemma_instance_list = json.load(lemma_file)
@@ -131,8 +131,8 @@ def createLemmaData_elmo():
                         with open(lemma_file_name, "w") as lemma_file:
                             json.dump(lemma_instance_list, lemma_file)
                 sent_id += 1
-        with open("id_to_sent.json", "w") as id_to_sent_file:
-            json.dump(id_sent_dict, id_to_sent_file)
+            with open("id_to_sent.json", "w") as id_to_sent_file:
+                json.dump(id_sent_dict, id_to_sent_file)
 
 def createCsvData():
     config = BertConfig.from_pretrained('bert-base-uncased')
@@ -144,23 +144,23 @@ def createCsvData():
         for dir_item in os.listdir():
             if os.path.isfile(dir_item):
                 if dir_item.endswith(".json") and dir_item != "id_to_sent.json":
-            print(dir_item)
-            with open(dir_item, "r") as f:
-                lemma_data = json.load(f)
-            with Cd("vectors"):
-                with open(dir_item[:-5]+".csv", "w") as vector_file:
-                    writer = csv.writer(vector_file, delimiter=",")
-                    for instance in lemma_data:
-                        inst_sent_id = instance["sent_id"]
-                        inst_sense = instance["sense"]
-                        inst_sent = sent_id_dict[str(inst_sent_id)]
-                        if(len(inst_sent) > 511):
-                            continue 
-                        vector = vectorizeWordInContext(inst_sent, instance["pos"], tokenizer, model)
-                        vec_list = vector.detach().tolist()
-                        row_data = [inst_sent_id, instance["pos"], inst_sense] + vec_list
-                        writer.writerow(row_data)
-     
+                    print(dir_item)
+                    with open(dir_item, "r") as f:
+                        lemma_data = json.load(f)
+                    with Cd("vectors"):
+                        with open(dir_item[:-5]+".csv", "w") as vector_file:
+                            writer = csv.writer(vector_file, delimiter=",")
+                            for instance in lemma_data:
+                                inst_sent_id = instance["sent_id"]
+                                inst_sense = instance["sense"]
+                                inst_sent = sent_id_dict[str(inst_sent_id)]
+                                if(len(inst_sent) > 511):
+                                    continue 
+                                vector = vectorizeWordInContext(inst_sent, instance["pos"], tokenizer, model)
+                                vec_list = vector.detach().tolist()
+                                row_data = [inst_sent_id, instance["pos"], inst_sense] + vec_list
+                                writer.writerow(row_data)
+             
 
 
 

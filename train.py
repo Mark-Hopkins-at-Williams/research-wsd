@@ -1,8 +1,6 @@
 from torch import optim
 import torch
 import sys
-import json
-import IPython 
 
 def evaluate(net, dev, batcher):
     """

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from allennlp.modules.elmo import Elmo, batch_to_ids
-from pytorch_transformers import BertTokenizer
 from util import cudaify
 import torch
 from IPython.core.debugger import set_trace
@@ -12,8 +11,23 @@ N_REPRESENTATIONS = 3
 elmo = Elmo(options_file, weight_file, N_REPRESENTATIONS)
 elmo = cudaify(elmo)
 
+from allennlp.commands.elmo import ElmoEmbedder
+embedder = ElmoEmbedder()
+
+
+
+def elmo_vectorize_instance(instance):
+    vectors = embedder.embed_sentence(instance.tokens)
+    vectors = sum(vectors) / 3
+    embedding = [float(f) for f in vectors[instance.pos]]
+    instance.add_embedding("elmo", embedding)
+    return instance
+
+        
+
+
+
 def elmo_vectorize(positions, vectors):
-    print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
     outputs_dict = elmo(elmo_ids)
@@ -27,6 +41,8 @@ def elmo_vectorize(positions, vectors):
     positioned = representations_avged.gather(1, gather_index).squeeze(1).cpu()
 
     return positioned.detach()
+
+
 
 
 def elmo_vectorize_avg_both(positions, vectors):
