@@ -46,7 +46,8 @@ def precompute_embeddings(inputdir, outputdir, vectorizer):
         - instances is a list of SenseInstances corresponding to that lemma
     
     """
-    for dir_item in os.listdir(inputdir):
+    filenames = sorted(os.listdir(inputdir))
+    for dir_item in filenames:
         filename = join(inputdir, dir_item)
         if os.path.isfile(filename) and dir_item.endswith(".json"):
             print('Processing {}.'.format(dir_item))
