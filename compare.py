@@ -149,22 +149,22 @@ def createCsvData():
         for dir_item in os.listdir():
             if os.path.isfile(dir_item):
                 if dir_item.endswith(".json") and dir_item != "id_to_sent.json":
-            print(dir_item)
-            with open(dir_item, "r") as f:
-                lemma_data = json.load(f)
-            with Cd("vectors"):
-                with open(dir_item[:-5]+".csv", "w") as vector_file:
-                    writer = csv.writer(vector_file, delimiter=",")
-                    for instance in lemma_data:
-                        inst_sent_id = instance["sent_id"]
-                        inst_sense = instance["sense"]
-                        inst_sent = sent_id_dict[str(inst_sent_id)]
-                        if(len(inst_sent) > 511):
-                            continue 
-                        vector = vectorizeWordInContext(inst_sent, instance["pos"], tokenizer, model)
-                        vec_list = vector.detach().tolist()
-                        row_data = [inst_sent_id, instance["pos"], inst_sense] + vec_list
-                        writer.writerow(row_data)
+                    print(dir_item)
+                    with open(dir_item, "r") as f:
+                        lemma_data = json.load(f)
+                    with Cd("vectors"):
+                        with open(dir_item[:-5]+".csv", "w") as vector_file:
+                            writer = csv.writer(vector_file, delimiter=",")
+                            for instance in lemma_data:
+                                inst_sent_id = instance["sent_id"]
+                                inst_sense = instance["sense"]
+                                inst_sent = sent_id_dict[str(inst_sent_id)]
+                                if(len(inst_sent) > 511):
+                                    continue 
+                                vector = vectorizeWordInContext(inst_sent, instance["pos"], tokenizer, model)
+                                vec_list = vector.detach().tolist()
+                                row_data = [inst_sent_id, instance["pos"], inst_sense] + vec_list
+                                writer.writerow(row_data)
      
 
 
