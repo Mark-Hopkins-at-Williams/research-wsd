@@ -135,9 +135,14 @@ def createLemmaData_elmo():
             json.dump(id_sent_dict, id_to_sent_file)
 
 def createCsvData():
+    """
+    precompute the BERT embedding of lemma instances and store them in
+    /lemmadata/vectors
+    """
     config = BertConfig.from_pretrained('bert-base-uncased')
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BertModel(config)
+    model.eval()
     with Cd("lemmadata"):
         with open("id_to_sent.json") as sent_id_dict_file:
             sent_id_dict = json.load(sent_id_dict_file)
