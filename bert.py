@@ -6,6 +6,7 @@ config = BertConfig.from_pretrained('bert-base-uncased')
 config.output_hidden_states = True
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 bert = BertModel(config)
+bert.eval()
 
 
 def generate_vectorization(layers_i, add_sent):
