@@ -252,6 +252,9 @@ def sample_cross_lemma(model, threshold, n_fold, n_pairs_each_lemma):
     """
     This currently might break. Need high frequency lemmas for elmo
 
+    sample training data on certain lemmas and testing data on a set of lemmas 
+    that is disjoint from the training lemmas. 
+
     """
     assert model == "bert" or model == "elmo", "only networks supported are elmo and bert"
     if model == "elmo":

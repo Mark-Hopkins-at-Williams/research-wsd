@@ -42,8 +42,15 @@ class SimpleClassifier(nn.Module):
         nextout = self.linear5(nextout)
         return F.log_softmax(nextout, dim=1)
 
-class DropoutClassifier(nn.Module): 
+class DropoutClassifier(nn.Module):
+    """
+    A simple neural network with a single ReLU activation
+    between two linear layers equipped with dropout mechanism.
+    
+    Softmax is applied to the final layer to get a (log) probability
+    vector over the possible labels. 
  
+    """
     def __init__(self, input_size, hidden_size, num_labels):
         super(DropoutClassifier, self).__init__()
         self.dropout1 = nn.Dropout(p=0.2)
@@ -65,6 +72,11 @@ class DropoutClassifier(nn.Module):
 
 
 class BertForSenseDisambiguation(torch.nn.Module):
+    """
+    A three layer dropout classifier with Bert embedding as its input
+    For fine-tuning
+    
+    """
     def __init__(self, classifier=DropoutClassifier(1536, 100, 2)):
         super(BertForSenseDisambiguation, self).__init__()
 

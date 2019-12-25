@@ -5,7 +5,7 @@ from vectrain import update_df_format
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
-from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs_bert, sample_cross_lemma
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs_bert, sample_cross_lemma, sample_inputids_pairs_bert
 from collections import defaultdict
 from pytorch_transformers import BertConfig, BertTokenizer, BertModel
 import json
@@ -14,6 +14,10 @@ from elmo import *
 from bert import *
 
 def tensor_batcher(t, batch_size):
+    """
+    generates batches of size batch_size given a training set
+
+    """
     def shuffle_rows(a):
         return a[torch.randperm(a.size()[0])]        
     neg = t[(t[:, 0] == 0).nonzero().squeeze(1)] # only negative rows
@@ -25,23 +29,14 @@ def tensor_batcher(t, batch_size):
     epoch_data = shuffle_rows(epoch_data)
     for i in range(0, len(epoch_data), batch_size):
         yield epoch_data[i:i+batch_size]
-        
-def test_training(d, k):
-    def nth_dim_positive_data(n, d, k):
-        data = torch.randn(d, k)
-        u = torch.cat([torch.clamp(torch.sign(data[2:3]), min=0), data])
-        return u.t()
 
-    train = nth_dim_positive_data(2, d, k)
-    dev = nth_dim_positive_data(2, d, 500)
-    #test = nth_dim_positive_data(2, d, 500)   
-    classifier = SimpleClassifier(d,100,2)
-    train_net(classifier, train, dev, tensor_batcher,
-              batch_size=2, n_epochs=30, learning_rate=0.001,
-              verbose=True)
 
 
 def create_and_train_net(net, training_data, test_data, verb):
+    """
+    given training and testing data, train a neural network
+
+    """
     training_data = cudaify(training_data)
     test_data = cudaify(test_data)
     if verb:
@@ -56,6 +51,11 @@ def create_and_train_net(net, training_data, test_data, verb):
     
 
 def train_lemma_classifiers(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+    """
+    train the classifier on only one lemma at a time and
+    evaluates the performance on data of the same lemma
+
+    """
     lemma_info_dict = defaultdict(tuple)
     for (lemma, sense_hist) in all_sense_histograms(model):
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
@@ -75,10 +75,15 @@ def train_lemma_classifiers(model, min_sense2_freq, max_sense2_freq, n_fold, max
     return dict(lemma_info_dict)  
 
 
-def train_finetune(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+def train_finetune_bert(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+    """
+    finetune a lemma classifier with bert as the first layer and a dropout classifier as the second
+    and store the training logistics in a file
+
+    """
     lemma_info_dict = defaultdict(tuple)
     i = 1
-    for (lemma, sense_hist) in all_sense_histograms(model):
+    for (lemma, sense_hist) in all_sense_histograms("bert"):
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
             i +=1
             print("lemma: "+str(i)+" of 379")
@@ -86,7 +91,7 @@ def train_finetune(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_s
             sense2 = sense_hist[1][1]   
             print(lemma)                    
             
-            data = sample_inputids_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
+            data = sample_inputids_pairs_bert(max_sample_size//2, lemma, sense1, sense2, n_fold)
 
             sum_acc = 0
             fold_count = 0
@@ -115,6 +120,11 @@ def train_finetune(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_s
     return dict(lemma_info_dict)
 
 def train_cross_lemmas(model, threshold, n_fold, n_pairs_per_lemma, verbose=True):
+    """
+    To test the cross-lemma generalizability of models
+    sample training and testing data on two disjoint sets of lemmas
+
+    """
     if model == "elmo":
         input_size = 1024 * 2
     elif model == "bert": input_size = 768 * 2
@@ -128,8 +138,17 @@ def train_cross_lemmas(model, threshold, n_fold, n_pairs_per_lemma, verbose=True
         f.write(str(avg_acc))
 
 def train_with_neighbors(model, specification, threshold, n_fold, max_sample_size, verbose=True):
+    """
+    train classifiers by incorporating neighboring words embeddings into the input of the classifier with the following styles:
+    avg_***: average the embedding of the word we want to 
+             disambiguate with the embedding of words on its left/right/both sides.
+    concat_***: concatinate the the the embedding of the word we want to 
+             disambiguate with the embedding of words on its left/right/both sides.
+    
     specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
     assert specification in specification_space, "parameter specification can only be one of the following: " + str(specification_space)
+
+    """
 
     if model == "bert":
         hidden_size = 768
@@ -187,6 +206,10 @@ def train_with_neighbors(model, specification, threshold, n_fold, max_sample_siz
 
 
 def neighbors_test(model, style):
+    """
+    run train_with_neighbors and store the logistics
+
+    """
     spec_acc_dict = defaultdict(int)
     specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]   
     for spec in specification_space:

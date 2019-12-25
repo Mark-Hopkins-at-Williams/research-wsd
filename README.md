@@ -56,3 +56,9 @@ https://drive.google.com/file/d/1RCWEWwCu4i1vXZLPtbZtLcoh8EUMpT31/view?usp=shari
 
 ## word_lemma_dict.json
 https://drive.google.com/file/d/1_2Z-rYVX4pDAp1pfDp0s3YAnHBvi2F7Q/view?usp=sharing
+
+##lemmadata
+https://drive.google.com/drive/folders/1NWGKiqEH8dCToj_gY4EpmH_V5N3yZJ4v?usp=sharing
+
+## lemmadata_elmo
+https://drive.google.com/drive/folders/1crGo0SLR1mVNDzmOUsmdvy9ealUGY17V?usp=sharing
