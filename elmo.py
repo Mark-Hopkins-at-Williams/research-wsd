@@ -12,7 +12,7 @@ N_REPRESENTATIONS = 3
 elmo = Elmo(options_file, weight_file, N_REPRESENTATIONS)
 elmo = cudaify(elmo)
 
-def elmo_vectorize(positions, vectors):
+def embed_elmo(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
@@ -29,7 +29,7 @@ def elmo_vectorize(positions, vectors):
     return positioned.detach()
 
 
-def elmo_vectorize_avg_both(positions, vectors):
+def embed_elmo_avg_both(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
@@ -47,7 +47,7 @@ def elmo_vectorize_avg_both(positions, vectors):
 
     return gathered.detach()
 
-def elmo_vectorize_avg_left(positions, vectors):
+def embed_elmo_avg_left(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
@@ -64,7 +64,7 @@ def elmo_vectorize_avg_left(positions, vectors):
 
     return positioned.detach()
 
-def elmo_vectorize_avg_right(positions, vectors):
+def embed_elmo_avg_right(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
@@ -81,7 +81,7 @@ def elmo_vectorize_avg_right(positions, vectors):
 
     return positioned.detach()
 
-def elmo_vectorize_concat_both(positions, vectors):
+def embed_elmo_concat_both(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
@@ -100,7 +100,7 @@ def elmo_vectorize_concat_both(positions, vectors):
 
     return positioned.detach()
 
-def elmo_vectorize_concat_left(positions, vectors):
+def embed_elmo_concat_left(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)
@@ -118,7 +118,7 @@ def elmo_vectorize_concat_left(positions, vectors):
 
     return positioned.detach()
 
-def elmo_vectorize_concat_right(positions, vectors):
+def embed_elmo_concat_right(positions, vectors):
     print("vectorizing")
     elmo_ids = batch_to_ids(vectors)
     elmo_ids = cudaify(elmo_ids)

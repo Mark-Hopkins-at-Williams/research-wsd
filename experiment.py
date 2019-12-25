@@ -5,13 +5,13 @@ from vectrain import update_df_format
 from train import train_net
 from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
 from util import cudaify
-from lemmas import all_sense_histograms, all_sense_histograms_elmo, sample_sense_pairs, sample_inputids_pairs, sample_sense_pairs_with_vec, sample_sense_pairs_with_vec_elmo, sample_cross_lemma
-from compare import getExampleSentencesBySense
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs_bert, sample_cross_lemma
 from collections import defaultdict
 from pytorch_transformers import BertConfig, BertTokenizer, BertModel
 import json
 import os
 from elmo import *
+from bert import *
 
 def tensor_batcher(t, batch_size):
     def shuffle_rows(a):
@@ -52,25 +52,17 @@ def create_and_train_net(net, training_data, test_data, verb):
     best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
                 batch_size=2, n_epochs=30, learning_rate=0.001,
                 verbose=verb)
-    return best_acc
+    return best_net, best_acc
     
-def train_from_csv(train_csv, dev_csv):
-    print('loading train')
-    train = torch.tensor(pd.read_csv(train_csv).values).float()
-    print('train size: {}'.format(train.shape[0]))
-    print('loading dev')
-    dev = torch.tensor(pd.read_csv(dev_csv).values).float()
-    print('dev size: {}'.format(dev.shape[0]))
-    return create_and_train_net(DropoutClassifier(1536, 100, 2), train, dev)
 
-def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+def train_lemma_classifiers(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
     lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in all_sense_histograms():
+    for (lemma, sense_hist) in all_sense_histograms(model):
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]   
             print(lemma)                    
-            data = sample_sense_pairs(max_sample_size//2, lemma, sense1, sense2, n_fold)
+            data = sample_sense_pairs(model, max_sample_size//2, lemma, sense1, sense2, n_fold)
 
             sum_acc = 0
             fold_count = 0
@@ -80,32 +72,13 @@ def train_lemma_classifiers(min_sense2_freq, max_sense2_freq, n_fold, max_sample
             avg_acc = sum_acc / fold_count
             lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
             print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    return dict(lemma_info_dict)
-
-def train_lemma_classifiers_with_vec(vectorization, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
-    lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in all_sense_histograms():
-        if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
-            sense1 = sense_hist[0][1]
-            sense2 = sense_hist[1][1]   
-            print(lemma)                    
-            data = sample_sense_pairs_with_vec(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
-
-            sum_acc = 0
-            fold_count = 0
-            for training_data, test_data in data:
-                sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
-                fold_count += 1
-            avg_acc = sum_acc / fold_count
-            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
-            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    return dict(lemma_info_dict)    
+    return dict(lemma_info_dict)  
 
 
-def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+def train_finetune(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
     lemma_info_dict = defaultdict(tuple)
     i = 1
-    for (lemma, sense_hist) in all_sense_histograms():
+    for (lemma, sense_hist) in all_sense_histograms(model):
         if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
             i +=1
             print("lemma: "+str(i)+" of 379")
@@ -141,12 +114,11 @@ def train_finetune(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, ve
     df.to_csv("fine_tune_2000"+str(num)+".csv", index=False)
     return dict(lemma_info_dict)
 
-def train_cross_lemmas(vec, threshold, n_fold, n_pairs_per_lemma, verbose=True):
-    name = vec.__name__
-    if vec.__name__.startswith("elmo"):
+def train_cross_lemmas(model, threshold, n_fold, n_pairs_per_lemma, verbose=True):
+    if model == "elmo":
         input_size = 1024 * 2
-    else: input_size = 768 * 2
-    data = sample_cross_lemma(vec, threshold, n_fold, n_pairs_per_lemma)
+    elif model == "bert": input_size = 768 * 2
+    data = sample_cross_lemma(model, threshold, n_fold, n_pairs_per_lemma)
     sum_acc = 0
     for training_data, test_data in data:
         sum_acc += create_and_train_net(DropoutClassifier(input_size, 100, 2), training_data, test_data, verbose)
@@ -155,128 +127,56 @@ def train_cross_lemmas(vec, threshold, n_fold, n_pairs_per_lemma, verbose=True):
     with open("data/generality_result_" + name + ".txt", "w") as f:
         f.write(str(avg_acc))
 
-def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verbose=True):
+def train_with_neighbors(model, specification, threshold, n_fold, max_sample_size, verbose=True):
     specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
     assert specification in specification_space, "parameter specification can only be one of the following: " + str(specification_space)
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
-    config = BertConfig.from_pretrained('bert-base-uncased')
-    config.output_hidden_states = True
-    bert = BertModel.from_pretrained('bert-base-uncased')
-
-    def vectorize_avg_both(instance):
-        position = instance.pos + 1
-        tokens = instance.tokens
-        tokens = ["CLS"] + tokens + ["SEP"]
-        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
-        results = bert(input_ids)
-        final_hidden_layers = results[0].squeeze(0)
-        prev_token_vec = final_hidden_layers[position - 1]
-        token_vec = final_hidden_layers[position]
-        next_token_vec = final_hidden_layers[position + 1]
-        avged = torch.mean(torch.stack([prev_token_vec, token_vec, next_token_vec]), dim=0)
-        return avged.detach()
-    
-    def vectorize_avg_left(instance):
-        tokens = instance.tokens
-        tokens = ["CLS"] + tokens + ["SEP"]
-        position = instance.pos + 1
-        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
-        results = bert(input_ids)
-        final_hidden_layers = results[0].squeeze(0)
-        prev_token_vec = final_hidden_layers[position - 1]
-        token_vec = final_hidden_layers[position]
-        avged = torch.mean(torch.stack([prev_token_vec, token_vec]), dim=0)
-        return avged.detach()
-    
-    def vectorize_avg_right(instance):
-        tokens = instance.tokens
-        position = instance.pos + 1
-        tokens = ["CLS"] + tokens + ["SEP"]
-        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
-        results = bert(input_ids)
-        final_hidden_layers = results[0].squeeze(0)
-        token_vec = final_hidden_layers[position]
-        next_token_vec = final_hidden_layers[position + 1]
-        avged = torch.mean(torch.stack([token_vec, next_token_vec]), dim=0)
-        return avged.detach()
-    
-    def vectorize_concat_both(instance):
-        position = instance.pos + 1
-        tokens = instance.tokens
-        tokens = ["CLS"] + tokens + ["SEP"]
-        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
-        results = bert(input_ids)
-        final_hidden_layers = results[0].squeeze(0)
-        prev_token_vec = final_hidden_layers[position - 1]
-        token_vec = final_hidden_layers[position]
-        next_token_vec = final_hidden_layers[position + 1]
-        concat = torch.cat([prev_token_vec, token_vec, next_token_vec])
-        return concat.detach()
-
-    def vectorize_concat_left(instance):
-        position = instance.pos + 1
-        tokens = instance.tokens
-        tokens = ["CLS"] + tokens + ["SEP"]
-        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
-        results = bert(input_ids)
-        final_hidden_layers = results[0].squeeze(0)
-        prev_token_vec = final_hidden_layers[position - 1]
-        token_vec = final_hidden_layers[position]
-        concat = torch.cat([prev_token_vec, token_vec])
-        return concat.detach()
-
-    def vectorize_concat_right(instance):
-        position = instance.pos + 1
-        tokens = instance.tokens
-        tokens = ["CLS"] + tokens + ["SEP"]
-        input_ids = torch.tensor(tokenizer.convert_tokens_to_ids(tokens)).unsqueeze(0)
-        results = bert(input_ids)
-        final_hidden_layers = results[0].squeeze(0)
-        token_vec = final_hidden_layers[position]
-        next_token_vec = final_hidden_layers[position + 1]
-        concat = torch.cat([token_vec, next_token_vec])
-        return concat.detach()
-    
-    def get_lemmas(threshold):
-        data = pd.read_csv(filename)
-        lemmas = []
-        for i in data.index:
-            if data.iloc[i]["best_avg_acc"] >= threshold:
-                lemmas.append(data.iloc[i]["lemma"])
-        return lemmas
-
-    if specification.startswith("avg"):
-        if specification == "avg_both": vectorization = vectorize_avg_both
-        if specification == "avg_left": vectorization = vectorize_avg_left
-        if specification == "avg_right": vectorization = vectorize_avg_right
-    else:
-        if specification == "concat_both": vectorization = vectorize_concat_both
-        if specification == "concat_left": vectorization = vectorize_concat_left
-        if specification == "concat_right": vectorization = vectorize_concat_right
-    
+    if model == "bert":
+        hidden_size = 768
+        if specification == "default":
+            vectorization = embed_bert
+        if specification.startswith("avg"):
+            if specification == "avg_both": vectorization = embed_bert_avg_both
+            if specification == "avg_left": vectorization = embed_bert_avg_left
+            if specification == "avg_right": vectorization = embed_bert_avg_right
+        else:
+            if specification == "concat_both": vectorization = embed_bert_concat_both
+            if specification == "concat_left": vectorization = embed_bert_concat_left
+            if specification == "concat_right": vectorization = embed_bert_concat_right
+    elif model == "elmo":
+        hidden_size = 1024
+        if specification == "default":
+            vectorization = embed_elmo
+        if specification.startswith("avg"):
+            if specification == "avg_both": vectorization = embed_elmo_avg_both
+            if specification == "avg_left": vectorization = embed_elmo_avg_left
+            if specification == "avg_right": vectorization = embed_elmo_avg_right
+        else:
+            if specification == "concat_both": vectorization = embed_elmo_concat_both
+            if specification == "concat_left": vectorization = embed_elmo_concat_left
+            if specification == "concat_right": vectorization = embed_elmo_concat_right
+        
     lemmas = get_lemmas(0.7)
     lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in all_sense_histograms():
+    for (lemma, sense_hist) in all_sense_histograms(model):
         if not lemma in lemmas: continue
         if len(sense_hist) > 1 and sense_hist[1][0] >= 21:
             sense1 = sense_hist[0][1]
             sense2 = sense_hist[1][1]
             print(lemma)
             
-            data = sample_sense_pairs_with_vec(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
+            data = sample_sense_pairs(model, max_sample_size//2, lemma, sense1, sense2, n_fold)
 
             sum_acc = 0
             fold_count = 0
             for training_data, test_data in data:
                 if specification.startswith("avg"):
-                    net = DropoutClassifier(768*2, 100, 2)
+                    net = DropoutClassifier(hidden_size*2, 100, 2)
                 else:
                     if not specification.endswith("both"):
-                        net = DropoutClassifier(768*2*2, 100, 2)
+                        net = DropoutClassifier(hidden_size*2*2, 100, 2)
                     else:
-                        net = DropoutClassifier(768*3*2, 100, 2)
+                        net = DropoutClassifier(hidden_size*3*2, 100, 2)
                 sum_acc += create_and_train_net(net, training_data, test_data, verbose)
                 fold_count += 1
             avg_acc = sum_acc / fold_count
@@ -286,66 +186,14 @@ def train_with_neighbors(specification, threshold, n_fold, max_sample_size, verb
     return dict(lemma_info_dict)
 
 
-def train_with_neighbors_elmo(specification, threshold, n_fold, max_sample_size, verbose=True):
-    specification_space = ["default", "avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
-    assert specification in specification_space, "parameter specification can only be one of the following: " + str(specification_space)
-
-    def get_lemmas(threshold):
-        data = pd.read_csv("data/elmo_all_lemmas_data.csv")
-        lemmas = []
-        for i in data.index:
-            if data.iloc[i]["best_avg_acc"] >= threshold:
-                lemmas.append(data.iloc[i]["lemma"])
-        return lemmas
-    if specification == "default":
-        vectorization = elmo_vectorize
-    if specification.startswith("avg"):
-        if specification == "avg_both": vectorization = elmo_vectorize_avg_both
-        if specification == "avg_left": vectorization = elmo_vectorize_avg_left
-        if specification == "avg_right": vectorization = elmo_vectorize_avg_right
-    else:
-        if specification == "concat_both": vectorization = elmo_vectorize_concat_both
-        if specification == "concat_left": vectorization = elmo_vectorize_concat_left
-        if specification == "concat_right": vectorization = elmo_vectorize_concat_right
-    
-    lemmas = get_lemmas(0.7)
-    lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in all_sense_histograms():
-        if not lemma in lemmas: continue
-        if len(sense_hist) > 1 and sense_hist[1][0] >= 21:
-            sense1 = sense_hist[0][1]
-            sense2 = sense_hist[1][1]
-            print(lemma)
-            
-            data = sample_sense_pairs_with_vec_elmo(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
-
-            sum_acc = 0
-            fold_count = 0
-            for training_data, test_data in data:
-                if specification.startswith("avg") or specification == "default":
-                    net = DropoutClassifier(1024 * 2, 100, 2)
-                else:
-                    if not specification.endswith("both"):
-                        net = DropoutClassifier(1024*2*2, 100, 2)
-                    else:
-                        net = DropoutClassifier(1024*3*2, 100, 2)
-                sum_acc += create_and_train_net(net, training_data, test_data, verbose)
-                fold_count += 1
-            avg_acc = sum_acc / fold_count
-
-            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
-            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    return dict(lemma_info_dict)
-
-def neighbors_test(style):
-    if style == "elmo": train_with_neighbors = train_with_neighbors_elmo
+def neighbors_test(model, style):
     spec_acc_dict = defaultdict(int)
     specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]   
     for spec in specification_space:
         print()
         print("training spec: " + spec)
         print()
-        lemma_info_dict = train_with_neighbors(spec, 0.7, 5, 2000, verbose=True)
+        lemma_info_dict = train_with_neighbors(model, spec, 0.7, 5, 2000, verbose=True)
         score = 0
         for lemma in lemma_info_dict.keys():
             score += lemma_info_dict[lemma][0]
@@ -356,33 +204,4 @@ def neighbors_test(style):
             json.dump(dict(spec_acc_dict), f)
     print(spec_acc_dict)
     return spec_acc_dict
-
-def train_lemma_classifiers_with_vec_elmo(vectorization, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
-    lemma_info_dict = defaultdict(tuple)
-    for (lemma, sense_hist) in all_sense_histograms_elmo():
-        if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
-            sense1 = sense_hist[0][1]
-            sense2 = sense_hist[1][1] 
-            print(lemma)        
-            lemma_data = sample_sense_pairs_with_vec_elmo(vectorization, max_sample_size//2, lemma, sense1, sense2, n_fold)
-
-            sum_acc = 0
-            fold_count = 0
-            for training_data, test_data in lemma_data:
-                sum_acc += create_and_train_net(DropoutClassifier(1024 * 2, 100, 2), training_data, test_data, verbose)
-                fold_count += 1
-            avg_acc = sum_acc / fold_count
-            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
-            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    data = []
-    for key in lemma_info_dict.keys():
-        lemma_info = lemma_info_dict[key]
-        data.append(["elmo", key, lemma_info[0], lemma_info[1], lemma_info[2]])
-    df = pd.DataFrame(data, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
-    num = 1
-    while os.path.exists("elmo_2000_"+str(num)+".csv"):
-        num += 1
-    df = update_df_format(df, max_sample_size)
-    df.to_csv("elmo_2000"+str(num)+".csv", index=False)
-    return dict(lemma_info_dict)    
 
