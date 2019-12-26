@@ -134,7 +134,7 @@ def train_cross_lemmas(model, threshold, n_fold, n_pairs_per_lemma, verbose=True
         sum_acc += create_and_train_net(DropoutClassifier(input_size, 100, 2), training_data, test_data, verbose)
     avg_acc = sum_acc / n_fold
     print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
-    with open("data/generality_result_" + name + ".txt", "w") as f:
+    with open("data/generality_result_" + model + ".txt", "w") as f:
         f.write(str(avg_acc))
 
 def train_with_neighbors(model, specification, threshold, n_fold, max_sample_size, verbose=True):
@@ -174,6 +174,16 @@ def train_with_neighbors(model, specification, threshold, n_fold, max_sample_siz
             if specification == "concat_both": vectorization = embed_elmo_concat_both
             if specification == "concat_left": vectorization = embed_elmo_concat_left
             if specification == "concat_right": vectorization = embed_elmo_concat_right
+    
+    
+    def get_lemmas(threshold):
+        data = pd.read_csv(filename)
+        lemmas = []
+        for i in data.index:
+            if data.iloc[i]["best_avg_acc"] >= threshold:
+                lemmas.append(data.iloc[i]["lemma"])
+        return lemmas
+
         
     lemmas = get_lemmas(0.7)
     lemma_info_dict = defaultdict(tuple)
