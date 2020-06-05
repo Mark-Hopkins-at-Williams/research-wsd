@@ -22,7 +22,7 @@ For ELMo:
 For BERT:
 
 	from bert import vectorize_instance
-	from experiment import train_cross_lemma
+	from experiment import train_cross_lemmas
 	from compare import createLemmaData
 	createLemmaData()
 	train_cross_lemmas(vectorize_instance, 0.7, 5, 2000, verbose=True)

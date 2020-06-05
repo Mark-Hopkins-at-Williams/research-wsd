@@ -1,6 +1,16 @@
 import torch
 import os
 import json
+import sys
+
+class Logger:
+    def __init__(self, verbose):
+        self.verbose = verbose
+    
+    def __call__(self, msg):
+        if self.verbose:
+            sys.stdout.write(msg)
+
 
 def cudaify(x):
     if torch.cuda.is_available():
