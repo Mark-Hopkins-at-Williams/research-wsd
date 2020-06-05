@@ -2,7 +2,7 @@ import os
 from os.path import join
 import json
 import sys
-from bert import BertSentenceVectorizer
+from .bert import BertSentenceVectorizer
     
 class VectorManager:
     def get_vector(self, sent_id):

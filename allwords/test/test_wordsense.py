@@ -1,9 +1,9 @@
 import unittest
-from wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
-from wordsense import SenseInventory
-from vectorize import RamBasedVectorManager
 import json
 from torch import tensor
+from allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset
+from allwords.wordsense import SenseInventory, SenseInstanceLoader
+from allwords.vectorize import RamBasedVectorManager
 
 class TestWordsense(unittest.TestCase):
     
@@ -124,17 +124,17 @@ class TestWordsense(unittest.TestCase):
         dataset = SenseInstanceDataset(self.sents, self.vec_mgr)
         loader = SenseInstanceLoader(dataset, batch_size = 1)
         batch_iter = loader.batch_iter()
-        _, _, evid, resp = next(batch_iter)
+        _, _, evid, resp, _ = next(batch_iter)
         expected_evid = tensor([[21., 22., 23.]])
         expected_resp = tensor([0])
         assert(self.compare_matrices(evid, expected_evid))
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
-        _, _, evid, resp = next(batch_iter)
+        _, _, evid, resp, _ = next(batch_iter)
         expected_evid = tensor([[72.2, 74.2, 76.2]])
         expected_resp = tensor([1])
         assert(self.compare_matrices(evid, expected_evid))
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
-        _, _, evid, resp = next(batch_iter)
+        _, _, evid, resp, _ = next(batch_iter)
         expected_evid = tensor([ [61.1, 62.1, 63.1]])
         expected_resp = tensor([2])
         assert(self.compare_matrices(evid, expected_evid))
@@ -144,7 +144,7 @@ class TestWordsense(unittest.TestCase):
         dataset = SenseInstanceDataset(self.sents, self.vec_mgr)
         loader = SenseInstanceLoader(dataset, batch_size = 2)
         batch_iter = loader.batch_iter()
-        _, _, evid, resp = next(batch_iter)
+        _, _, evid, resp, _ = next(batch_iter)
         expected_evid = tensor([[21., 22., 23.],
                                 [72.2, 74.2, 76.2]])
         expected_resp = tensor([0, 1])

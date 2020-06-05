@@ -1,7 +1,6 @@
 import unittest
-from wordsense import SenseInstance
-from bert import BertVectorizer
-import torch
+from allwords.wordsense import SenseInstance
+from allwords.bert import BertVectorizer
 from torch import tensor
 
 class TestBert(unittest.TestCase):
@@ -18,7 +17,7 @@ class TestBert(unittest.TestCase):
         
     
     def test_bert(self):
-        instance = SenseInstance(["I", "swung", "the", "bat"], 3, "bat_like_a_fruit_bat", None)
+        instance = SenseInstance(1, ["I", "swung", "the", "bat"], 3, "bat_like_a_fruit_bat", None)
         vectorize_instance = BertVectorizer()
         result = vectorize_instance(instance)
         expected = tensor(

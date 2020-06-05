@@ -2,8 +2,8 @@ import json
 import torch
 from torch import tensor
 from torch.utils.data import Dataset
-from util import cudaify
-from align import align
+from .util import cudaify
+from .align import align
 from collections import defaultdict
 
 class SenseInventory:
@@ -296,7 +296,8 @@ class SenseInstanceLoader:
             yield (inst_ids,
                    target_batch, 
                    cudaify(torch.tensor(evidence_batch)), 
-                   cudaify(torch.tensor(response_batch)))
+                   cudaify(torch.tensor(response_batch)),
+                   zones)
             
                 
     

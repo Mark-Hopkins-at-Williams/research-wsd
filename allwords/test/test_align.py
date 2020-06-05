@@ -1,7 +1,7 @@
 import unittest
-from align import align
+from allwords.align import align
 
-class TestLemmas(unittest.TestCase):
+class TestAlign(unittest.TestCase):
     
     def test_align(self):
         orig_sent = ("The jury said it did find that many_of Georgia 's " +

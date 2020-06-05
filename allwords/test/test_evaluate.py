@@ -1,7 +1,6 @@
 import unittest
-from evaluate import predict, accuracy
 from torch import tensor
-
+from allwords.evaluate import predict, accuracy
 
 class TestEvaluate(unittest.TestCase):
     
