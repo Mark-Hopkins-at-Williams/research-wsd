@@ -48,7 +48,6 @@ def align(orig_toks, new_toks, special_toks = ['[CLS]', '[SEP]']):
         new_tok_index = increment_new_tok_index(new_toks, 
                                                 new_tok_index, 
                                                 special_toks)        
-        #print('{}: {}'.format(tok_copy, new_toks[span_start:span_end]))
         alignment.append((span_start, span_end))
     new_tok_index = increment_new_tok_index(new_toks, new_tok_index, 
                                             special_toks)

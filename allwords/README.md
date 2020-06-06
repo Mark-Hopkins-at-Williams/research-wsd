@@ -1,11 +1,17 @@
 Reed Word Sense Disambiguation
 ------------------------------
 
+### To download and preprocess the Raganato 2017 data:
+
+From the top-level directory, run:
+
+    bash ./install.sh
+
 ### To run the main training script
 
 From the top-level directory, run:
 
-    cd allwords; python run.py
+    python allwords/run.py ./data
 
 ### To run all unit tests
 

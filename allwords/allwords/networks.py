@@ -4,33 +4,6 @@ from torch import nn
 import torch.nn.functional as F
 from pytorch_transformers import BertModel
 
-class AffineClassifierWithOutputZones(nn.Module): 
-    """
-    A simple neural network with a single ReLU activation
-    between two linear layers.
-    
-    Softmax is applied to the final layer to get a (log) probability
-    vector over the possible labels.
-    
-    """    
-    def __init__(self, input_size, zone_sizes):
-        super(AffineClassifierWithOutputZones, self).__init__()
-        output_size = sum(zone_sizes)
-        print("input_size: {}; output_size: {}".format(input_size, output_size))
-        self.linear1 = nn.Linear(input_size, output_size)
-        self.zone_spans = []
-        total = 0
-        for zone in zone_sizes:
-            prev_total = total
-            total += zone
-            self.zone_spans.append((prev_total, total))
-        torch.nn.init.xavier_uniform_(self.linear1.weight)
-
-    def forward(self, input_vec):
-        nextout = input_vec
-        nextout = self.linear1(nextout)
-        return F.softmax(nextout, dim=1)
-
 class AffineClassifier(nn.Module): 
     """
     A simple neural network with a single ReLU activation
