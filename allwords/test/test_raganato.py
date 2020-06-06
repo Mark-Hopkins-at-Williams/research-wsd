@@ -5,9 +5,9 @@ from allwords.raganato import parse_raganato_gold
 class TestRaganato(unittest.TestCase):
           
     def test_harvest_data(self):
-        inventory = create_sense_inventory(['testdata/raganato1.key.txt'])
-        result = harvest_data('testdata/raganato1.xml', 
-                              'testdata/raganato1.key.txt',
+        inventory = create_sense_inventory(['test/testdata/raganato1.key.txt'])
+        result = harvest_data('test/testdata/raganato1.xml', 
+                              'test/testdata/raganato1.key.txt',
                               inventory)
         sents = result
         assert(len(sents) == 2)
@@ -34,8 +34,8 @@ class TestRaganato(unittest.TestCase):
         assert(sents[1]['words'] == expected_words1)
 
     def test_create_sense_inventory(self):
-        inventory = create_sense_inventory(['testdata/raganato1.key.txt', 
-                                            'testdata/raganato2.key.txt'])        
+        inventory = create_sense_inventory(['test/testdata/raganato1.key.txt', 
+                                            'test/testdata/raganato2.key.txt'])        
         expected = {'top': ['top%3:00:02::', 'top%2:42:03::'], 
                     'gold': ['gold%2:31:00::', 'gold%1:09:00::'], 
                     'mountain': ['mountain%1:21:00::'], 
@@ -44,9 +44,9 @@ class TestRaganato(unittest.TestCase):
         assert inventory == expected
 
     def test_parse_raganato_gold(self):
-        inventory = create_sense_inventory(['testdata/raganato1.key.txt', 
-                                            'testdata/raganato2.key.txt'])
-        result = parse_raganato_gold('testdata/raganato1.key.txt', inventory)
+        inventory = create_sense_inventory(['test/testdata/raganato1.key.txt', 
+                                            'test/testdata/raganato2.key.txt'])
+        result = parse_raganato_gold('test/testdata/raganato1.key.txt', inventory)
         expected = {'d000.s000.t000': 'top%3:00:02::', 
                     'd000.s000.t001': 'top%2:42:03::', 
                     'd000.s000.t002': 'gold%2:31:00::', 
@@ -56,7 +56,5 @@ class TestRaganato(unittest.TestCase):
         assert result == expected
         
 
-        
-        
 if __name__ == "__main__":
 	unittest.main()

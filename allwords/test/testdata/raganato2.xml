@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<corpus lang="en" source="semcor">
+<text id="d000" source="br-e30">
+<sentence id="d000.s000">
+<wf lemma="the" pos="DET">the</wf>
+<instance id="d000.s000.t000" lemma="bottom" pos="NOUN">bottom</instance>
+<wf lemma="of" pos="ADP">of</wf>
+<wf lemma="the" pos="DET">the</wf>
+<instance id="d000.s000.t001" lemma="top" pos="NOUN">top</instance>
+<wf lemma="is" pos="VERB">is</wf>
+<instance id="d000.s000.t002" lemma="silver" pos="ADJ">silver</instance>
+</sentence>
+<sentence id="d000.s001">
+<instance id="d000.s001.t000" lemma="silver" pos="NOUN">silver</instance>
+<wf lemma="is" pos="DET">is</wf>
+<wf lemma="at" pos="ADP">at</wf>
+<wf lemma="the" pos="DET">the</wf>
+<instance id="d000.s001.t001" lemma="gold" pos="ADJ">gold</instance>
+<instance id="d000.s001.t002" lemma="mountain" pos="NOUN">mountain</instance>
+</sentence>
+</text>
+</corpus>

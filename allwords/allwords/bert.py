@@ -1,5 +1,4 @@
 import torch
-
 from transformers import BertModel, BertTokenizer
 
 class BertSentenceVectorizer:

@@ -5,15 +5,11 @@ python raganato.py raganato.json
 
 """
 
-
 from xml.dom import minidom
 import json
 from os.path import join
 import sys
 from collections import defaultdict
-
-    
-
 
 def create_sense_inventory(goldfiles):
     inventory = defaultdict(dict)

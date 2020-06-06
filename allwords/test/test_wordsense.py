@@ -1,9 +1,7 @@
 import unittest
 import json
 from torch import tensor
-from allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset
-from allwords.wordsense import SenseInventory, SenseInstanceLoader
-from allwords.vectorize import RamBasedVectorManager
+from allwords import wordsense, vectorize
 
 class TestWordsense(unittest.TestCase):
     
@@ -25,7 +23,7 @@ class TestWordsense(unittest.TestCase):
                                        [71.1, 72.1, 73.1]],
                            'tokens': ['he', 'was', 'laughed', 'off', 
                                       'the', 'screen', '.']}}                         
-        self.vec_mgr = RamBasedVectorManager(vec_map)
+        self.vec_mgr = vectorize.RamBasedVectorManager(vec_map)
         self.data = {'inventory': {'be': ['be%1'],
                                    'laugh_off': ['laugh_off%1'],
                                    'screen': ['screen%2']},
@@ -47,7 +45,7 @@ class TestWordsense(unittest.TestCase):
                                        {'word': 'screen', 'tag': 'NN', 
                                         'sense': 'screen%2', 'id': 'i1'}, 
                                        {'word': '.', 'tag': 'punc'}]}]}}            
-        self.sents = SenseTaggedSentences.from_json_str(json.dumps(self.data),
+        self.sents = wordsense.SenseTaggedSentences.from_json_str(json.dumps(self.data),
                                                         corpus_id = "corpus1")
      
     def compare_lists(self, list1, list2, num_digits = 2):
@@ -72,7 +70,7 @@ class TestWordsense(unittest.TestCase):
         return True
        
     def test_sense_inventory(self):
-        inventory = SenseInventory.from_sense_iter(['laugh_off%1', 'be%1', 
+        inventory = wordsense.SenseInventory.from_sense_iter(['laugh_off%1', 'be%1', 
                                                     'laugh_off%2', 'laugh_off%3', 
                                                     'car%1', 'be%2'])
         assert inventory.sense_id('laugh_off%2') == 4
@@ -98,7 +96,7 @@ class TestWordsense(unittest.TestCase):
         assert(sent1['words'][2]['sense'] == 'laugh_off%1')
  
     def test_sense_instance_dataset(self):
-        dataset = SenseInstanceDataset(self.sents, self.vec_mgr)
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr)
         sense_inst0 = dataset[0]
         assert(sense_inst0.sense == 'be%1')
         assert(sense_inst0.tokens ==  ['It', 'was', 'a', 'disaster', '!'])
@@ -121,8 +119,8 @@ class TestWordsense(unittest.TestCase):
                                   [61.1, 62.1, 63.1]))       
  
     def test_sense_instance_loader(self):
-        dataset = SenseInstanceDataset(self.sents, self.vec_mgr)
-        loader = SenseInstanceLoader(dataset, batch_size = 1)
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr)
+        loader = wordsense.SenseInstanceLoader(dataset, batch_size = 1)
         batch_iter = loader.batch_iter()
         _, _, evid, resp, _ = next(batch_iter)
         expected_evid = tensor([[21., 22., 23.]])
@@ -141,8 +139,8 @@ class TestWordsense(unittest.TestCase):
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
         
     def test_sense_instance_loader2(self):
-        dataset = SenseInstanceDataset(self.sents, self.vec_mgr)
-        loader = SenseInstanceLoader(dataset, batch_size = 2)
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr)
+        loader = wordsense.SenseInstanceLoader(dataset, batch_size = 2)
         batch_iter = loader.batch_iter()
         _, _, evid, resp, _ = next(batch_iter)
         expected_evid = tensor([[21., 22., 23.],

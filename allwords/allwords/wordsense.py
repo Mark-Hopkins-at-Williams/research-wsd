@@ -1,9 +1,11 @@
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import json
 import torch
 from torch import tensor
 from torch.utils.data import Dataset
-from .util import cudaify
-from .align import align
+from allwords import util
+import allwords.align as align
 from collections import defaultdict
 
 class SenseInventory:
@@ -222,7 +224,7 @@ class SenseInstanceDataset(Dataset):
             vecs = self.vec_manager.get_vector(st_sent['sentid'])
             old_toks = [wd['word'] for wd in st_sent['words']]    
             new_toks = vecs['tokens']
-            alignment = align(old_toks, new_toks)
+            alignment = align.align(old_toks, new_toks)
             if alignment is not None:
                 for i, word in enumerate(st_sent['words']):
                     if 'sense' in word:
@@ -284,8 +286,8 @@ class SenseInstanceLoader:
             if len(evidence_batch) == self.batch_size:
                 yield (inst_ids,
                        target_batch, 
-                       cudaify(torch.tensor(evidence_batch)), 
-                       cudaify(torch.tensor(response_batch)),
+                       util.cudaify(torch.tensor(evidence_batch)), 
+                       util.cudaify(torch.tensor(response_batch)),
                        zones)                
                 inst_ids = []
                 target_batch = []
@@ -295,8 +297,8 @@ class SenseInstanceLoader:
         if len(inst_ids) > 0:
             yield (inst_ids,
                    target_batch, 
-                   cudaify(torch.tensor(evidence_batch)), 
-                   cudaify(torch.tensor(response_batch)),
+                   util.cudaify(torch.tensor(evidence_batch)), 
+                   util.cudaify(torch.tensor(response_batch)),
                    zones)
             
                 

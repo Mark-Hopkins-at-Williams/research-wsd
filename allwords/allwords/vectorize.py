@@ -1,9 +1,9 @@
-import os
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from os.path import join
 import json
-import sys
-from .bert import BertSentenceVectorizer
-    
+import allwords.bert as bert
+
 class VectorManager:
     def get_vector(self, sent_id):
         raise NotImplementedError('Cannot call .get_vector on abstract class.')
@@ -72,5 +72,5 @@ def vectorize_json(json_file, vectorizer, vector_dir):
         vectorize_sents(sents, vectorizer, writer)
         
 if __name__ == '__main__':
-    vectorize_json(sys.argv[1], BertSentenceVectorizer(), sys.argv[2])
+    vectorize_json(sys.argv[1], bert.BertSentenceVectorizer(), sys.argv[2])
     

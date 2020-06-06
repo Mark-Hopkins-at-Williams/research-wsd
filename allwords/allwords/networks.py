@@ -4,9 +4,6 @@ from torch import nn
 import torch.nn.functional as F
 from pytorch_transformers import BertModel
 
-
-
-
 class AffineClassifierWithOutputZones(nn.Module): 
     """
     A simple neural network with a single ReLU activation

@@ -1,9 +1,11 @@
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import torch
 from torch import optim
-from networks import AffineClassifier
-from util import cudaify, Logger
-from wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
-from vectorize import DiskBasedVectorManager
+from allwords.networks import AffineClassifier
+from allwords.util import cudaify, Logger
+from allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
+from allwords.vectorize import DiskBasedVectorManager
 
 
 def decode(net, data):
@@ -75,23 +77,13 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
         net.train()
         loss = torch.nn.NLLLoss() 
         for i, (_, _, evidence, response, zones) in enumerate(train_batches): 
-            #if i > 2000:
-            #    break
             optimizer.zero_grad()
             outputs = net(evidence)
             loss_size = loss(outputs, response)
             loss_size.backward()
             optimizer.step()
             running_loss += loss_size.data.item()
-            total_train_loss += loss_size.data.item()             
-            if i % 100 == 0 and False:
-                net.eval()
-                acc = evaluate(net, dev_loader)
-                if acc > best_acc:
-                    best_net = net
-                    best_acc = acc
-                logger("{:.2f}\n".format(acc))
-                net.train()                
+            total_train_loss += loss_size.data.item()                          
         net.eval()
         acc = evaluate(net, dev_loader)
         if acc > best_acc:
@@ -108,12 +100,12 @@ if __name__ == '__main__':
     logger = Logger(verbose = True)
     train_corpus_id = 'data/raganato/Training_Corpora/SemCor/semcor.data.xml'
     dev_corpus_id = 'data/raganato/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
-    filename = 'raganato.json'
+    filename = '../data/raganato.json'
     st_sents = SenseTaggedSentences.from_json(filename, train_corpus_id)
-    vecmgr = DiskBasedVectorManager('vecs/bertvecs2')
+    vecmgr = DiskBasedVectorManager('../vecs/bertvecs2')
     ds = SenseInstanceDataset(st_sents, vecmgr)
     dev_sents = SenseTaggedSentences.from_json(filename, dev_corpus_id) 
-    dev_vecmgr = DiskBasedVectorManager('vecs/bertvecs-se07')
+    dev_vecmgr = DiskBasedVectorManager('../vecs/bertvecs-se07')
     dev_ds = SenseInstanceDataset(dev_sents, dev_vecmgr)
     train_loader = SenseInstanceLoader(ds, batch_size)
     dev_loader = SenseInstanceLoader(dev_ds, batch_size)
