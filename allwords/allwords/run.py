@@ -1,5 +1,6 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from os.path import join
 import torch
 from torch import optim
 from allwords.networks import AffineClassifier
@@ -16,7 +17,7 @@ def decode(net, data):
     """        
     net.eval()
     val_loader = data.batch_iter()
-    for inst_ids, targets, evidence, response, spans in val_loader:#TODO: choose the max of valid entries
+    for inst_ids, targets, evidence, response, spans in val_loader:
         val_outputs = net(evidence)
         revised = torch.empty(val_outputs.shape)
         revised = revised.fill_(-10000000)
@@ -29,7 +30,6 @@ def decode(net, data):
 
 def evaluate(net, data):
     """
-
     The accuracy (i.e. percentage of correct classifications) is returned.
     
     """        
@@ -45,7 +45,7 @@ def evaluate(net, data):
     correct = 0
     total = 0
     val_loader = data.batch_iter()
-    for _, _, evidence, response, spans in val_loader: #TODO: choose the max of valid entries
+    for _, _, evidence, response, spans in val_loader:
         val_outputs = net(evidence)
         revised = torch.empty(val_outputs.shape)
         revised = revised.fill_(-10000000)
@@ -83,7 +83,7 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
             loss_size.backward()
             optimizer.step()
             running_loss += loss_size.data.item()
-            total_train_loss += loss_size.data.item()                          
+            total_train_loss += loss_size.data.item()                     
         net.eval()
         acc = evaluate(net, dev_loader)
         if acc > best_acc:
@@ -98,14 +98,15 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
 if __name__ == '__main__':
     batch_size = 16
     logger = Logger(verbose = True)
-    train_corpus_id = 'data/raganato/Training_Corpora/SemCor/semcor.data.xml'
-    dev_corpus_id = 'data/raganato/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
-    filename = '../data/raganato.json'
+    data_dir = sys.argv[1]
+    train_corpus_id = 'data/WSD_Evaluation_Framework/Training_Corpora/SemCor/semcor.data.xml'
+    dev_corpus_id = 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
+    filename = join(data_dir, 'raganato.json')
     st_sents = SenseTaggedSentences.from_json(filename, train_corpus_id)
-    vecmgr = DiskBasedVectorManager('../vecs/bertvecs2')
+    vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), train_corpus_id))
     ds = SenseInstanceDataset(st_sents, vecmgr)
     dev_sents = SenseTaggedSentences.from_json(filename, dev_corpus_id) 
-    dev_vecmgr = DiskBasedVectorManager('../vecs/bertvecs-se07')
+    dev_vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), dev_corpus_id))
     dev_ds = SenseInstanceDataset(dev_sents, dev_vecmgr)
     train_loader = SenseInstanceLoader(ds, batch_size)
     dev_loader = SenseInstanceLoader(dev_ds, batch_size)

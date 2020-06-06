@@ -66,10 +66,11 @@ def vectorize_sents(sents, vectorizer, writer):
 def vectorize_json(json_file, vectorizer, vector_dir):
     if not os.path.exists(vector_dir):
         os.makedirs(vector_dir)
-    writer = DiskBasedVectorManager(vector_dir)
     with open(json_file) as f:
         sents = json.load(f)
-        vectorize_sents(sents, vectorizer, writer)
+        for corpus in sents['corpora']:
+            writer = DiskBasedVectorManager(join(vector_dir, corpus))
+            vectorize_sents(sents['corpora'][corpus], vectorizer, writer)
         
 if __name__ == '__main__':
     vectorize_json(sys.argv[1], bert.BertSentenceVectorizer(), sys.argv[2])

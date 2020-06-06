@@ -24,8 +24,3 @@ def accuracy(predicted_labels, gold_labels):
                   if l1 == l2]
     return len(correct), len(predicted_labels)
 
-def precision(predicted_labels, gold_labels):
-    assert(len(predicted_labels) == len(gold_labels))
-    correct = [l1 for (l1, l2) in zip(predicted_labels, gold_labels)
-                  if l1 == l2]
-    return len(correct), len(predicted_labels)

@@ -1,7 +1,7 @@
 """
 Example usage:
 
-python raganato.py raganato.json
+python raganato.py datadir raganato.json
 
 """
 
@@ -33,6 +33,7 @@ def create_sense_inventory(goldfiles):
         result[lemma] = [item[1] for item in lemma_freq]                
     return result
 
+
 def parse_raganato_gold(goldfile, inventory):
     result = dict()
     with open(goldfile) as reader:
@@ -40,8 +41,6 @@ def parse_raganato_gold(goldfile, inventory):
             fields = line.split()
             instance_id = fields[0]
             sense1 = fields[1] # there are sometimes other senses; what to do?
-            #(lemma, sense) = sense1.split("%")
-            #sense_id = inventory[lemma].index(sense)
             result[instance_id] = sense1
     return result
 
@@ -69,6 +68,7 @@ def parse_raganato_xml_sent(sent_node, sense_map):
     result = {'sentid': sent_node.getAttribute('id'), 'words': tokens}
     return result           
 
+
 def parse_raganato_xml(xmldoc, sense_map):
     corpora = xmldoc.getElementsByTagName('corpus')
     output_sents = []
@@ -90,6 +90,7 @@ def parse_raganato_xml(xmldoc, sense_map):
                 print('Warning: element {} not recognized!'.format(node.nodeName))
     return output_sents
 
+
 class Token:
     def __init__(self, word, tag, inst_id,  lemma, sense):
         self.inst_id = inst_id
@@ -108,11 +109,13 @@ class Token:
             result['id'] = self.inst_id
         return result
 
+
 def harvest_data(xml_file, gold_file, inventory):
     xmldoc = minidom.parse(xml_file)    
     sense_map = parse_raganato_gold(gold_file, inventory)
     output_sents = parse_raganato_xml(xmldoc, sense_map)
     return output_sents
+
 
 def harvest_multi(xml_files, gold_files):
     inventory = create_sense_inventory(gold_files)
@@ -121,10 +124,8 @@ def harvest_multi(xml_files, gold_files):
         corpora[xml_file] = harvest_data(xml_file, gold_file, inventory)
     result = {'inventory': inventory, 'corpora': corpora}
     return result
-        
 
-
-
+ 
 def run(xml_files, gold_files, json_output):
     """
     e.g. run(['Training_Corpora/SemCor/semcor.data.xml'],
@@ -138,11 +139,12 @@ def run(xml_files, gold_files, json_output):
     
     
 if __name__ == '__main__':    
-    train_dir = 'data/raganato/Training_Corpora'
-    eval_dir = 'data/raganato/Evaluation_Datasets'
+    root_data_dir = sys.argv[1]
+    train_dir = join(root_data_dir, 'Training_Corpora')
+    eval_dir = join(root_data_dir, 'Evaluation_Datasets')
     xml_files = [join(train_dir, 'SemCor/semcor.data.xml'),
                  join(eval_dir, 'semeval2007/semeval2007.data.xml')]
     gold_files = [join(train_dir, 'SemCor/semcor.gold.key.txt'),
                   join(eval_dir, 'semeval2007/semeval2007.gold.key.txt')]
-    run(xml_files, gold_files, sys.argv[1])
+    run(xml_files, gold_files, sys.argv[2])
     
