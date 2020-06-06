@@ -1,13 +1,16 @@
 import unittest
-from lemmas import lemmadata_iter, contextualized_vectors_by_sense
-from lemmas import sample_sense_pairs
-from bert import vectorize_instance
+from wordsense import SenseInstanceDatabase
+from bert import BertVectorizer
 import torch
 
-class TestLemmas(unittest.TestCase):
+class TestWordsense(unittest.TestCase):
+    
+    def setUp(self):
+        self.db = SenseInstanceDatabase('testdata')
+        self.vectorize_instance = BertVectorizer()
     
     def test_lemmadata_iter(self):
-        itr = lemmadata_iter('lemmadata')
+        itr = self.db.lemmas()
         (focus, instances) = next(itr)
         assert focus == 'embolden'
         assert len(instances) == 2
@@ -23,10 +26,9 @@ class TestLemmas(unittest.TestCase):
         assert instances[0].pos == expected_position
         assert instances[0].sense == expected_sense
 
+
     def test_contextualized_vectors_by_sense(self):
-        vecs = contextualized_vectors_by_sense('stock', 
-                                               vectorize_instance, 
-                                               'lemmadata')
+        vecs = self.db.embeddings_by_sense('stock', self.vectorize_instance)
         senses = set(vecs.keys())
         expected_senses = ['/dictionary/sense/en_us_NOAD3e_2012/m_en_us1294508.007', 
                            '/dictionary/sense/en_us_NOAD3e_2012/m_en_us1294508.001', 
@@ -39,8 +41,8 @@ class TestLemmas(unittest.TestCase):
         assert sense_vecs[0].shape == torch.Size([768])
         
     def test_sample_sense_pairs(self):
-        sense_pairs = sample_sense_pairs(vectorize_instance, 3, 
-                                         'stock', 'lemmadata', 
+        sense_pairs = self.db.sample_sense_pairs(self.vectorize_instance, 3, 
+                                         'stock',
                                          '/dictionary/sense/en_us_NOAD3e_2012/m_en_us1294508.007', 
                                          '/dictionary/sense/en_us_NOAD3e_2012/m_en_us1294508.001', 
                                          n_fold=2, cached=False, train_percent=.75)
@@ -56,8 +58,7 @@ class TestLemmas(unittest.TestCase):
         assert(train[3][0] == 1.0)   # positive examples
         assert(train[4][0] == 1.0)
         assert(train[5][0] == 1.0)
-
-
+ 
 
 if __name__ == "__main__":
 	unittest.main()

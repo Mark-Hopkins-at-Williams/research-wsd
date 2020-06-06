@@ -14,6 +14,7 @@ class TestElmo(unittest.TestCase):
         last_seven = tensor([ 0.1043,  0.0660,  0.2928,  0.1568, 
                              -0.1257,  0.2225,  0.4422])
         n_digits = 4
+        result = tensor(result.get_embedding('elmo'))
         rounded = torch.round(result * 10**n_digits) / (10**n_digits)
         assert torch.all(torch.eq(rounded[:7], first_seven))
         assert torch.all(torch.eq(rounded[-7:], last_seven))

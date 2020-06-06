@@ -2,6 +2,15 @@ import torch
 import os
 import json
 
+class Logger:
+    def __init__(self, verbose):
+        self.verbose = verbose
+    
+    def __call__(self, msg):
+        if self.verbose:
+            print(msg)
+
+
 def cudaify(x):
     if torch.cuda.is_available():
         if torch.cuda.device_count() > 2:

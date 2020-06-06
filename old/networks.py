@@ -7,6 +7,25 @@ from pytorch_transformers.modeling_bert import BertPreTrainedModel
 from wordsense import SenseInstance
 import IPython
 
+class AffineClassifier(nn.Module): 
+    """
+    A simple neural network with a single ReLU activation
+    between two linear layers.
+    
+    Softmax is applied to the final layer to get a (log) probability
+    vector over the possible labels.
+    
+    """    
+    def __init__(self, input_size, num_labels):
+        super(AffineClassifier, self).__init__()
+        print("input_size: {}; output_size: {}".format(input_size, num_labels))
+        self.linear1 = nn.Linear(input_size, num_labels)
+        torch.nn.init.xavier_uniform_(self.linear1.weight)
+
+    def forward(self, input_vec):
+        nextout = input_vec
+        nextout = self.linear1(nextout)
+        return F.softmax(nextout, dim=1)
 
 class SimpleClassifier(nn.Module): 
     """
