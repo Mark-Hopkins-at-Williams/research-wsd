@@ -1,64 +1,54 @@
-Disambiguation
---------------
+Reed Word Sense Disambiguation
+------------------------------
 
-To train lemma-specific sense classifiers, do the following:
+### To download and preprocess the Raganato 2017 data:
 
-    from experiment import *
-    train_lemma_classifiers(40, 42, n, verbose=True)
+From the top-level directory, run:
+
+    cd allwords
+    bash ./install.sh
+
+### To run the main training script
+
+From the top-level directory, run:
+
+    cd allwords
+    python allwords/run.py ./data
+
+### To run the official scoring script
+
+The scorer ("Scorer.java") is provided by Raganato et al (2017).
+To use the scorer, you first need to compile:
+
+	javac allwords/data/WSD_Evaluation_Framework/Evaluation_Datasets/Scorer.java
+
+Then, evaluate your system by typing the following commands: 
+
+    cd allwords/data/WSD_Evaluation_Framework/Evaluation_Datasets
+    java Scorer [gold-standard] [system-output]
+
+Example of usage:
+
+	cd allwords/data/WSD_Evaluation_Framework/Evaluation_Datasets
+	java Scorer semeval2007/semeval2007.gold.key.txt output.txt
+
+Please note that the official scoring programs are case sensitive and may be
+sensitive if a different default character encoding is used.  The answer
+format is the same of the gold-standard format. 
+
+### To run all unit tests
+
+From the top-level directory, run: 
     
-This will train sense classifiers for all lemmas whose second sense has
-between 40 and 42 instances using n-fold cross-validation with all logs on.
+    cd allwords
+    python -m unittest
 
-To run the general lemma test(in contrast to single-lemma training and testing) on words with 0.7 accuracy or higher with 5-fold cross-validation and 2000 training examples per lemma:
-1. Make sure there is "word_lemma_dict.json" under a the "data" folder.
-    For ELMo:	
-	from elmo import elmo_vectorize
-	from experiment import train_cross_lemmas
-	createLemmaData_elmo()
-	train_cross_lemmas(elmo_vectorize, 0.7, 5, 2000, verbose=True)
-    For BERT:
-	from bert import vectorize_instance
-	from experiment import train_cross_lemma
-	createLemmaData()
-	train_cross_lemmas(vectorize_instance, 0.7, 5, 2000, verbose=True)
+### To run a particular unit test module (e.g. test/test_align.py)
 
-TEST TAKERS! Read Here!
+From the top-level directory, run:
 
-Follow the exact instruction below to make sure your test is bugless:
-
-1. Only take the test on a Linux or Mac machine.
-
-2. Before starting your test, make sure to download the mandatory data files into the right directory. Download "completedata.json", "human_acc_test" data and "sense_to_pofs_dict.json" into "data" folder. Do not rename the download!
-
-3. Create two folders: "human_test_logs" and "human_test_results" in the data folder.
-
-4. type "python3 human_acc_test.py" and enter under the repo directory to start the test
-
-
-     
+    cd allwords
+    python -m unittest test.test_align
     
-Data Links
-----------
-## googledata.json
-https://drive.google.com/file/d/1VP1Z0KYYJecMrUE4VelX3ujyjd5wh2WO/view?usp=sharing
-
-## completedata.json:
-https://drive.google.com/file/d/1ekfegaI2Cn4TmDck--X6vIbvEkDp2yMJ/view?usp=sharing
-
-## Precomputed bert vecs and lemmadata
-https://drive.google.com/file/d/195BOf-qxJHz-ybTORvYO26F59zP3zrCc/view?usp=sharing
-
-## human_acc_test data
-https://drive.google.com/file/d/1f547LZsS5CAYPWTNwRl9HGpf00T0TknH/view?usp=sharing
-
-## sense_to_pofs_dict.json
-https://drive.google.com/file/d/1RCWEWwCu4i1vXZLPtbZtLcoh8EUMpT31/view?usp=sharing
-
-## word_lemma_dict.json
-https://drive.google.com/file/d/1_2Z-rYVX4pDAp1pfDp0s3YAnHBvi2F7Q/view?usp=sharing
-
-##lemmadata
-https://drive.google.com/drive/folders/1NWGKiqEH8dCToj_gY4EpmH_V5N3yZJ4v?usp=sharing
-
-## lemmadata_elmo
-https://drive.google.com/drive/folders/1crGo0SLR1mVNDzmOUsmdvy9ealUGY17V?usp=sharing
+    
+    
