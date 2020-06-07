@@ -1,4 +1,6 @@
 """
+Conversion tools from Raganato XML to a simpler JSON format.
+
 Example usage:
 
 python raganato.py datadir raganato.json

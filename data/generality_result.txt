@@ -1,1 +1,0 @@
-accuracy across lemmas is: 0.5199718803119093

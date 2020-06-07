@@ -85,25 +85,6 @@ class SenseTaggedSentences(Dataset):
     def get_inventory(self):
         return self.inventory
 
-    """
-    def all_senses(self):
-        result = []
-        for key in self.inventory:
-            result += self.inventory[key]
-        return result
-
-    def max_senses_per_target(self):
-        num_senses = [len(self.inventory[key]) for key in self.inventory]
-        return max(num_senses)
-                
-    def sense_id(self, sense):
-        fields = sense.split('%')
-        return self.inventory[fields[0]].index(sense)
-
-    def sense(self, target, sense_id):
-        return self.inventory[target][sense_id]
-    """
-
     def __getitem__(self, index):
         return self.st_sents[index]
 
@@ -193,27 +174,10 @@ class SenseInstanceDataset(Dataset):
         self.instance_index = 0
         self.instance_iter = self.item_iter()
         self.current_instance = next(self.instance_iter)
-        #self.num_insts = 0
-        #for inst in self.item_iter():
-        #    self.num_insts += 1
         self.num_insts = 250000
 
     def onehot(self, sense):
         return self.st_sents.onehot(sense)
-
-    """
-    def all_senses(self):
-        return self.st_sents.all_senses()
-        
-    def sense_id(self, sense):
-        return self.st_sents.sense_id(sense)
-
-    def sense(self, target, sense_id):
-        return self.st_sents.sense(target, sense_id)
-
-    def max_senses_per_target(self):
-        return self.st_sents.max_senses_per_target()
-    """
 
     def get_inventory(self):
         return self.st_sents.get_inventory()
