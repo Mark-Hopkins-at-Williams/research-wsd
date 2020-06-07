@@ -2,7 +2,12 @@ import torch
 from transformers import BertModel, BertTokenizer
 
 class BertSentenceVectorizer:
-
+    """
+    A BertSentenceVectorizer produces a function that maps a sentence
+    (represented as a string) to the (final-layer) BERT vectors for
+    each of its tokens.
+    
+    """
     def __init__(self):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.model = BertModel.from_pretrained('bert-base-uncased')
@@ -23,7 +28,12 @@ class BertSentenceVectorizer:
     
     
 class BertVectorizer:
+    """
+    A BertVectorizer produces a function that maps a SenseInstance to a
+    BERT vector representation, by encoding the whole sentence and then
+    returning the vector representation of the target token.
     
+    """
     def __init__(self):
         self.vectorizer = BertSentenceVectorizer()
        
@@ -32,4 +42,4 @@ class BertVectorizer:
         return states[instance.pos]
 
     def dim(self):
-        return 768
+        return self.vectorizer.dim()
