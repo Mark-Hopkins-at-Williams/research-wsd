@@ -1,0 +1,240 @@
+# -*- coding: utf-8 -*-
+import torch
+import pandas as pd
+from vectrain import update_df_format
+from train import train_net
+from networks import SimpleClassifier, DropoutClassifier, BertForSenseDisambiguation
+from util import cudaify
+from lemmas import all_sense_histograms, sample_sense_pairs, sample_inputids_pairs_bert, sample_cross_lemma, sample_inputids_pairs_bert
+from collections import defaultdict
+from pytorch_transformers import BertConfig, BertTokenizer, BertModel
+import json
+import os
+from elmo import *
+from bert import *
+
+def tensor_batcher(t, batch_size):
+    """
+    generates batches of size batch_size given a training set
+
+    """
+    def shuffle_rows(a):
+        return a[torch.randperm(a.size()[0])]        
+    neg = t[(t[:, 0] == 0).nonzero().squeeze(1)] # only negative rows
+    pos = t[(t[:, 0] == 1).nonzero().squeeze(1)] # only positive rows
+    neg = shuffle_rows(neg)
+    pos = shuffle_rows(pos)
+    min_row_count = min(neg.shape[0], pos.shape[0])
+    epoch_data = torch.cat([neg[:min_row_count], pos[:min_row_count]])    
+    epoch_data = shuffle_rows(epoch_data)
+    for i in range(0, len(epoch_data), batch_size):
+        yield epoch_data[i:i+batch_size]
+
+
+
+def create_and_train_net(net, training_data, test_data, verb):
+    """
+    given training and testing data, train a neural network
+
+    """
+    training_data = cudaify(training_data)
+    test_data = cudaify(test_data)
+    if verb:
+        print("training size:", training_data.shape)
+        print("testing size:", test_data.shape)
+    classifier = cudaify(net)
+
+    best_net, best_acc = train_net(classifier, training_data, test_data, tensor_batcher,
+                batch_size=2, n_epochs=30, learning_rate=0.001,
+                verbose=verb)
+    return best_net, best_acc
+    
+
+def train_lemma_classifiers(model, min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+    """
+    train the classifier on only one lemma at a time and
+    evaluates the performance on data of the same lemma
+
+    """
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in all_sense_histograms(model):
+        if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]   
+            print(lemma)                    
+            data = sample_sense_pairs(model, max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                sum_acc += create_and_train_net(DropoutClassifier(1536, 100, 2), training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)  
+
+
+def train_finetune_bert(min_sense2_freq, max_sense2_freq, n_fold, max_sample_size, verbose=True):
+    """
+    finetune a lemma classifier with bert as the first layer and a dropout classifier as the second
+    and store the training logistics in a file
+
+    """
+    lemma_info_dict = defaultdict(tuple)
+    i = 1
+    for (lemma, sense_hist) in all_sense_histograms("bert"):
+        if len(sense_hist) > 1 and sense_hist[1][0] >= min_sense2_freq and sense_hist[1][0] <= max_sense2_freq:
+            i +=1
+            print("lemma: "+str(i)+" of 379")
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]   
+            print(lemma)                    
+            
+            data = sample_inputids_pairs_bert(max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                sum_acc += create_and_train_net(BertForSenseDisambiguation(), training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+            storeable_dict = dict(lemma_info_dict)
+            with open("finetuning_progress.json", "w") as f:
+                json.dump(storeable_dict, f)
+
+    lemma_info_dict = dict(lemma_info_dict)
+    for key in lemma_info_dict.keys():
+        lemma_info = lemma_info_dict[key]
+        data.append(["fine_tune", key, lemma_info[0], lemma_info[1], lemma_info[2]])
+        df = pd.DataFrame(data, columns=["spec", "lemma", "best_avg_acc", "sense1", "sense2"])
+
+    num = 1
+    while os.path.exists("fine_tune_2000_"+str(num)+".csv"):
+        num += 1
+    df = update_df_format(df, max_sample_size)
+    df.to_csv("fine_tune_2000"+str(num)+".csv", index=False)
+    return dict(lemma_info_dict)
+
+def train_cross_lemmas(model, threshold, n_fold, n_pairs_per_lemma, verbose=True):
+    """
+    To test the cross-lemma generalizability of models
+    sample training and testing data on two disjoint sets of lemmas
+
+    """
+    if model == "elmo":
+        input_size = 1024 * 2
+    elif model == "bert": input_size = 768 * 2
+    data = sample_cross_lemma(model, threshold, n_fold, n_pairs_per_lemma)
+    sum_acc = 0
+    for training_data, test_data in data:
+        sum_acc += create_and_train_net(DropoutClassifier(input_size, 100, 2), training_data, test_data, verbose)
+    avg_acc = sum_acc / n_fold
+    print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    with open("data/generality_result_" + model + ".txt", "w") as f:
+        f.write(str(avg_acc))
+
+def train_with_neighbors(model, specification, threshold, n_fold, max_sample_size, verbose=True):
+    """
+    train classifiers by incorporating neighboring words embeddings into the input of the classifier with the following styles:
+    avg_***: average the embedding of the word we want to 
+             disambiguate with the embedding of words on its left/right/both sides.
+    concat_***: concatinate the the the embedding of the word we want to 
+             disambiguate with the embedding of words on its left/right/both sides.
+    
+    specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]
+    assert specification in specification_space, "parameter specification can only be one of the following: " + str(specification_space)
+
+    """
+
+    if model == "bert":
+        hidden_size = 768
+        if specification == "default":
+            vectorization = embed_bert
+        if specification.startswith("avg"):
+            if specification == "avg_both": vectorization = embed_bert_avg_both
+            if specification == "avg_left": vectorization = embed_bert_avg_left
+            if specification == "avg_right": vectorization = embed_bert_avg_right
+        else:
+            if specification == "concat_both": vectorization = embed_bert_concat_both
+            if specification == "concat_left": vectorization = embed_bert_concat_left
+            if specification == "concat_right": vectorization = embed_bert_concat_right
+    elif model == "elmo":
+        hidden_size = 1024
+        if specification == "default":
+            vectorization = embed_elmo
+        if specification.startswith("avg"):
+            if specification == "avg_both": vectorization = embed_elmo_avg_both
+            if specification == "avg_left": vectorization = embed_elmo_avg_left
+            if specification == "avg_right": vectorization = embed_elmo_avg_right
+        else:
+            if specification == "concat_both": vectorization = embed_elmo_concat_both
+            if specification == "concat_left": vectorization = embed_elmo_concat_left
+            if specification == "concat_right": vectorization = embed_elmo_concat_right
+    
+    
+    def get_lemmas(threshold):
+        data = pd.read_csv(filename)
+        lemmas = []
+        for i in data.index:
+            if data.iloc[i]["best_avg_acc"] >= threshold:
+                lemmas.append(data.iloc[i]["lemma"])
+        return lemmas
+
+        
+    lemmas = get_lemmas(0.7)
+    lemma_info_dict = defaultdict(tuple)
+    for (lemma, sense_hist) in all_sense_histograms(model):
+        if not lemma in lemmas: continue
+        if len(sense_hist) > 1 and sense_hist[1][0] >= 21:
+            sense1 = sense_hist[0][1]
+            sense2 = sense_hist[1][1]
+            print(lemma)
+            
+            data = sample_sense_pairs(model, max_sample_size//2, lemma, sense1, sense2, n_fold)
+
+            sum_acc = 0
+            fold_count = 0
+            for training_data, test_data in data:
+                if specification.startswith("avg"):
+                    net = DropoutClassifier(hidden_size*2, 100, 2)
+                else:
+                    if not specification.endswith("both"):
+                        net = DropoutClassifier(hidden_size*2*2, 100, 2)
+                    else:
+                        net = DropoutClassifier(hidden_size*3*2, 100, 2)
+                sum_acc += create_and_train_net(net, training_data, test_data, verbose)
+                fold_count += 1
+            avg_acc = sum_acc / fold_count
+
+            lemma_info_dict[lemma] = (avg_acc, sense1, sense2)
+            print("  Best Epoch Accuracy Average = {:.2f}".format(avg_acc))
+    return dict(lemma_info_dict)
+
+
+def neighbors_test(model, style):
+    """
+    run train_with_neighbors and store the logistics
+
+    """
+    spec_acc_dict = defaultdict(int)
+    specification_space = ["avg_both", "avg_left", "avg_right", "concat_both", "concat_left", "concat_right"]   
+    for spec in specification_space:
+        print()
+        print("training spec: " + spec)
+        print()
+        lemma_info_dict = train_with_neighbors(model, spec, 0.7, 5, 2000, verbose=True)
+        score = 0
+        for lemma in lemma_info_dict.keys():
+            score += lemma_info_dict[lemma][0]
+        score /= len(lemma_info_dict.keys())
+        spec_acc_dict[spec] = score
+        
+        with open("neighbor_test_" + style +".json", "w") as f:
+            json.dump(dict(spec_acc_dict), f)
+    print(spec_acc_dict)
+    return spec_acc_dict
+
