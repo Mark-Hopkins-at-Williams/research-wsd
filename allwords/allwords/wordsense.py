@@ -7,7 +7,6 @@ from torch.utils.data import Dataset
 from allwords import util
 import allwords.align as align
 from collections import defaultdict
-from random import sample
 
 class SenseInventory:
     def __init__(self, senses_by_lemma):
@@ -57,12 +56,6 @@ class SenseInventory:
     
     def num_senses(self):
         return len(self.all_senses)
-
-    def rand_senses(self, n):
-        """
-        return n random senses in the inventory
-        """
-        return list(sample(self.all_senses, n))
 
     @staticmethod
     def deconstruct_sense(sense):
@@ -184,17 +177,7 @@ class SenseInstanceDataset(Dataset):
         self.instance_index = 0
         self.instance_iter = self.item_iter()
         self.current_instance = next(self.instance_iter)
-        self.num_insts = 0
-        for i in range(len(self.st_sents)):
-            st_sent = self.st_sents[i]
-            vecs = self.vec_manager.get_vector(st_sent['sentid'])
-            old_toks = [wd['word'] for wd in st_sent['words']]    
-            new_toks = vecs['tokens']
-            alignment = align.align(old_toks, new_toks)
-            if alignment is not None:
-                for word in st_sent['words']:
-                    if 'sense' in word:
-                        self.num_insts += 1
+        self.num_insts = 250000 # TODO: fix this by changing raganato.py to store num sense instances
 
     def onehot(self, sense):
         return self.st_sents.onehot(sense)
@@ -245,14 +228,11 @@ class SenseInstanceLoader:
             self.desired_ids = desired_ids            
         self.inventory = self.inst_ds.get_inventory()
             
-    def instance_dataset(self):
+    def get_instance_dataset(self):
         return self.inst_ds
 
-    def inventory(self):
+    def get_inventory(self):
         return self.inventory
-
-    def rand_senses(self, n):
-        return self.inventory.rand_senses(n)
 
     def sense_id(self, sense):
         return self.inventory.sense_id(sense)
