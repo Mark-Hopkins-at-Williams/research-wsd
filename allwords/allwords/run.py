@@ -78,6 +78,7 @@ if __name__ == '__main__':
     with open('foo.txt', 'w') as writer:
         for (inst_id, sense) in results:
             writer.write('{} {}\n'.format(inst_id, sense))
+    # TODO: move his to another file (say, confidence.py or somethings)
     """
     batch_size = 16
     data_dir = sys.argv[1]

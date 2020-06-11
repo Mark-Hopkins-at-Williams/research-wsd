@@ -7,6 +7,7 @@ from random import sample
 
 
 LARGE_NEGATIVE = -10000000
+ABSTAIN = -1.0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 def predict(distribution):
@@ -14,7 +15,7 @@ def predict(distribution):
 
 def accuracy(predicted_labels, gold_labels):
     assert(len(predicted_labels) == len(gold_labels))
-    confident = [l for l in predicted_labels if l != -1.0]
+    confident = [l for l in predicted_labels if l != ABSTAIN]
     correct = [l1 for (l1, l2) in zip(predicted_labels, gold_labels)
                   if l1 == l2]
     return len(correct), len(confident)
@@ -39,10 +40,8 @@ def decode(net, data, threshold=LARGE_NEGATIVE):
         val_outputs = net(evidence)
         revised = apply_zone_masks(val_outputs, zones)
         maxes, preds = revised.max(dim=-1)
-        print(maxes)
         below_threshold_idx = (maxes < threshold)
-        preds[below_threshold_idx] = -1.0
-        #print(preds)
+        preds[below_threshold_idx] = ABSTAIN
         for element in zip(inst_ids, 
                            zip(targets,
                                zip(preds, response.tolist()))):                    
@@ -57,7 +56,6 @@ def evaluate(net, data):
     """
     decoded = list(decode(net, data))
     predictions = [pred for (_, _, pred, _) in decoded]
-    print(predictions)
     gold = [g for (_, _, _, g) in decoded]
     correct, total = accuracy(predictions, gold)
     return correct/total
