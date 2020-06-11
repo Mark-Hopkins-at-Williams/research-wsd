@@ -74,12 +74,12 @@ if __name__ == '__main__':
     predictions = decode(net, dev_loader) 
     results = []
     for inst_id, target, predicted_sense_index, _ in predictions:
-        results.append((inst_sid, st_sents.inventory.sense(predicted_sense_index)))
+        results.append((inst_id, st_sents.inventory.sense(predicted_sense_index)))
     with open('foo.txt', 'w') as writer:
         for (inst_id, sense) in results:
             writer.write('{} {}\n'.format(inst_id, sense))
     # TODO: move his to another file (say, confidence.py or somethings)
-    """s
+    """
     batch_size = 16
     data_dir = sys.argv[1]
     dev_corpus_id = 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
