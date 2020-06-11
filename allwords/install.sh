@@ -7,8 +7,8 @@ unzip raganato.zip
 rm raganato.zip
 cd ..
 echo 'Compiling XML files into JSON.'
-python allwords/raganato.py data/WSD_Evaluation_Framework/ data/raganato.json
+python3 allwords/raganato.py data/WSD_Evaluation_Framework/ data/raganato.json
 echo 'Compiling contextualized word vectors.'
 [ ! -d "data/vecs" ] &&  mkdir -p "data/vecs"
-python allwords/vectorize.py data/raganato.json data/vecs/
+python3 allwords/vectorize.py data/raganato.json data/vecs/
 echo 'Done!'
