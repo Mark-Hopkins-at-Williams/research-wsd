@@ -1,9 +1,8 @@
 import torch
-from collections import defaultdict
 import json
 import os
 from os.path import join
-from random import sample
+import torch.nn.functional as F
 
 
 LARGE_NEGATIVE = -10000000
@@ -15,10 +14,19 @@ def predict(distribution):
 
 def accuracy(predicted_labels, gold_labels):
     assert(len(predicted_labels) == len(gold_labels))
-    confident = [l for l in predicted_labels if l != ABSTAIN]
-    correct = [l1 for (l1, l2) in zip(predicted_labels, gold_labels)
-                  if l1 == l2]
-    return len(correct), len(confident)
+    preds = torch.tensor(predicted_labels)
+    gold = torch.tensor(gold_labels)
+    n_confident = (preds != ABSTAIN).double().sum().item()
+    n_correct = (preds == gold).double().sum().item()
+    return n_correct, n_confident
+
+def yielde(predicted_labels, gold_labels):
+    assert(len(predicted_labels) == len(gold_labels))
+    preds = torch.tensor(predicted_labels)
+    gold = torch.tensor(gold_labels)
+    n_correct = (preds == gold).double().sum().item()
+    return n_correct, len(predicted_labels)
+    
 
 def apply_zone_masks(outputs, zones):
     revised = torch.empty(outputs.shape)
@@ -33,11 +41,14 @@ def decode(net, data, threshold=LARGE_NEGATIVE):
     Runs a trained neural network classifier on validation data, and iterates
     through the top prediction for each datum.
     
+    TODO: write some unit tests for this function
+    
     """        
     net.eval()
     val_loader = data.batch_iter()
     for inst_ids, targets, evidence, response, zones in val_loader:
         val_outputs = net(evidence)
+        val_outputs = F.softmax(val_outputs, dim=1)
         revised = apply_zone_masks(val_outputs, zones)
         maxes, preds = revised.max(dim=-1)
         below_threshold_idx = (maxes < threshold)
@@ -60,47 +71,25 @@ def evaluate(net, data):
     correct, total = accuracy(predictions, gold)
     return correct/total
 
-def confidence_analysis(net, data):
-    id_range = list(range(len(data.instance_dataset())))
-    print(len(id_range))
-    sample_ids = sample(id_range, 5)
-    positive_inv = []
-    for i in sample_ids:
-        print(i)
-        positive_inv.append(data.instance_dataset()[i].get_sense())
-    tprs = defaultdict(list)
-    fprs = defaultdict(list)
-    for curr_thres in range(0, 101, 10):
-        decoded = list(decode(net, data, curr_thres))
-        preds = torch.tensor([pred for (_, _, pred, _) in decoded])
-        gold = torch.tensor([g for (_, _, _, g) in decoded])
-        for positive_sense in positive_inv:
-            print(positive_sense)
-            positive_id = data.sense_id(positive_sense)
-            pred_idx = (preds == positive_id)
-            gold_idx = (gold == positive_id)
-            """
-            print(pred_idx.double().sum())
-            print(gold_idx.double().sum())
-            """
-            tp = ((pred_idx * gold_idx) == 1.0).double().sum()
-            n_s_p = ((preds != -1.0) * gold_idx).double().sum()
-            fp = (pred_idx * (gold_idx == 0)).double().sum()
-            n_abs = (preds == -1.0).double().sum()
-            print("n_abs:", n_abs)
-            n_s_n = gold.shape[0] - n_abs - n_s_p
-            print("tp:", tp)
-            print("fp:", fp)
-            print("n_s_p:", n_s_p)
-            print("n_s_n:", n_s_n)
-            tpr = 0 if n_s_p == 0 else (tp / n_s_p).item()
-            fpr = 0 if n_s_n == 0 else (fp / n_s_n).item()
-            print("tpr:", tpr)
-            print("fpr:", fpr)
-            tprs[positive_sense].append(tpr)
-            fprs[positive_sense].append(fpr)
-    with open(join(file_dir, "../confidence/prc.json"), "w") as f:
-        json.dump([tprs, fprs], f)
+def py_curve(predictor, gold, thresholds):
+    pys = {}
+    for thres in thresholds:
+        preds = predictor(thres)
+        n_correct, n_confident = accuracy(preds, gold)
+        precision = 0 if n_confident == 0 else n_correct / n_confident
+        n_correct, n_all = yielde(preds, gold)
+        y = n_correct / n_all
+        pys[thres] = (precision, y)
+    return pys    
 
-            
-        
+def precision_yield_curve(net, data, 
+                          jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")):
+    def predictor_fn(thres):
+        result = list(decode(net, data, thres))
+        return [pred for (_, _, pred, _) in result]        
+    thresholds = range(0, 101, 5)
+    decoded = list(decode(net, data, 0))
+    gold = [g for (_, _, _, g) in decoded]
+    curve = py_curve(predictor_fn, gold, thresholds)
+    with open(jsonfile, "w") as f:
+        json.dump(curve, f)

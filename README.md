@@ -13,7 +13,14 @@ From the top-level directory, run:
 From the top-level directory, run:
 
     cd allwords
-    python allwords/run.py ./data
+    python3 allwords/run.py ./data
+
+### To run the confidence analysis
+
+From the top-level directory, run:
+	
+    cd allwords
+    python3 allwords/confidence.py ./data    
 
 ### To run the official scoring script
 
@@ -41,14 +48,13 @@ format is the same of the gold-standard format.
 From the top-level directory, run: 
     
     cd allwords
-    python -m unittest
+    python3 -m unittest
 
 ### To run a particular unit test module (e.g. test/test_align.py)
 
 From the top-level directory, run:
 
     cd allwords
-    python -m unittest test.test_align
-    
+    python3 -m unittest test.test_align
     
     
