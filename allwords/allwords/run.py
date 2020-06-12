@@ -26,7 +26,7 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
     best_acc = 0.0
     for epoch in range(n_epochs):      
         train_batches = train_loader.batch_iter()
-        print("  Epoch {} Accuracy = ".format(epoch))       
+        logger("  Epoch {} Accuracy = ".format(epoch))       
         running_loss = 0.0
         total_train_loss = 0.0
         net.train()
@@ -50,10 +50,18 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
             best_net = net
             best_acc = acc
         net.train()
-        print("{:.2f}\n".format(acc))
-    print("  ...best accuracy = {:.2f}".format(best_acc))
+        logger("{:.2f}\n".format(acc))
+    logger("  ...best accuracy = {:.2f}".format(best_acc))
     return best_net
 
+def init_dev_loader(data_dir, batch_size = 16):
+    dev_corpus_id = 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
+    filename = join(data_dir, 'raganato.json')
+    dev_sents = SenseTaggedSentences.from_json(filename, dev_corpus_id) 
+    dev_vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), dev_corpus_id))
+    dev_ds = SenseInstanceDataset(dev_sents, dev_vecmgr)
+    dev_loader = SenseInstanceLoader(dev_ds, batch_size)
+    return dev_loader
 
 
 if __name__ == '__main__':
@@ -61,16 +69,12 @@ if __name__ == '__main__':
     logger = Logger(verbose = True)
     data_dir = sys.argv[1]
     train_corpus_id = 'data/WSD_Evaluation_Framework/Training_Corpora/SemCor/semcor.data.xml'
-    dev_corpus_id = 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
     filename = join(data_dir, 'raganato.json')
     st_sents = SenseTaggedSentences.from_json(filename, train_corpus_id)
     vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), train_corpus_id))
     ds = SenseInstanceDataset(st_sents, vecmgr)
-    dev_sents = SenseTaggedSentences.from_json(filename, dev_corpus_id) 
-    dev_vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), dev_corpus_id))
-    dev_ds = SenseInstanceDataset(dev_sents, dev_vecmgr)
     train_loader = SenseInstanceLoader(ds, batch_size)
-    dev_loader = SenseInstanceLoader(dev_ds, batch_size)
+    dev_loader = init_dev_loader(data_dir, batch_size)
     net = train_all_words_classifier(train_loader, dev_loader, logger)  
     torch.save(net.state_dict(), join(file_dir, "../saved/bert_simple.pt")) 
     predictions = decode(net, dev_loader) 
