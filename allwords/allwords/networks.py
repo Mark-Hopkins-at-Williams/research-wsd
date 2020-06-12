@@ -14,7 +14,10 @@ class AffineClassifier(nn.Module):
     def forward(self, input_vec):
         nextout = input_vec
         nextout = self.linear1(nextout)
-        return F.log_softmax(nextout, dim=1)
+        #return F.log_softmax(nextout, dim=1)
+        nextout = nextout.clamp(min=-5.0)
+        nextout = nextout.clamp(max=5.0)
+        return F.softmax(nextout, dim=1)
 
 
 class DropoutClassifier(nn.Module): 

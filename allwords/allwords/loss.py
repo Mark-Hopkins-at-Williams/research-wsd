@@ -40,7 +40,7 @@ def zone_based_loss(predicted, gold, zones, f):
     for i, (zone_start, zone_stop) in enumerate(zones):
         normalizer = sum(predicted[i, zone_start:zone_stop])
         revised_pred[i,zone_start:zone_stop] = (predicted[i, zone_start:zone_stop] 
-                                                / normalizer)
+                                                / normalizer)    
     neglog_pred = f(revised_pred)
     result = neglog_pred[list(range(len(neglog_pred))), gold]
     return torch.mean(result)
@@ -50,10 +50,15 @@ class LossWithZones:
     def __call__(self, predicted, gold, zones):
         return zone_based_loss(predicted, gold, zones, lambda x: -x)
     
+    
+def safe_neglog(t):
+    #t = t.clamp(min=0.000001)
+    return -torch.log(t)
+    
 class NLLLossWithZones:
         
     def __call__(self, predicted, gold, zones):
-        return zone_based_loss(predicted, gold, zones, lambda x: -torch.log(x))
+        return zone_based_loss(predicted, gold, zones, safe_neglog)
     
     
     

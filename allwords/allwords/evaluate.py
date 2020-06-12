@@ -1,6 +1,6 @@
 import torch
 
-LARGE_NEGATIVE = -10000000
+LARGE_NEGATIVE = float('-inf')
 
 def predict(distribution):
     return distribution.argmax()
