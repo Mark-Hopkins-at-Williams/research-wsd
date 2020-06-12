@@ -23,9 +23,9 @@ def main(data_dir):
     py_curve = precision_yield_curve(net, dev_loader)
     print(py_curve)
     return py_curve
-    #plot_py_curve(py_curve)
     
     
 if __name__ == "__main__":
     data_dir = sys.argv[1]    
-    main(data_dir)
+    curve = main(data_dir)
+    plot_py_curve(curve)

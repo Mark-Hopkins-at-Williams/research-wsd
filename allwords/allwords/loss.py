@@ -51,16 +51,12 @@ class LossWithZones:
     
     def __call__(self, predicted, gold, zones):
         return zone_based_loss(predicted, gold, zones, lambda x: -x)
-    
-    
-def safe_neglog(t):
-    #t = t.clamp(min=0.000001)
-    return -torch.log(t)
+
     
 class NLLLossWithZones:
         
     def __call__(self, predicted, gold, zones):
-        return zone_based_loss(predicted, gold, zones, safe_neglog)
+        return zone_based_loss(predicted, gold, zones, -torch.log)
     
     
     
