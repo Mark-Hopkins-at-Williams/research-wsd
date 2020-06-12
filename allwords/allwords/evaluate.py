@@ -3,6 +3,7 @@ import json
 import os
 from os.path import join
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 
 LARGE_NEGATIVE = -10000000
@@ -82,14 +83,29 @@ def py_curve(predictor, gold, thresholds):
         pys[thres] = (precision, y)
     return pys    
 
-def precision_yield_curve(net, data, 
-                          jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")):
+def precision_yield_curve(net, data):
     def predictor_fn(thres):
         result = list(decode(net, data, thres))
         return [pred for (_, _, pred, _) in result]        
-    thresholds = range(0, 101, 5)
+    thresholds = [x / 100 for x in range(0, 101, 5)]
     decoded = list(decode(net, data, 0))
     gold = [g for (_, _, _, g) in decoded]
-    curve = py_curve(predictor_fn, gold, thresholds)
+    return py_curve(predictor_fn, gold, thresholds)
+
+def plot_py_curve(py_curve):
+    thresholds = sorted(py_curve.keys())
+    x = [py_curve[thres][1] for thres in thresholds]
+    y = [py_curve[thres][0] for thres in thresholds]    
+    fig = plt.figure()
+    fig.subplots_adjust(top=0.8)
+    ax1 = fig.add_subplot(211)
+    ax1.set_title('Precision-Recall Curve')
+    ax1.set_ylabel('precision')
+    ax1.set_xlabel('recall')
+    ax1.plot(x, y)
+
+    
+def save_py_curve(curve):
+    jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")    
     with open(jsonfile, "w") as f:
         json.dump(curve, f)
