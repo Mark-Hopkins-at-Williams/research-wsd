@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from os.path import join
 import torch
 from torch import optim
-from evaluate import evaluate, decode, confidence_analysis
+from evaluate import evaluate, decode
 from allwords.networks import AffineClassifier, DropoutClassifier
 from allwords.util import cudaify, Logger
 from allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
@@ -13,7 +13,7 @@ from allwords.vectorize import DiskBasedVectorManager
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 def train_all_words_classifier(train_loader, dev_loader, logger):
-    n_epochs = 1
+    n_epochs = 20
     learning_rate = 0.001
     logger('Training classifier.\n')   
     input_size = 768 # TODO: what is it in general?
@@ -26,11 +26,11 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
     best_acc = 0.0
     for epoch in range(n_epochs):      
         train_batches = train_loader.batch_iter()
-        logger("  Epoch {} Accuracy = ".format(epoch))       
+        print("  Epoch {} Accuracy = ".format(epoch))       
         running_loss = 0.0
         total_train_loss = 0.0
         net.train()
-        loss = torch.nn.NLLLoss() 
+        loss = torch.nn.CrossEntropyLoss() 
         for i, (_, _, evidence, response, zones) in enumerate(train_batches): 
             optimizer.zero_grad()
             outputs = net(evidence)
@@ -39,17 +39,19 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
             optimizer.step()
             running_loss += loss_size.data.item()
             total_train_loss += loss_size.data.item()   
+            """
             if i % 100 == 0:
                 acc = evaluate(net, dev_loader)
                 print(acc)                
+            """
         net.eval()
         acc = evaluate(net, dev_loader)
         if acc > best_acc:
             best_net = net
             best_acc = acc
         net.train()
-        logger("{:.2f}\n".format(acc))
-    logger("  ...best accuracy = {:.2f}".format(best_acc))
+        print("{:.2f}\n".format(acc))
+    print("  ...best accuracy = {:.2f}".format(best_acc))
     return best_net
 
 
