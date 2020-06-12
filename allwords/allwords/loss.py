@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 def zone_based_loss(predicted, gold, zones, f):
     """
@@ -36,6 +37,7 @@ def zone_based_loss(predicted, gold, zones, f):
         -0.675
     
     """
+    predicted = F.softmax(predicted.clamp(min=-5.0).clamp(max=5.0), dim=1)
     revised_pred = torch.zeros(predicted.shape)
     for i, (zone_start, zone_stop) in enumerate(zones):
         normalizer = sum(predicted[i, zone_start:zone_stop])

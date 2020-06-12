@@ -28,7 +28,6 @@ def yielde(predicted_labels, gold_labels):
     n_correct = (preds == gold).double().sum().item()
     return n_correct, len(predicted_labels)
     
-
 def apply_zone_masks(outputs, zones):
     revised = torch.empty(outputs.shape)
     revised = revised.fill_(LARGE_NEGATIVE)

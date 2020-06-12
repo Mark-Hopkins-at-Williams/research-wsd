@@ -13,7 +13,7 @@ from allwords.loss import NLLLossWithZones
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 def train_all_words_classifier(train_loader, dev_loader, logger):
-    n_epochs = 20
+    n_epochs = 10
     learning_rate = 0.001
     logger('Training classifier.\n')   
     input_size = 768 # TODO: what is it in general?
