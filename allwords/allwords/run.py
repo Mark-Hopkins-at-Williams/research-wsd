@@ -8,7 +8,7 @@ from allwords.networks import AffineClassifier, DropoutClassifier
 from allwords.util import cudaify, Logger
 from allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
 from allwords.vectorize import DiskBasedVectorManager
-
+from allwords.loss import NLLLossWithZones
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -30,20 +30,20 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
         running_loss = 0.0
         total_train_loss = 0.0
         net.train()
-        loss = torch.nn.CrossEntropyLoss() 
+        #loss = torch.nn.CrossEntropyLoss() 
+        loss = NLLLossWithZones() 
         for i, (_, _, evidence, response, zones) in enumerate(train_batches): 
             optimizer.zero_grad()
             outputs = net(evidence)
-            loss_size = loss(outputs, response)
+            loss_size = loss(outputs, response, zones)
             loss_size.backward()
+            #torch.nn.utils.clip_grad_norm_(net.parameters(), 0.1)
             optimizer.step()
             running_loss += loss_size.data.item()
             total_train_loss += loss_size.data.item()   
-            """
-            if i % 100 == 0:
+            if i % 1000 == 0:
                 acc = evaluate(net, dev_loader)
                 print(acc)                
-            """
         net.eval()
         acc = evaluate(net, dev_loader)
         if acc > best_acc:

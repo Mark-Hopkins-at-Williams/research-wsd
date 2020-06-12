@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 
-LARGE_NEGATIVE = -10000000
+LARGE_NEGATIVE = float('-inf')
 ABSTAIN = -1.0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
