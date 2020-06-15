@@ -7,7 +7,7 @@ class Logger:
     
     def __call__(self, msg):
         if self.verbose:
-            sys.stdout.write(msg)
+            print(msg)
 
 
 def cudaify(x):
