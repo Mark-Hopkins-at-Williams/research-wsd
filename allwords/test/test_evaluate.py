@@ -1,6 +1,8 @@
 import unittest
+import torch
 from torch import tensor
 from allwords.evaluate import predict, accuracy, yielde, ABSTAIN, py_curve
+from allwords.evaluate import apply_zone_masks
 
 class TestEvaluate(unittest.TestCase):
     
@@ -68,6 +70,14 @@ class TestEvaluate(unittest.TestCase):
                    0.5: (0.8, 0.4)}
         assert py_curve(predictor, gold, [0.1, 0.3, 0.5]) == expected
 
-
+    def test_apply_zone_masks(self):
+        t = tensor([[0.2, 0.2, 0.1, 0.05, 0.45],
+                    [0.2, 0.4, 0.1, 0.2, 0.1]])      
+        zones = [(0, 3), (2, 5)]
+        expected = tensor([[0.4000, 0.4000, 0.2000, 0.0000, 0.0000],
+                           [0.0000, 0.0000, 0.2500, 0.5000, 0.2500]])
+        assert torch.all(torch.eq(expected, apply_zone_masks(t, zones)))
+        
+        
 if __name__ == "__main__":
 	unittest.main()
