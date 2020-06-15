@@ -34,6 +34,8 @@ def apply_zone_masks(outputs, zones):
     for row in range(len(zones)):
         (start, stop) = zones[row]
         revised[row][start:stop] = outputs[row][start:stop]
+        normalized = F.normalize(revised[row][start:stop], dim=-1)
+        revised[row][start:stop] = normalized
     return revised
 
 def decode(net, data, threshold=LARGE_NEGATIVE):
@@ -51,6 +53,7 @@ def decode(net, data, threshold=LARGE_NEGATIVE):
         val_outputs = F.softmax(val_outputs, dim=1)
         revised = apply_zone_masks(val_outputs, zones)
         maxes, preds = revised.max(dim=-1)
+        print(maxes)
         below_threshold_idx = (maxes < threshold)
         preds[below_threshold_idx] = ABSTAIN
         for element in zip(inst_ids, 
