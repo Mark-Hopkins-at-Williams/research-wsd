@@ -15,16 +15,16 @@ def predict(distribution):
 
 def accuracy(predicted_labels, gold_labels):
     assert(len(predicted_labels) == len(gold_labels))
-    preds = torch.tensor(predicted_labels)
-    gold = torch.tensor(gold_labels)
+    preds = torch.tensor(predicted_labels).double()
+    gold = torch.tensor(gold_labels).double()
     n_confident = (preds != ABSTAIN).double().sum().item()
     n_correct = (preds == gold).double().sum().item()
     return n_correct, n_confident
 
 def yielde(predicted_labels, gold_labels):
     assert(len(predicted_labels) == len(gold_labels))
-    preds = torch.tensor(predicted_labels)
-    gold = torch.tensor(gold_labels)
+    preds = torch.tensor(predicted_labels).double()
+    gold = torch.tensor(gold_labels).double()
     n_correct = (preds == gold).double().sum().item()
     return n_correct, len(predicted_labels)
     
@@ -105,6 +105,9 @@ def plot_py_curve(py_curve):
 
     
 def save_py_curve(curve):
+    confidence_path = join(file_dir, "../confidence")
+    if not os.path.isdir(confidence_path):
+        os.mkdir(confidence_path)
     jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")    
     with open(jsonfile, "w") as f:
         json.dump(curve, f)

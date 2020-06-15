@@ -13,7 +13,7 @@ from allwords.loss import NLLLossWithZones
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 def train_all_words_classifier(train_loader, dev_loader, logger):
-    n_epochs = 20
+    n_epochs = 30
     learning_rate = 0.001
     logger('Training classifier.\n')   
     input_size = 768 # TODO: what is it in general?
@@ -74,7 +74,10 @@ if __name__ == '__main__':
     train_loader = SenseInstanceLoader(ds, batch_size)
     dev_loader = init_dev_loader(data_dir, batch_size)
     net = train_all_words_classifier(train_loader, dev_loader, logger)  
-    torch.save(net.state_dict(), join(file_dir, "../saved/bert_simple.pt")) 
+    save_path = join(file_dir, "../saved")
+    if not os.path.isdir(save_path):
+        os.mkdir(save_path)
+    torch.save(net.state_dict(), join(save_path, "bert_simple.py")) 
     predictions = decode(net, dev_loader) 
     results = []
     for inst_id, target, predicted_sense_index, _ in predictions:

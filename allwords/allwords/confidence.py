@@ -2,7 +2,7 @@ import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from os.path import join
 import torch
-from evaluate import precision_yield_curve, plot_py_curve
+from evaluate import precision_yield_curve, plot_py_curve, save_py_curve
 from allwords.networks import AffineClassifier
 from allwords.util import cudaify
 from allwords.run import init_dev_loader
@@ -29,3 +29,4 @@ if __name__ == "__main__":
     data_dir = sys.argv[1]    
     curve = main(data_dir)
     plot_py_curve(curve)
+    save_py_curve(curve)

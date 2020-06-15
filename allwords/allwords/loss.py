@@ -37,7 +37,7 @@ def zone_based_loss(predicted, gold, zones, f):
         -0.675
     
     """
-    predicted = F.softmax(predicted.clamp(min=-5.0).clamp(max=5.0), dim=1)
+    predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
     revised_pred = torch.zeros(predicted.shape)
     for i, (zone_start, zone_stop) in enumerate(zones):
         normalizer = sum(predicted[i, zone_start:zone_stop])
@@ -56,7 +56,7 @@ class LossWithZones:
 class NLLLossWithZones:
         
     def __call__(self, predicted, gold, zones):
-        return zone_based_loss(predicted, gold, zones, -torch.log)
+        return zone_based_loss(predicted, gold, zones, lambda x: -torch.log(x))
     
     
     
