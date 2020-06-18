@@ -97,20 +97,25 @@ class SenseTaggedSentences(Dataset):
         return len(self.st_sents)   
 
     @staticmethod
-    def from_json_str(json_str, corpus_id):        
-        st_sents = json.loads(json_str)
-        return SenseTaggedSentences(st_sents['corpora'][corpus_id], 
-                                    st_sents['inventory'])
-
-    @staticmethod
-    def from_json(json_file, corpus_id):
-        with open(json_file) as reader:
-            st_sents = json.load(reader)        
+    def from_json_dict(st_sents, corpus_id):
         sents = st_sents['corpora'][corpus_id]['sents']
         inv = st_sents['inventory']
         n_insts = st_sents['corpora'][corpus_id]['n_insts']
         result = SenseTaggedSentences(sents, inv, n_insts)
         return result
+       
+
+    @staticmethod
+    def from_json_str(json_str, corpus_id):        
+        st_sents = json.loads(json_str)
+        return SenseTaggedSentences.from_json_dict(st_sents, corpus_id)
+
+    @staticmethod
+    def from_json(json_file, corpus_id):
+        with open(json_file) as reader:
+            st_sents = json.load(reader)        
+        return SenseTaggedSentences.from_json_dict(st_sents, corpus_id)
+
 
 
 class SenseInstance:
@@ -178,22 +183,29 @@ class SenseInstance:
 
 class SenseInstanceDataset(Dataset):
 
-    def __init__(self, st_sents, vec_manager):
+    def __init__(self, st_sents, vec_manager, randomize_sents = True):
         self.st_sents = st_sents
         self.vec_manager = vec_manager
         self.instance_index = 0
         self.instance_iter = self.item_iter()
-        self.current_instance = next(self.instance_iter)
+        self.randomize_sents = randomize_sents
         self.num_insts = self.st_sents.get_n_insts()
+        self.current_instance = next(self.instance_iter)
 
     def onehot(self, sense):
         return self.st_sents.onehot(sense)
 
     def get_inventory(self):
         return self.st_sents.get_inventory()
+    
+    def set_randomize_sents(self, value):
+        self.randomize_sents = value
          
     def item_iter(self):
-        for i, index in enumerate(random.shuffle(range(len(self.st_sents)))):            
+        sent_ids = list(range(len(self.st_sents)))
+        if self.randomize_sents:
+            random.shuffle(sent_ids)
+        for i, index in enumerate(sent_ids):            
             st_sent = self.st_sents[index] 
             vecs = self.vec_manager.get_vector(st_sent['sentid'])
             old_toks = [wd['word'] for wd in st_sent['words']]    
