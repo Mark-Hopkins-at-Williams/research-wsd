@@ -89,7 +89,7 @@ def evaluate(net, data):
     correct, total = accuracy(predictions, gold)
     return correct/total
 
-"""
+
 def py_curve(predictor, gold, thresholds):
     pys = {}
     for thres in thresholds:
@@ -100,7 +100,7 @@ def py_curve(predictor, gold, thresholds):
         y = n_correct / n_all
         pys[thres] = (precision, y)
     return pys    
-"""
+
 
 def precision_yield_curve(net, data):
     decoded = list(decode(net, data))

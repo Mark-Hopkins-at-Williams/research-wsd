@@ -70,7 +70,7 @@ def vectorize_json(json_file, vectorizer, vector_dir):
         sents = json.load(f)
         for corpus in sents['corpora']:
             writer = DiskBasedVectorManager(join(vector_dir, corpus))
-            vectorize_sents(sents['corpora'][corpus], vectorizer, writer)
+            vectorize_sents(sents['corpora'][corpus]['sents'], vectorizer, writer)
         
 if __name__ == '__main__':
     vectorize_json(sys.argv[1], bert.BertSentenceVectorizer(), sys.argv[2])

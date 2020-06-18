@@ -29,22 +29,26 @@ class TestWordsense(unittest.TestCase):
                                    'screen': ['screen%2']},
                      'corpora': 
                          {'corpus1':
-                            [{'sentid': 37163, 
-                             'words': [{'word': 'It', 'tag': 'PRP'}, 
-                                       {'word': 'was', 'tag': 'VB', 
-                                        'sense': 'be%1', 'id': 'i1'}, 
-                                       {'word': 'a', 'tag': 'DT'}, 
-                                       {'word': 'disaster', 'tag': 'NN'}, 
-                                       {'word': '!', 'tag': 'punc'}]},
-                            {'sentid': 37165, 
-                             'words': [{'word': 'He', 'tag': 'PRP'}, 
-                                       {'word': 'was', 'tag': 'VBD'}, 
-                                       {'word': 'laughed_off', 'tag': 'VB', 
-                                        'sense': 'laugh_off%1', 'id': 'i1'}, 
-                                       {'word': 'the', 'tag': 'DT'}, 
-                                       {'word': 'screen', 'tag': 'NN', 
-                                        'sense': 'screen%2', 'id': 'i1'}, 
-                                       {'word': '.', 'tag': 'punc'}]}]}}            
+                            {'sents':
+                                [{'sentid': 37163, 
+                                 'words': [{'word': 'It', 'tag': 'PRP'}, 
+                                           {'word': 'was', 'tag': 'VB', 
+                                            'sense': 'be%1', 'id': 'i1'}, 
+                                           {'word': 'a', 'tag': 'DT'}, 
+                                           {'word': 'disaster', 'tag': 'NN'}, 
+                                           {'word': '!', 'tag': 'punc'}]},
+                                {'sentid': 37165, 
+                                 'words': [{'word': 'He', 'tag': 'PRP'}, 
+                                           {'word': 'was', 'tag': 'VBD'}, 
+                                           {'word': 'laughed_off', 'tag': 'VB', 
+                                            'sense': 'laugh_off%1', 'id': 'i1'}, 
+                                           {'word': 'the', 'tag': 'DT'}, 
+                                           {'word': 'screen', 'tag': 'NN', 
+                                            'sense': 'screen%2', 'id': 'i1'}, 
+                                           {'word': '.', 'tag': 'punc'}]}],
+                             'n_insts': 3                            
+                            }
+                            }}            
         self.sents = wordsense.SenseTaggedSentences.from_json_str(json.dumps(self.data),
                                                         corpus_id = "corpus1")
      
@@ -87,16 +91,17 @@ class TestWordsense(unittest.TestCase):
         assert(len(sents) == 2)
         #assert(sents.num_senses() == 3)
         corpus1 = data['corpora']['corpus1']
-        sent0 = corpus1[0]
+        sent0 = corpus1['sents'][0]
         assert(sent0['sentid'] == 37163)
-        sent1 = corpus1[1]
+        sent1 = corpus1['sents'][1]
         assert(sent1['sentid'] == 37165)
         assert(sent1['words'][2]['word'] == 'laughed_off')
         assert(sent1['words'][2]['tag'] == 'VB')
         assert(sent1['words'][2]['sense'] == 'laugh_off%1')
  
     def test_sense_instance_dataset(self):
-        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr)
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr,
+                                                 randomize_sents = False)
         sense_inst0 = dataset[0]
         assert(sense_inst0.sense == 'be%1')
         assert(sense_inst0.tokens ==  ['It', 'was', 'a', 'disaster', '!'])
@@ -119,7 +124,8 @@ class TestWordsense(unittest.TestCase):
                                   [61.1, 62.1, 63.1]))       
  
     def test_sense_instance_loader(self):
-        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr)
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr,
+                                                 randomize_sents = False)
         loader = wordsense.SenseInstanceLoader(dataset, batch_size = 1)
         batch_iter = loader.batch_iter()
         _, _, evid, resp, _ = next(batch_iter)
@@ -139,7 +145,8 @@ class TestWordsense(unittest.TestCase):
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
         
     def test_sense_instance_loader2(self):
-        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr)
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr,
+                                                 randomize_sents = False)
         loader = wordsense.SenseInstanceLoader(dataset, batch_size = 2)
         batch_iter = loader.batch_iter()
         _, _, evid, resp, _ = next(batch_iter)
