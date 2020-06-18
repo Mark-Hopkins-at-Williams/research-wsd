@@ -6,7 +6,7 @@ class TestRaganato(unittest.TestCase):
           
     def test_harvest_data(self):
         inventory = create_sense_inventory(['test/testdata/raganato1.key.txt'])
-        result = harvest_data('test/testdata/raganato1.xml', 
+        result, n_insts = harvest_data('test/testdata/raganato1.xml', 
                               'test/testdata/raganato1.key.txt',
                               inventory)
         sents = result
@@ -21,6 +21,7 @@ class TestRaganato(unittest.TestCase):
                            {'word': 'is', 'tag': 'VERB'}, 
                            {'word': 'gold', 'tag': 'ADJ', 
                             'sense': 'gold%2:31:00::', 'id': 'd000.s000.t002'}]
+        expected_n_insts0 = 3
         assert(sents[0]['words'] == expected_words0)        
         expected_words1 = [{'word': 'gold', 'tag': 'NOUN', 
                             'sense': 'gold%1:09:00::', 'id': 'd000.s001.t000'}, 
@@ -31,7 +32,10 @@ class TestRaganato(unittest.TestCase):
                             'sense': 'mountain%1:21:00::', 'id': 'd000.s001.t001'}, 
                            {'word': 'top', 'tag': 'NOUN', 
                             'sense': 'top%3:00:02::', 'id': 'd000.s001.t002'}]
+        expected_n_insts1 = 3
         assert(sents[1]['words'] == expected_words1)
+        print(n_insts)
+        assert(n_insts == 6)
 
     def test_create_sense_inventory(self):
         inventory = create_sense_inventory(['test/testdata/raganato1.key.txt', 

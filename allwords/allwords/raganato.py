@@ -74,12 +74,15 @@ def parse_raganato_xml_sent(sent_node, sense_map):
 def parse_raganato_xml(xmldoc, sense_map):
     corpora = xmldoc.getElementsByTagName('corpus')
     output_sents = []
+    n_insts = 0
     for corpus in corpora:
         for node in corpus.childNodes:
             if node.nodeName == "text":
                 for sent_node in node.childNodes:
                     if sent_node.nodeName == "sentence":
-                        sent = parse_raganato_xml_sent(sent_node, sense_map)                 
+                        sent = parse_raganato_xml_sent(sent_node, sense_map) 
+                        for w in sent['words']:
+                            if 'sense' in w.keys(): n_insts += 1
                         sent['sentid'] = len(output_sents)
                         output_sents.append(sent)
                     elif sent_node.nodeName == "#text" and sent_node.nodeValue == '\n':
@@ -90,7 +93,7 @@ def parse_raganato_xml(xmldoc, sense_map):
                 pass
             else:
                 print('Warning: element {} not recognized!'.format(node.nodeName))
-    return output_sents
+    return output_sents, n_insts
 
 
 class Token:
@@ -115,15 +118,16 @@ class Token:
 def harvest_data(xml_file, gold_file, inventory):
     xmldoc = minidom.parse(xml_file)    
     sense_map = parse_raganato_gold(gold_file, inventory)
-    output_sents = parse_raganato_xml(xmldoc, sense_map)
-    return output_sents
+    output_sents, n_insts = parse_raganato_xml(xmldoc, sense_map)
+    return output_sents, n_insts
 
 
 def harvest_multi(xml_files, gold_files):
     inventory = create_sense_inventory(gold_files)
     corpora = dict()
     for xml_file, gold_file in zip(xml_files, gold_files):
-        corpora[xml_file] = harvest_data(xml_file, gold_file, inventory)
+        output_sents, n_insts = harvest_data(xml_file, gold_file, inventory)
+        corpora[xml_file] = {'sents': output_sents, 'n_insts': n_insts}
     result = {'inventory': inventory, 'corpora': corpora}
     return result
 

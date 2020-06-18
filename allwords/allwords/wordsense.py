@@ -2,6 +2,7 @@ import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import json
 import torch
+import random
 from torch import tensor
 from torch.utils.data import Dataset
 from allwords import util
@@ -73,9 +74,10 @@ class SenseInventory:
         
 class SenseTaggedSentences(Dataset):
 
-    def __init__(self, st_sents, inventory):
+    def __init__(self, st_sents, inventory, n_insts):
         self.st_sents = st_sents
         self.inventory = SenseInventory(inventory)
+        self.n_insts = n_insts
 
     def onehot(self, sense):
         result = torch.zeros(self.num_senses())
@@ -84,6 +86,9 @@ class SenseTaggedSentences(Dataset):
 
     def get_inventory(self):
         return self.inventory
+
+    def get_n_insts(self):
+        return self.n_insts
 
     def __getitem__(self, index):
         return self.st_sents[index]
@@ -101,8 +106,10 @@ class SenseTaggedSentences(Dataset):
     def from_json(json_file, corpus_id):
         with open(json_file) as reader:
             st_sents = json.load(reader)        
-        result = SenseTaggedSentences(st_sents['corpora'][corpus_id], 
-                                      st_sents['inventory'])
+        sents = st_sents['corpora'][corpus_id]['sents']
+        inv = st_sents['inventory']
+        n_insts = st_sents['corpora'][corpus_id]['n_insts']
+        result = SenseTaggedSentences(sents, inv, n_insts)
         return result
 
 
@@ -177,7 +184,7 @@ class SenseInstanceDataset(Dataset):
         self.instance_index = 0
         self.instance_iter = self.item_iter()
         self.current_instance = next(self.instance_iter)
-        self.num_insts = 250000 # TODO: fix this by changing raganato.py to store num sense instances
+        self.num_insts = self.st_sents.get_n_insts()
 
     def onehot(self, sense):
         return self.st_sents.onehot(sense)
@@ -186,7 +193,7 @@ class SenseInstanceDataset(Dataset):
         return self.st_sents.get_inventory()
          
     def item_iter(self):
-        for i, index in enumerate(range(len(self.st_sents))):            
+        for i, index in enumerate(random.shuffle(range(len(self.st_sents)))):            
             st_sent = self.st_sents[index] 
             vecs = self.vec_manager.get_vector(st_sent['sentid'])
             old_toks = [wd['word'] for wd in st_sent['words']]    
