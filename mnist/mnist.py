@@ -1,3 +1,9 @@
+"""
+Code adapted from:
+https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
+
+"""
+
 import numpy as np
 import torch
 import torchvision
@@ -7,10 +13,13 @@ from torchvision import datasets, transforms
 from torch import nn, optim
 import os
 from util import cudaify
-from loss import NLLA
+from loss import NLLA, AWNLL, CAWNLL
+from torch.nn import NLLLoss
 import json
+from os.path import join
 
-join = os.path.join
+
+# TODO: refactor this into something more modular
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = join(file_dir, "data")
@@ -53,17 +62,20 @@ def FFN():
                           nn.LogSoftmax(dim=1))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
-    print("device:", device)
     return model
 
 def confuse(labels):
+    labels = labels.clone()
     one_and_sevens = (labels == 1) + (labels == 7)
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 2, one_seven_shape)
     new_labels[new_labels == 0] = 7
+    print(new_labels)
+    print(labels)
     labels[one_and_sevens] = new_labels
+    return labels
 
-def train(criterion, a, b):
+def train(criterion):
     model = FFN()
     optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
     time0 = time()
@@ -78,8 +90,8 @@ def train(criterion, a, b):
             # Training pass
             optimizer.zero_grad()
                                                                 
-            output = model(images.cuda())
-            loss = criterion(output, labels.cuda())
+            output = model(cudaify(images))
+            loss = criterion(output, cudaify(labels))
                                                                                         
             #This is where the model learns by backpropagating
             loss.backward()
@@ -88,14 +100,14 @@ def train(criterion, a, b):
             optimizer.step()
                                                                                                                                         
             running_loss += loss.item()
-        
-        print("Epoch {} - Training loss: {}".format(e, running_loss/len(trainloader)))
+        _, acc = validate_and_analyze(model, criterion)
+        print("Epoch {} - Training loss: {}; Dev accuracy: {}".format(e, 
+                                                                      running_loss/len(trainloader),
+                                                                      acc))
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
     torch.save(model.state_dict(), join(model_dir, "params.pt"))
 
-def validate_and_analyze(criterion, a, b):
-    model = FFN()
-    model.load_state_dict(torch.load(join(model_dir, "params.pt")))
+def validate_and_analyze(model, criterion):
     correct_count, all_count = 0, 0
     data_dict = {}
     for i in range(output_size):
@@ -105,9 +117,10 @@ def validate_and_analyze(criterion, a, b):
             img = images[i].view(1, 784)
             # Turn off gradients to speed up this part
             with torch.no_grad():
-                logps = model(img.cuda())
+                logps = model(cudaify(img))
 
-            # Output of the network are log-probabilities, need to take exponential for probabilities
+            # Output of the network are log-probabilities, need to take 
+            # exponential for probabilities
             ps = torch.exp(logps)
             probab = list(ps.cpu().numpy()[0])
             pred_label = probab.index(max(probab))
@@ -115,22 +128,27 @@ def validate_and_analyze(criterion, a, b):
             if (pred_label == ABSTAIN):
                 data_dict[true_label][2] += 1
             elif (true_label == pred_label):
+                correct_count += 1
                 data_dict[true_label][0] += 1
             else:
                 data_dict[true_label][1] += 1 
+            all_count += 1
     print(data_dict)
-    fname = criterion.__name__ + "_" + str(a) + str(b)
-    with open(join(validation_dir, fname), "w") as f:
-        json.dump(data_dict, f)
-    return data_dict
+    return data_dict, correct_count / all_count
+
+
 
 if __name__ == "__main__":
-    ab = [[1,1], [2,1], [3,1], [4,1], [5,1]]
-    criterions = [AWNLL(), CAWNLL()]
+    ab = [[1,1]]#, [2,1], [3,1], [4,1], [5,1]]
+    criterions = [NLLLoss()] #AWNLL(), CAWNLL()]
     for c in criterions:
-        for pair in ab:
-            a = pair[0]
-            b = pair[1]
-            train(c, a, b)
-            validate_and_analyze(c, a, b)
+        for (a,b) in ab:
+            train(c)
+            model = FFN()
+            model.load_state_dict(torch.load(join(model_dir, "params.pt")))
+            data_dict = validate_and_analyze(model, c, a, b)
+            fname = c.__name__ + "_" + str(a) + str(b)
+            with open(join(validation_dir, fname), "w") as f:
+                json.dump(data_dict, f)
+
 

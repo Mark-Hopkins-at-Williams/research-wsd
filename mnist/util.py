@@ -6,6 +6,6 @@ def cudaify(x):
             cuda = torch.device('cuda:2')
         else:
             cuda = torch.device('cuda:0')
-            return x.cuda(cuda)
+        return x.cuda(cuda)
     else: 
         return x
