@@ -1,11 +1,12 @@
 import unittest
 import os
+import math
 from os.path import join
 import sys
 file_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(1, join(file_dir, ".."))
 import torch
-from loss import NLLA, AWNLL, CAWNLL
+from loss import NLLA, AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL
 from mnist import confuse
 
 class Test(unittest.TestCase):
@@ -19,14 +20,18 @@ class Test(unittest.TestCase):
         logpreds = torch.log(preds)
         criterion = NLLA()
         expected_loss = (1.4485 + 0.96318 + 0.46051) / 3
-        loss = criterion(logpreds, gold, abstain_i=4).item()
+        loss = criterion(logpreds, gold, abstain_i=4)
         assert (round(loss * 1000) / 1000 == round(expected_loss * 1000) / 1000)
 
     def test_confuse(self):
+        torch.manual_seed(1234567)
         labels = torch.tensor([4, 2, 9, 0, 1, 8, 0, 1, 7, 7])
-        # print(labels)
-        new_labels = confuse(labels)
-        #print(labels)
+        new_labels1 = confuse(labels)
+        new_labels2 = confuse(labels)
+        new_labels3 = confuse(labels)
+        assert(new_labels1.equal(torch.tensor([4, 2, 9, 0, 1, 8, 0, 1, 7, 7])))
+        assert(new_labels2.equal(torch.tensor([4, 2, 9, 0, 1, 8, 0, 7, 7, 1])))
+        assert(new_labels3.equal(torch.tensor([4, 2, 9, 0, 7, 8, 0, 1, 7, 7])))
 
     def test_awnll(self):
         pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # 0.2, 0.1
@@ -35,16 +40,17 @@ class Test(unittest.TestCase):
         gold = torch.tensor([1, 2, 3])
         preds = torch.tensor([pred1, pred2, pred3])
         logpreds = torch.log(preds)
-        criterion = AWNLL()
 
         a1, b1 = 1, 1
+        criterion = AWNLL(a1, b1)
         expected_loss1 = (1.89712 + 1.38629 + 0.78746) / 3
-        loss = criterion(logpreds, gold, a1, b1,  abstain_i=4).item()
+        loss = criterion(logpreds, gold, abstain_i=4).item()
         assert (round(loss * 1000) / 1000 == round(expected_loss1 * 1000) / 1000)
 
         a2, b2 = 2, 1
+        criterion = AWNLL(a2, b2)
         expected_loss2 = (1.79176 + 1.32176 + 1.18199) / 3
-        loss = criterion(logpreds, gold, a2, b2,  abstain_i=4).item()
+        loss = criterion(logpreds, gold, abstain_i=4).item()
         assert (round(loss * 1000) / 1000 == round(expected_loss2 * 1000) / 1000)
 
     def test_cawnll(self):
@@ -54,18 +60,57 @@ class Test(unittest.TestCase):
         gold = torch.tensor([1, 2, 3])
         preds = torch.tensor([pred1, pred2, pred3])
         logpreds = torch.log(preds)
-        criterion = CAWNLL()
         
         a1, b1 = 1, 1
+        criterion = CAWNLL(a1, b1)
         expected_loss1 = (1.69909 + 1.10775 + 0.75099) / 3
-        loss = criterion(logpreds, gold, a1, b1,  abstain_i=4).item()
+        loss = criterion(logpreds, gold, abstain_i=4).item()
         assert (round(loss * 1000) / 1000 == round(expected_loss1 * 1000) / 1000)
 
         a2, b2 = 2, 1
+        criterion = CAWNLL(a2, b2)
         expected_loss2 = (1.66830 + 1.13881 + 1.14591) / 3
-        loss = criterion(logpreds, gold, a2, b2,  abstain_i=4).item()
+        loss = criterion(logpreds, gold, abstain_i=4).item()
         assert (round(loss * 1000) / 1000 == round(expected_loss2 * 1000) / 1000)
+
+    def test_cranll(self):
+        pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # -log(0.2)
+        pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # -log(0.3)
+        pred3 = [0.05, 0.02, 0.02, 0.01, 0.9] # -log(0.5)
+        gold = torch.tensor([1, 2, 3])
+        preds = torch.tensor([pred1, pred2, pred3])
+        logpreds = torch.log(preds)
+        p0 = 0.5
+        criterion = CRANLL(p0)
+        expected_loss = (-math.log(0.2) + -math.log(0.3) + -math.log(p0)) / 3
+        loss = criterion(logpreds, gold, 4).item()
+        assert (round(loss * 1000) / 1000 == round(expected_loss * 1000) / 1000)
         
+    def test_lranll(self):
+        pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # -log(0.2)
+        pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # -log(0.3)
+        pred3 = [0.05, 0.02, 0.02, 0.01, 0.9] # -log(0.9)
+        gold = torch.tensor([1, 2, 3])
+        preds = torch.tensor([pred1, pred2, pred3])
+        logpreds = torch.log(preds)
+        expected_loss = - (math.log(0.2) + math.log(0.3) + math.log(0.9)) / 3
+        
+        criterion = LRANLL()
+        loss = criterion(logpreds, gold, abstain_i=4).item()
+        assert (round(loss * 1000) / 1000 == round(expected_loss * 1000) / 1000)
+
+    def test_cabnll(self):
+        pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # -log(0.2)
+        pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # -log(0.3)
+        pred3 = [0.05, 0.02, 0.02, 0.01, 0.9] # c = 0.8338
+        gold = torch.tensor([1, 2, 3])
+        preds = torch.tensor([pred1, pred2, pred3])
+        logpreds = torch.log(preds)
+        expected_loss = (-math.log(0.2) - math.log(0.3) - math.log (0.9 - 0.8338)) / 3
+
+        criterion = CABNLL()
+        loss = criterion(logpreds, gold, abstain_i=4).item()
+        assert (round(loss * 1000) / 1000 == round(expected_loss * 1000) / 1000)
 
 
 
