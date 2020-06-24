@@ -4,16 +4,13 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 
 """
 
-import numpy as np
 import torch
-import torchvision
-import matplotlib.pyplot as plt
 from time import time
 from torchvision import datasets, transforms
 from torch import nn, optim
 import os
 from util import cudaify
-from loss import NLLA, AWNLL, CAWNLL
+from loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
 from torch.nn import NLLLoss
 import json
 from os.path import join
@@ -59,7 +56,7 @@ def FFN():
                           nn.Linear(hidden_sizes[0], hidden_sizes[1]),
                           nn.ReLU(),
                           nn.Linear(hidden_sizes[1], output_size),
-                          nn.LogSoftmax(dim=1))
+                          nn.Softmax(dim=1))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     return model
@@ -70,8 +67,6 @@ def confuse(labels):
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 2, one_seven_shape)
     new_labels[new_labels == 0] = 7
-    print(new_labels)
-    print(labels)
     labels[one_and_sevens] = new_labels
     return labels
 
@@ -81,12 +76,14 @@ def train(criterion):
     time0 = time()
     epochs = 15
     for e in range(epochs):
+        if e == 2:
+            criterion.p0 = 0.5
         running_loss = 0
         for images, labels in trainloader:
             # Flatten MNIST images into a 784 long vector
             images = images.view(images.shape[0], -1)
             # randomly assign labels between 1 and 7
-            confuse(labels)
+            labels = confuse(labels)
             # Training pass
             optimizer.zero_grad()
                                                                 
@@ -140,7 +137,7 @@ def validate_and_analyze(model, criterion):
 
 if __name__ == "__main__":
     ab = [[1,1]]#, [2,1], [3,1], [4,1], [5,1]]
-    criterions = [NLLLoss()] #AWNLL(), CAWNLL()]
+    criterions = [ConfidenceLoss1(0)] #AWNLL(), CAWNLL()]
     for c in criterions:
         for (a,b) in ab:
             train(c)
