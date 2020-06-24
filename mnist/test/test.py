@@ -9,6 +9,10 @@ from loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
 from mnist import confuse
 
 class Test(unittest.TestCase):
+    
+    def close_enough(self, x, y):
+        return (round(x * 1000) / 1000 == round(y * 1000) / 1000)
+    
     def test_nlla(self):
         pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # loss = 1.4485
         pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # loss = 0.96318
@@ -20,7 +24,7 @@ class Test(unittest.TestCase):
         criterion = NLLA()
         expected_loss = (1.4485 + 0.96318 + 0.46051) / 3
         loss = criterion(logpreds, gold, abstain_i=4).item()
-        assert (round(loss * 1000) / 1000 == round(expected_loss * 1000) / 1000)
+        assert self.close_enough(loss, expected_loss)
 
     def test_confuse(self):
         labels = torch.tensor([4, 2, 9, 0, 1, 8, 0, 1, 7, 7])
@@ -35,8 +39,9 @@ class Test(unittest.TestCase):
         gold = torch.tensor([1, 2, 3])
         preds = torch.tensor([pred1, pred2, pred3])
         criterion = ConfidenceLoss1(p0 = 0.5)
-        print('hi')
-        print(criterion(preds, gold, abstain_i=4))
+        expected_loss = 1.0264
+        assert self.close_enough(criterion(preds, gold, abstain_i=4).item(),
+                                 expected_loss)
 
     def test_awnll(self):
         pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # 0.2, 0.1
@@ -50,13 +55,13 @@ class Test(unittest.TestCase):
         a1, b1 = 1, 1
         expected_loss1 = (1.89712 + 1.38629 + 0.78746) / 3
         loss = criterion(logpreds, gold, a1, b1,  abstain_i=4).item()
-        assert (round(loss * 1000) / 1000 == round(expected_loss1 * 1000) / 1000)
+        assert self.close_enough(loss, expected_loss1)
 
         a2, b2 = 2, 1
         expected_loss2 = (1.79176 + 1.32176 + 1.18199) / 3
         loss = criterion(logpreds, gold, a2, b2,  abstain_i=4).item()
-        assert (round(loss * 1000) / 1000 == round(expected_loss2 * 1000) / 1000)
-
+        assert self.close_enough(loss, expected_loss2)
+ 
     def test_cawnll(self):
         pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # 0.2, c = 0.9343
         pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # 0.3 c = 0.8394
@@ -69,12 +74,13 @@ class Test(unittest.TestCase):
         a1, b1 = 1, 1
         expected_loss1 = (1.69909 + 1.10775 + 0.75099) / 3
         loss = criterion(logpreds, gold, a1, b1,  abstain_i=4).item()
-        assert (round(loss * 1000) / 1000 == round(expected_loss1 * 1000) / 1000)
+        assert self.close_enough(loss, expected_loss1)
 
         a2, b2 = 2, 1
         expected_loss2 = (1.66830 + 1.13881 + 1.14591) / 3
         loss = criterion(logpreds, gold, a2, b2,  abstain_i=4).item()
-        assert (round(loss * 1000) / 1000 == round(expected_loss2 * 1000) / 1000)
+        assert self.close_enough(loss, expected_loss2)
+
         
 
 

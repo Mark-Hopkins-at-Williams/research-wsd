@@ -137,7 +137,7 @@ def validate_and_analyze(model, criterion):
 
 if __name__ == "__main__":
     ab = [[1,1]]#, [2,1], [3,1], [4,1], [5,1]]
-    criterions = [ConfidenceLoss1(0), NLLLoss()] #AWNLL(), CAWNLL()]
+    criterions = [ConfidenceLoss1(0)] #AWNLL(), CAWNLL()]
     for c in criterions:
         for (a,b) in ab:
             train(c)

@@ -9,12 +9,6 @@ class ConfidenceLoss1:
         self.p0 = p0
     
     def __call__(self, output, gold, abstain_i=ABSTAIN):
-        #maxes, preds = torch.max(log_output, dim=-1)
-        #aps = torch.exp(log_output[:, abstain_i])
-        #discounters = 1 - aps
-        #print(output)
-        #print(output[list(range(len(output))), gold])
-        #print(output[:,-1])
         label_ps = output[list(range(len(output))), gold]
         losses = label_ps + (self.p0 * output[:,-1])
         losses = torch.clamp(losses, min = 0.000000001)
