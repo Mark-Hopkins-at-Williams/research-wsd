@@ -5,7 +5,7 @@ import sys
 file_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(1, join(file_dir, ".."))
 import torch
-from loss import NLLA, AWNLL, CAWNLL
+from loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
 from mnist import confuse
 
 class Test(unittest.TestCase):
@@ -27,6 +27,16 @@ class Test(unittest.TestCase):
         # print(labels)
         new_labels = confuse(labels)
         #print(labels)
+
+    def test_closs1(self):
+        pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # 0.2, 0.1
+        pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # 0.3 0.2
+        pred3 = [0.05, 0.02, 0.02, 0.01, 0.9] # 0.01, 0.9
+        gold = torch.tensor([1, 2, 3])
+        preds = torch.tensor([pred1, pred2, pred3])
+        criterion = ConfidenceLoss1(p0 = 0.5)
+        print('hi')
+        print(criterion(preds, gold, abstain_i=4))
 
     def test_awnll(self):
         pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # 0.2, 0.1
