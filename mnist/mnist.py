@@ -51,15 +51,14 @@ hidden_sizes = [128, 64]
 output_size = 11
 
 def FFN():
+    print("constructing model...")
     model = nn.Sequential(nn.Linear(input_size, hidden_sizes[0]),
                           nn.ReLU(),
                           nn.Linear(hidden_sizes[0], hidden_sizes[1]),
                           nn.ReLU(),
                           nn.Linear(hidden_sizes[1], output_size),
                           nn.Softmax(dim=1))
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    return model
+    return cudaify(model)
 
 def confuse(labels):
     labels = labels.clone()
@@ -97,15 +96,16 @@ def train(criterion):
             optimizer.step()
                                                                                                                                         
             running_loss += loss.item()
-        _, acc = validate_and_analyze(model, criterion)
-        print("Epoch {} - Training loss: {}; Dev accuracy: {}".format(e, 
+        _, precision = validate_and_analyze(model, criterion)
+        print("Epoch {} - Training loss: {}; Dev precision: {}".format(e, 
                                                                       running_loss/len(trainloader),
-                                                                      acc))
+                                                                      precision))
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
     torch.save(model.state_dict(), join(model_dir, "params.pt"))
+    return model
 
 def validate_and_analyze(model, criterion):
-    correct_count, all_count = 0, 0
+    correct_count, n_confident = 0, 0
     data_dict = {}
     for i in range(output_size):
         data_dict[i] = [0, 0, 0] # [n_correct, n_wrong, n_abstain]
@@ -114,11 +114,10 @@ def validate_and_analyze(model, criterion):
             img = images[i].view(1, 784)
             # Turn off gradients to speed up this part
             with torch.no_grad():
-                logps = model(cudaify(img))
+                ps = model(cudaify(img))
 
             # Output of the network are log-probabilities, need to take 
             # exponential for probabilities
-            ps = torch.exp(logps)
             probab = list(ps.cpu().numpy()[0])
             pred_label = probab.index(max(probab))
             true_label = labels.numpy()[i]
@@ -127,25 +126,13 @@ def validate_and_analyze(model, criterion):
             elif (true_label == pred_label):
                 correct_count += 1
                 data_dict[true_label][0] += 1
+                n_confident += 1
             else:
                 data_dict[true_label][1] += 1 
-            all_count += 1
-    print(data_dict)
-    return data_dict, correct_count / all_count
+                n_confident += 1
+    return data_dict, correct_count / n_confident
 
 
 
-if __name__ == "__main__":
-    ab = [[1,1]]#, [2,1], [3,1], [4,1], [5,1]]
-    criterions = [ConfidenceLoss1(0)] #AWNLL(), CAWNLL()]
-    for c in criterions:
-        for (a,b) in ab:
-            train(c)
-            model = FFN()
-            model.load_state_dict(torch.load(join(model_dir, "params.pt")))
-            data_dict = validate_and_analyze(model, c, a, b)
-            fname = c.__name__ + "_" + str(a) + str(b)
-            with open(join(validation_dir, fname), "w") as f:
-                json.dump(data_dict, f)
 
 
