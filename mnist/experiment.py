@@ -1,83 +1,45 @@
-from mnist import train, validate_and_analyze, FFN, model_dir, validation_dir
+from mnist import train, validate_and_analyze, validation_dir
 from loss import AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, NLL
-import torch
 from os.path import join
 import json
 
 def nll():
-    print("================NLL EXPERIMENT=======================")
-    c = NLL()
-    train(c)
-    net = FFN()
-    net.load_state_dict(torch.load(join(model_dir, "params.pt")))
-    data_dict = validate_and_analyze(net, c)
-    loss_name = "nll" + ".json"
-    with open(join(validation_dir, loss_name), "w") as f:
-        json.dump(data_dict, f)
+    run(NLL())
 
 def awnll():
-    print("================AWNLL EXPERIMENT=======================")
     ab = [[6,1], [8, 1]]
     for (a, b) in ab:
         print("training with weight: ({}, {})".format(a, b))
         c = AWNLL(a, b)
-        train(c)
-        net = FFN()
-        net.load_state_dict(torch.load(join(model_dir, "params.pt")))
-        data_dict = validate_and_analyze(net, c)
-        loss_name = "awnll" + "_" + str(a) + "_" + str(b) + ".json"
-        with open(join(validation_dir, loss_name), "w") as f:
-            json.dump(data_dict, f)
+        run(c, "awnll" + "_" + str(a) + "_" + str(b))
+    
 
 def cawnll():
-    print("================CAWNLL EXPERIMENT=======================")
-    ab = []
-    for i in range(11):
-        ab.append([1 + 0.1 * i, 1])
+    ab = [[1 + 0.1 * i, 1] for i in range(11)]
     for (a, b) in ab:
         print("training with weight: ({}, {})".format(a, b))
         c = CAWNLL(a, b)
-        train(c)
-        net = FFN()
-        net.load_state_dict(torch.load(join(model_dir, "params.pt")))
-        data_dict = validate_and_analyze(net, c)
-        loss_name = "cawnll" + "_" + str(a) + "_" + str(b) + ".json"
-        with open(join(validation_dir, loss_name), "w") as f:
-            json.dump(data_dict, f)
+        run(c, "cawnll" + "_" + str(a) + "_" + str(b))
 
 def cranll():
-    print("================CRANLL EXPERIMENT=======================")
     p0 = 0.5
-    c = CRANLL(p0)
-    train(c)
-    net = FFN()
-    net.load_state_dict(torch.load(join(model_dir, "params.pt")))
-    data_dict = validate_and_analyze(net, c)
-    loss_name = "cranll.json"
-    with open(join(validation_dir, loss_name), "w") as f:
-        json.dump(data_dict, f)
+    run(CRANLL(p0)) 
 
 def lranll():
-    print("================LRANLL EXPERIMENT=======================")
-    c = LRANLL()
-    train(c)
-    net = FFN()
-    net.load_state_dict(torch.load(join(model_dir, "params.pt")))
-    data_dict = validate_and_analyze(net, c)
-    loss_name = "lranll.json"
-    with open(join(validation_dir, loss_name), "w") as f:
-        json.dump(data_dict, f)
+    run(LRANLL())
 
 def cabnll():
-    print("================CABNLL EXPERIMENT=======================")
-    c = CABNLL()
-    train(c)
-    net = FFN()
-    net.load_state_dict(torch.load(join(model_dir, "params.pt")))
-    data_dict = validate_and_analyze(net, c)
-    loss_name = "cabnll.json"
-    with open(join(validation_dir, loss_name), "w") as f:
-        json.dump(data_dict, f)
+    run(CABNLL())        
 
+def run(criterion, name = None):
+    if name is None:
+        name = type(criterion).__name__
+    print("================{} EXPERIMENT======================".format(name))
+    net = train(criterion)
+    data_dict = validate_and_analyze(net, criterion)
+    results_file = "{}.json".format(name.lower())
+    with open(join(validation_dir, results_file), "w") as f:
+        json.dump(data_dict, f)
+    
 if __name__ == "__main__":
     nll()

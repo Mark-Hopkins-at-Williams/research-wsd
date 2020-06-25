@@ -96,12 +96,13 @@ def train(criterion):
             optimizer.step()
                                                                                                                                         
             running_loss += loss.item()
-        _, f1 = validate_and_analyze(model, criterion)
-        print("Epoch {} - Training loss: {}; Dev micro-F1: {}".format(e, 
+        _, precision = validate_and_analyze(model, criterion)
+        print("Epoch {} - Training loss: {}; Dev precision: {}".format(e, 
                                                                       running_loss/len(trainloader),
-                                                                      f1))
+                                                                      precision))
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
     torch.save(model.state_dict(), join(model_dir, "params.pt"))
+    return model
 
 def validate_and_analyze(model, criterion):
     correct_count, n_confident = 0, 0
@@ -120,9 +121,6 @@ def validate_and_analyze(model, criterion):
             probab = list(ps.cpu().numpy()[0])
             pred_label = probab.index(max(probab))
             true_label = labels.numpy()[i]
-            if true_label == 1 or true_label == 7:
-                rounded = (10 * ps).round() / 10
-                print(rounded[0][1], rounded[0][7])
             if (pred_label == ABSTAIN):
                 data_dict[true_label][2] += 1
             elif (true_label == pred_label):
@@ -132,7 +130,6 @@ def validate_and_analyze(model, criterion):
             else:
                 data_dict[true_label][1] += 1 
                 n_confident += 1
-    print(data_dict)
     return data_dict, correct_count / n_confident
 
 
