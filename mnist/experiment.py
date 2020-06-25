@@ -1,8 +1,19 @@
 from mnist import train, validate_and_analyze, FFN, model_dir, validation_dir
-from loss import AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL
+from loss import AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, NLL
 import torch
 from os.path import join
 import json
+
+def nll():
+    print("================NLL EXPERIMENT=======================")
+    c = NLL()
+    train(c)
+    net = FFN()
+    net.load_state_dict(torch.load(join(model_dir, "params.pt")))
+    data_dict = validate_and_analyze(net, c)
+    loss_name = "nll" + ".json"
+    with open(join(validation_dir, loss_name), "w") as f:
+        json.dump(data_dict, f)
 
 def awnll():
     print("================AWNLL EXPERIMENT=======================")
@@ -69,4 +80,4 @@ def cabnll():
         json.dump(data_dict, f)
 
 if __name__ == "__main__":
-    cabnll()
+    nll()
