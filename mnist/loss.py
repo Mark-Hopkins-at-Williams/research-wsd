@@ -4,6 +4,17 @@ import torch.nn.functional as F
 
 ABSTAIN = 10
 
+
+class ConfidenceLoss1:
+    def __init__(self, p0):
+        self.p0 = p0
+    
+    def __call__(self, output, gold, abstain_i=ABSTAIN):
+        label_ps = output[list(range(len(output))), gold]
+        losses = label_ps + (self.p0 * output[:,-1])
+        losses = torch.clamp(losses, min = 0.000000001)
+        return -torch.mean(torch.log(losses))
+    
 class NLLA:
     def __call__(self, log_output, gold, abstain_i=ABSTAIN):
         maxes, preds = torch.max(log_output, dim=-1)
