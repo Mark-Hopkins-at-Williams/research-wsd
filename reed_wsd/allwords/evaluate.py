@@ -56,7 +56,7 @@ def decode(net, data):
                            zip(targets,
                                zip(preds, zip(response.tolist(), maxes)))):                    
             (inst_id, (target, (prediction, (gold, confidence)))) = element
-            yield inst_id, target, prediction, gold, confidence
+            yield {'pred': prediction.item(), 'gold': gold, 'confidence': confidence.item()}
     net.train()
 
 def evaluate(net, data):
@@ -69,56 +69,4 @@ def evaluate(net, data):
     gold = [g for (_, _, _, g, _) in decoded]
     correct, total = accuracy(predictions, gold)
     return correct/total
-
-def precision_yield_curve(net, data):
-    """
-    This might not work. Test on some actual data then remove this comment!
-    
-    """
-    decoded = list(decode(net, data))
-    decoded.sort(key = lambda t: t[4]) # sort decoded by confidence
-    preds = [p.item() for (_, _, p, _, _) in decoded]
-    gold = [g for (_, _, _, g, _) in decoded]
-    confidences = [c.item() for (_, _, _, _, c) in decoded]
-    return py_curve(preds, gold, confidences)
-
-def py_curve(preds, gold, confidences):
-    pr_curve = {}
-    for c in confidences:
-        pr_curve[c] = [0,0] # first is n_correct, second n_confident
-    for thres in pr_curve:
-        n_correct = 0
-        n_confident = 0
-        for i in range(len(preds)):
-            p = preds[i]
-            g = gold[i]
-            c = confidences[i]
-            is_correct = (p == g)
-            if c >= thres:
-                n_confident += 1
-                if is_correct:
-                    n_correct += 1
-        pr_curve[thres][0] = n_correct / n_confident
-        pr_curve[thres][1] = n_correct / len(preds)
-    return pr_curve
-
-def plot_py_curve(py_curve):
-    thresholds = sorted(py_curve.keys())
-    x = [py_curve[thres][1] for thres in thresholds]
-    y = [py_curve[thres][0] for thres in thresholds]    
-    fig = plt.figure()
-    fig.subplots_adjust(top=0.8)
-    ax1 = fig.add_subplot(211)
-    ax1.set_title('Precision-Recall Curve')
-    ax1.set_ylabel('precision')
-    ax1.set_xlabel('recall')
-    ax1.plot(x, y)
-  
-def save_py_curve(curve):
-    confidence_path = join(file_dir, "../confidence")
-    if not os.path.isdir(confidence_path):
-        os.mkdir(confidence_path)
-    jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")    
-    with open(jsonfile, "w") as f:
-        json.dump(curve, f)
 

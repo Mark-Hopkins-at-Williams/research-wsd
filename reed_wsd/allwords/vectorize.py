@@ -2,7 +2,7 @@ import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from os.path import join
 import json
-import allwords.bert as bert
+import reed_wsd.allwords.bert as bert
 
 class VectorManager:
     def get_vector(self, sent_id):

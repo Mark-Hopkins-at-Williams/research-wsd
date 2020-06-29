@@ -6,8 +6,8 @@ import sys
 file_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(1, join(file_dir, ".."))
 import torch
-from loss import NLL, NLLA, AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, ConfidenceLoss1
-from mnist import confuse
+from reed_wsd.mnist.loss import NLL, NLLA, AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, ConfidenceLoss1
+from reed_wsd.mnist.mnist import confuse
 
 class Test(unittest.TestCase):
     
