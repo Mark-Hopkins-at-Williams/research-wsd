@@ -3,12 +3,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from os.path import join
 import torch
 from torch import optim
-from evaluate import evaluate, decode
-from allwords.networks import AffineClassifier, DropoutClassifier
-from allwords.util import cudaify, Logger
-from allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
-from allwords.vectorize import DiskBasedVectorManager
-from allwords.loss import NLLLossWithZones
+from reed_wsd.allwords.evaluate import evaluate, decode
+from reed_wsd.allwords.networks import AffineClassifier, DropoutClassifier
+from reed_wsd.util import cudaify, Logger
+from reed_wsd.allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
+from reed_wsd.allwords.vectorize import DiskBasedVectorManager
+from reed_wsd.allwords.loss import NLLLossWithZones
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -33,7 +33,7 @@ def train_all_words_classifier(train_loader, dev_loader, logger):
         loss = NLLLossWithZones()  #torch.nn.CrossEntropyLoss() 
         for i, (_, _, evidence, response, zones) in enumerate(train_batches): 
             optimizer.zero_grad()
-            outputs = net(evidence)
+            outputs = net(cudaify(evidence))
             loss_size = loss(outputs, response, zones)
             loss_size.backward()
             optimizer.step()
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     train_loader = SenseInstanceLoader(ds, batch_size)
     dev_loader = init_dev_loader(data_dir, batch_size)
     net = train_all_words_classifier(train_loader, dev_loader, logger)  
-    save_path = join(file_dir, "../saved")
+    save_path = join(file_dir, "saved")
     if not os.path.isdir(save_path):
         os.mkdir(save_path)
     torch.save(net.state_dict(), join(save_path, "bert_simple.py")) 

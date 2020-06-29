@@ -2,10 +2,10 @@ import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from os.path import join
 import torch
-from evaluate import precision_yield_curve, plot_py_curve, save_py_curve
-from allwords.networks import AffineClassifier
-from allwords.util import cudaify
-from allwords.run import init_dev_loader
+from reed_wsd.plot import precision_yield_curve, plot_py_curve, save_py_curve
+from reed_wsd.allwords.networks import AffineClassifier
+from reed_wsd.util import cudaify
+from reed_wsd.allwords.run import init_dev_loader
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 

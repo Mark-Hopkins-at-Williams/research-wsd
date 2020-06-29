@@ -5,8 +5,8 @@ import torch
 import random
 from torch import tensor
 from torch.utils.data import Dataset
-from allwords import util
-import allwords.align as align
+import reed_wsd.util as util
+import reed_wsd.allwords.align as align
 from collections import defaultdict
 
 class SenseInventory:

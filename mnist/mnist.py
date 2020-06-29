@@ -9,8 +9,8 @@ from time import time
 from torchvision import datasets, transforms
 from torch import nn, optim
 import os
-from util import cudaify
-from loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
+from reed_wsd.util import cudaify
+from reed_wsd.mnist.loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
 from torch.nn import NLLLoss
 import json
 from os.path import join
@@ -69,6 +69,28 @@ def confuse(labels):
     labels[one_and_sevens] = new_labels
     return labels
 
+def decode_gen(confidence):
+    assert(confidence == "baseline" or
+           confidence == "neg_abs")
+    def decode(net, data):
+        net.eval()
+        for images, labels in data:
+            for i in range(len(labels)):
+                img = images[i].view(1, 784)
+                # Turn off gradients to speed up this part
+                with torch.no_grad():
+                    ps = net(cudaify(img))
+                ps = ps.squeeze(dim=0)
+                if confidence == "baseline":
+                    c, _ = ps[:-1].max(dim=0)
+                    c = c.item()
+                if confidence == "neg_abs":
+                    c = (1 - ps[-1]).item()
+                pred = ps[:-1].argmax(dim=0).item()
+                gold = labels[i].item()
+                yield {'pred': pred, 'gold': gold, 'confidence': c}
+    return decode
+    
 def train(criterion):
     model = FFN()
     optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
@@ -101,7 +123,7 @@ def train(criterion):
                                                                       running_loss/len(trainloader),
                                                                       f1))
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
-    torch.save(model.state_dict(), join(model_dir, "params.pt"))
+    torch.save(model.state_dict(), join(model_dir, "params_" + str(criterion) + ".pt"))
 
 def validate_and_analyze(model, criterion):
     correct_count, n_confident = 0, 0
@@ -120,9 +142,11 @@ def validate_and_analyze(model, criterion):
             probab = list(ps.cpu().numpy()[0])
             pred_label = probab.index(max(probab))
             true_label = labels.numpy()[i]
+            """
             if true_label == 1 or true_label == 7:
                 rounded = (10 * ps).round() / 10
                 print(rounded[0][1], rounded[0][7])
+            """
             if (pred_label == ABSTAIN):
                 data_dict[true_label][2] += 1
             elif (true_label == pred_label):
@@ -136,6 +160,9 @@ def validate_and_analyze(model, criterion):
     return data_dict, correct_count / n_confident
 
 
-
+if __name__ == "__main__":
+    criterion = ConfidenceLoss1(0)
+    train(criterion)
+    
 
 

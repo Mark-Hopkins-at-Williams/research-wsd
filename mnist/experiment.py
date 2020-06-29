@@ -1,5 +1,5 @@
-from mnist import train, validate_and_analyze, FFN, model_dir, validation_dir
-from loss import AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, NLL
+from reed_wsd.mnist.mnist import train, validate_and_analyze, FFN, model_dir, validation_dir
+from reed_wsd.mnist.loss import AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, NLL
 import torch
 from os.path import join
 import json

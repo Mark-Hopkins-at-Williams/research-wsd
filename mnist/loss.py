@@ -14,6 +14,8 @@ class ConfidenceLoss1:
         losses = label_ps + (self.p0 * output[:,-1])
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
+    def __str__(self):
+        return "ConfidenceLoss_p0=" + str(self.p0)
 
 class NLL:
     def __call__(self, output, gold):
