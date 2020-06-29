@@ -4,6 +4,6 @@ lemmadata
 googledata.json
 completedata.json
 data/semcor/
-allwords/data/
-allwords/saved/
+reed_wsd/mnist/data/
+reed_wsd/allwords/saved/
 /test.dat
