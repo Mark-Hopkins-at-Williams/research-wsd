@@ -1,4 +1,5 @@
 aux
+*egg-info*
 *_pycache_*
 lemmadata
 googledata.json

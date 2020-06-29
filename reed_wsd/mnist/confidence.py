@@ -21,6 +21,7 @@ def closs_py(confidence):
     f_name = "py_" + str(criterion) + "_" + confidence + ".json"
     with open(join(confidence_dir, f_name), "w") as f:
         json.dump(pyc, f)
+    return pyc
 
 
 if __name__ == "__main__":

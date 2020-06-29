@@ -1,6 +1,12 @@
 Reed Word Sense Disambiguation
 ------------------------------
 
+### To locally install the reed_wsd package:
+
+From the top-level directory:
+
+    pip install -e .
+
 ### To download and preprocess the Raganato 2017 data:
 
 From the top-level directory, run:
