@@ -12,18 +12,24 @@ confidence_dir = join(file_dir, "confidence")
 if not os.path.isdir(confidence_dir):
     os.mkdir(confidence_dir)
 
-def closs_py(confidence):
+def closs_py(model_file, confidence = 'baseline'):
     decoder = mnist.decode_gen(confidence)
-    criterion = ConfidenceLoss1(0.5)
+    #criterion = ConfidenceLoss1(0.4)
     net = mnist.FFN()
-    net.load_state_dict(torch.load("saved/params_" + str(criterion) + ".pt"))
+    #saved_model = "saved/params_" + str(criterion) + ".pt"
+    saved_model = model_file
+    print("loading {}".format(saved_model))
+    net.load_state_dict(torch.load(saved_model))
     pyc = plt.precision_yield_curve(net, mnist.valloader, decoder)
-    f_name = "py_" + str(criterion) + "_" + confidence + ".json"
-    with open(join(confidence_dir, f_name), "w") as f:
-        json.dump(pyc, f)
+    #f_name = "py_" + str(criterion) + "_" + confidence + ".json"
+    #with open(join(confidence_dir, f_name), "w") as f:
+    #    json.dump(pyc, f)
     return pyc
 
 
-if __name__ == "__main__":
-    closs_py("baseline")
-    closs_py("neg_abs")
+def main():
+    return closs_py("baseline")
+    #return closs_py("neg_abs")
+
+if __name__ == '__main__':
+    main()

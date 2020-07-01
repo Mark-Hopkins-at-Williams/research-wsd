@@ -1,1 +1,1 @@
-from allwords import bert
+from reed_wsd.allwords import bert

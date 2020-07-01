@@ -1,9 +1,9 @@
 import unittest
 import torch
 from torch import tensor
-from allwords.evaluate import predict, accuracy, yielde, ABSTAIN
-from allwords.evaluate import py_curve
-from allwords.evaluate import apply_zone_masks
+from reed_wsd.allwords.evaluate import predict, accuracy, yielde, ABSTAIN
+from reed_wsd.plot import py_curve
+from reed_wsd.allwords.evaluate import apply_zone_masks
 
 class TestEvaluate(unittest.TestCase):
     
@@ -53,12 +53,10 @@ class TestEvaluate(unittest.TestCase):
         preds = [3,6,5,1,2]
         gold = [3,6,5,2,2]
         confs = [0.1 * i for i in range(5)]
-        expected = {0.0: [0.8, 0.8], 0.1: [0.75, 0.6], 
-                    0.2: [0.667, 0.4], 
-                    0.3: [0.5, 0.2], 0.4: [1.0, 0.2]} 
-        for (key, (p, r)) in py_curve(preds, gold, confs).items():
-            key = round(key*10)/10
-            (other_p, other_r) = expected[key]
+        expected = [(1.0, 0.2), (0.5, 0.2), (0.667, 0.4), (0.75, 0.6), 
+                    (0.8, 0.8)]
+        for (i, (p, r)) in enumerate(py_curve(preds, gold, confs)):
+            (other_p, other_r) = expected[i]
             assert (round(p*1000)/1000 == other_p)
             assert (round(r*1000)/1000 == other_r)
 

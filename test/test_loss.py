@@ -1,7 +1,7 @@
 import unittest
 import torch
 from torch import tensor
-from allwords.loss import LossWithZones, NLLLossWithZones, zone_based_loss
+from reed_wsd.allwords.loss import LossWithZones, NLLLossWithZones, zone_based_loss
 
 def approx(x, y, num_digits = 4):
     return abs(x-y) < 1.0 * (10 ** -num_digits)

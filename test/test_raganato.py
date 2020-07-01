@@ -1,6 +1,6 @@
 import unittest
-from allwords.raganato import harvest_data, create_sense_inventory
-from allwords.raganato import parse_raganato_gold
+from reed_wsd.allwords.raganato import harvest_data, create_sense_inventory
+from reed_wsd.allwords.raganato import parse_raganato_gold
 
 class TestRaganato(unittest.TestCase):
           

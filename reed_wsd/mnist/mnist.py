@@ -5,14 +5,14 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 """
 
 import torch
+import copy
 from time import time
 from torchvision import datasets, transforms
 from torch import nn, optim
 import os
 from reed_wsd.util import cudaify
 from reed_wsd.mnist.loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
-from torch.nn import NLLLoss
-import json
+from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4
 from os.path import join
 
 
@@ -64,9 +64,24 @@ def confuse(labels):
     labels = labels.clone()
     one_and_sevens = (labels == 1) + (labels == 7)
     one_seven_shape = labels[one_and_sevens].shape
-    new_labels = torch.randint(0, 2, one_seven_shape)
-    new_labels[new_labels == 0] = 7
+    new_labels = torch.randint(0, 3, one_seven_shape)
+    new_labels[new_labels > 0] = 7
+    new_labels[new_labels == 0] = 1
     labels[one_and_sevens] = new_labels
+    """
+    one_and_sevens = (labels == 2) + (labels == 3)
+    one_seven_shape = labels[one_and_sevens].shape
+    new_labels = torch.randint(0, 2, one_seven_shape)
+    new_labels[new_labels > 0] = 3
+    new_labels[new_labels == 0] = 2
+    labels[one_and_sevens] = new_labels
+    one_and_sevens = (labels == 4) + (labels == 5)
+    one_seven_shape = labels[one_and_sevens].shape
+    new_labels = torch.randint(0, 4, one_seven_shape)
+    new_labels[new_labels > 0] = 4
+    new_labels[new_labels == 0] = 5
+    labels[one_and_sevens] = new_labels    
+    """
     return labels
 
 def decode_gen(confidence):
@@ -96,9 +111,13 @@ def train(criterion):
     optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
     time0 = time()
     epochs = 15
+    best_model = None
+    best_model_score = float('-inf')
     for e in range(epochs):
-        if e == 2:
+        if e == 3:
             criterion.p0 = 0.5
+        elif e == 7:
+            criterion.p0 = 0.6
         running_loss = 0
         for images, labels in trainloader:
             # Flatten MNIST images into a 784 long vector
@@ -119,12 +138,18 @@ def train(criterion):
                                                                                                                                         
             running_loss += loss.item()
         _, precision = validate_and_analyze(model, criterion)
+        if precision > best_model_score and e > 7:
+            print("Updating best model.")
+            best_model = copy.deepcopy(model)
+            best_model_score = precision
         print("Epoch {} - Training loss: {}; Dev precision: {}".format(e, 
                                                                       running_loss/len(trainloader),
                                                                       precision))
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
-    torch.save(model.state_dict(), join(model_dir, "params_" + str(criterion) + ".pt"))
-    return model
+    outfile = "params_" + str(criterion) + ".pt"
+    print(outfile)
+    torch.save(best_model.state_dict(), join(model_dir, "params_" + str(criterion) + ".pt"))
+    return best_model
 
 def validate_and_analyze(model, criterion):
     correct_count, n_confident = 0, 0
@@ -146,17 +171,21 @@ def validate_and_analyze(model, criterion):
             if (pred_label == ABSTAIN):
                 data_dict[true_label][2] += 1
             elif (true_label == pred_label):
-                correct_count += 1
                 data_dict[true_label][0] += 1
-                n_confident += 1
             else:
                 data_dict[true_label][1] += 1 
+            best_nonabstain_label = probab.index(max(probab[:-1]))
+            if (true_label == best_nonabstain_label):
+                correct_count += 1
                 n_confident += 1
+            else:
+                n_confident += 1            
+    print(data_dict)
     return data_dict, correct_count / n_confident
 
 
 if __name__ == "__main__":
-    criterion = ConfidenceLoss1(0)
+    criterion = ConfidenceLoss4(0)
     train(criterion)
     
 
