@@ -14,8 +14,52 @@ class ConfidenceLoss1:
         losses = label_ps + (self.p0 * output[:,-1])
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
+    
     def __str__(self):
-        return "ConfidenceLoss_p0=" + str(self.p0)
+        return "ConfidenceLoss_p0_" + str(self.p0)
+
+class ConfidenceLoss2:
+    def __init__(self, p0):
+        self.p0 = p0
+    
+    def __call__(self, output, gold, abstain_i=ABSTAIN):
+        label_ps = output[list(range(len(output))), gold]
+        losses = torch.max(label_ps, (self.p0 * output[:,-1]))
+        losses = torch.clamp(losses, min = 0.000000001)
+        return -torch.mean(torch.log(losses))
+    
+    def __str__(self):
+        return "ConfidenceLoss2_p0_" + str(self.p0)
+
+class ConfidenceLoss3:
+    def __init__(self, p0):
+        self.p0 = p0
+    
+    def __call__(self, output, gold, abstain_i=ABSTAIN):
+        label_ps = output[list(range(len(output))), gold]
+        losses = label_ps - output[:,-1]
+        return -torch.mean(losses)
+    
+    def __str__(self):
+        return "ConfidenceLoss3_p0_" + str(self.p0)
+
+
+class ConfidenceLoss4:
+    def __init__(self, p0):
+        self.p0 = p0
+    
+    def __call__(self, output, gold, abstain_i=ABSTAIN):
+        label_ps = output[list(range(len(output))), gold]
+        label_ps_woa = output[:, :-1]
+        label_ps_woa = F.normalize(label_ps_woa, p=1, dim=1)
+        label_ps_woa = label_ps_woa[list(range(len(label_ps_woa))), gold]
+        losses = label_ps_woa * (label_ps + (self.p0 * output[:,-1]))
+        losses = torch.clamp(losses, min = 0.000000001)
+        return -torch.mean(torch.log(losses))
+    
+    def __str__(self):
+        return "ConfidenceLoss4_p0_" + str(self.p0)
+
 
 class NLL:
     def __call__(self, output, gold):

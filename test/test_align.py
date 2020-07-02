@@ -1,5 +1,5 @@
 import unittest
-from allwords.align import align
+from reed_wsd.allwords.align import align
 
 class TestAlign(unittest.TestCase):
     

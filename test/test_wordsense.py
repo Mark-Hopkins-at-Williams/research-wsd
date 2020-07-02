@@ -1,7 +1,7 @@
 import unittest
 import json
 from torch import tensor
-from allwords import wordsense, vectorize
+from reed_wsd.allwords import wordsense, vectorize
 
 class TestWordsense(unittest.TestCase):
     

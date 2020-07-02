@@ -1,6 +1,6 @@
 import unittest
-from allwords.wordsense import SenseInstance
-from allwords.bert import BertVectorizer
+from reed_wsd.allwords.wordsense import SenseInstance
+from reed_wsd.allwords.bert import BertVectorizer
 from torch import tensor
 
 class TestBert(unittest.TestCase):
