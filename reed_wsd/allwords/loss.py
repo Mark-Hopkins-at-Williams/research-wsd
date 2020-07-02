@@ -4,12 +4,7 @@ import torch.nn.functional as F
 def zone_based_loss(predicted, gold, zones, f):
     """
     Computes a loss based on:
-    - predicted: a matrix of predictions, where each row is a probability
-                 distribution over all outcomes
-    - gold: a vector of correct outcomes
-    - zones: a list of "zones", which define the set of valid outcomes for 
-             each prediction
-    - f: post-processing function to apply to each probability
+    - predicted: a matrix of predictions, where each row is a probability distribution over all outcomes - gold: a vector of correct outcomes - zones: a list of "zones", which define the set of valid outcomes for each prediction - f: post-processing function to apply to each probability
     
     For instance, suppose we have two predictions, each over the same 4 outcomes:
         predicted = tensor([[0.2, 0.3, 0.1, 0.4],
@@ -37,14 +32,28 @@ def zone_based_loss(predicted, gold, zones, f):
         -0.675
     
     """
+    revised_pred = apply_zones(predicted, zones)
+    neglog_pred = f(revised_pred)
+    result = neglog_pred[list(range(len(neglog_pred))), gold]
+    return torch.mean(result)
+
+def apply_zones(predicted, zones):
     revised_pred = torch.zeros(predicted.shape)
     for i, (zone_start, zone_stop) in enumerate(zones):
         normalizer = sum(predicted[i, zone_start:zone_stop])
         revised_pred[i,zone_start:zone_stop] = (predicted[i, zone_start:zone_stop] 
                                                 / normalizer)    
-    neglog_pred = f(revised_pred)
-    result = neglog_pred[list(range(len(neglog_pred))), gold]
-    return torch.mean(result)
+    return revised_pred
+
+def apply_zones_with_abstain(predicted, zones):
+    revised_pred = torch.zeros(predicted.shape)
+    for i, (zone_start, zone_stop) in enumerate(zones):
+        normalizer = sum(predicted[i, zone_start:zone_stop]) + predicted[i, -1]
+        revised_pred[i,zone_start:zone_stop] = (predicted[i, zone_start:zone_stop] 
+                                                / normalizer)    
+        revised_pred[i, -1] = predicted[i, -1] / normalizer
+    return revised_pred
+
 
 class LossWithZones:
     
@@ -58,6 +67,16 @@ class NLLLossWithZones:
     def __call__(self, predicted, gold, zones):
         predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
         return zone_based_loss(predicted, gold, zones, lambda x: -torch.log(x))
+
+
+class ConfidenceLossWithZones:
+    def __init__(self, p0):
+        self.p0 = p0
     
-    
+    def __call__(self, predicted, gold, zones):
+        predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
+        revised_pred = apply_zones_with_abstain(predicted, zones)
+        label_ps = revised_pred[list(range(len(revised_pred))), gold]
+        losses = label_ps + self.p0 * revised_pred[:, -1]
+        return torch.mean(- torch.log(losses), dim=-1)
     
