@@ -13,9 +13,7 @@ class TestPYCurve(unittest.TestCase):
 
     def test_aupy(self):
         aupy = self.pycurve.aupy()
-        print(aupy)
-        print(self.aupy)
-        assert( approx(aupy, self.aupy) )
+        assert approx(aupy, self.aupy)
        
 if __name__ == "__main__":
     unittest.main()

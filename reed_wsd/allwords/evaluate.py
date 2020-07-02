@@ -7,13 +7,12 @@ import matplotlib.pyplot as plt
 
 
 LARGE_NEGATIVE = 0
-ABSTAIN = -1.0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 def predict(distribution):
     return distribution.argmax()
 
-def accuracy(predicted_labels, gold_labels, abstain_i=None):
+def accuracy(predicted_labels, gold_labels, abstain_i=-1):
     assert(len(predicted_labels) == len(gold_labels))
     preds = torch.tensor(predicted_labels).double()
     gold = torch.tensor(gold_labels).double()
@@ -28,22 +27,14 @@ def yielde(predicted_labels, gold_labels):
     n_correct = (preds == gold).double().sum().item()
     return n_correct, len(predicted_labels)
     
-def apply_zone_masks(outputs, zones):
+def apply_zone_masks(outputs, zones, abstain=False):
     revised = torch.empty(outputs.shape)
     revised = revised.fill_(LARGE_NEGATIVE)
     for row in range(len(zones)):
         (start, stop) = zones[row]
         revised[row][start:stop] = outputs[row][start:stop]
-    revised = F.normalize(revised, dim=-1, p=1)
-    return revised
-
-def apply_zone_masks_with_abstain(outputs, zones):
-    revised = torch.empty(outputs.shape)
-    revised = revised.fill_(0.)
-    for row in range(len(zones)):
-        (start, stop) = zones[row]
-        revised[row][start:stop] = outputs[row][start:stop]
-        revised[row][-1] = outputs[row][-1]
+        if abstain:
+            revised[row][-1] = outputs[row][-1]
     revised = F.normalize(revised, dim=-1, p=1)
     return revised
 
@@ -58,7 +49,7 @@ def decode_gen(abstain, confidence):
     neg_abs: 1 - (class prob. of the abstention class)
     """
     assert(confidence == "baseline" or confidence == "neg_abs")
-    assert(not (confidence == "neg_abs" and abstain == False),
+    assert(not (confidence == "neg_abs" and not abstain),
             "neg_abs must work with an abstention class!")
     def decode(net, data):
         """

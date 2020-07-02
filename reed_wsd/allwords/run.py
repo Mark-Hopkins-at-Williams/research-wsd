@@ -35,7 +35,7 @@ def train_all_words_classifier(net, train_loader, dev_loader, loss, n_epochs, lo
             optimizer.step()
             running_loss += loss_size.data.item()
             total_train_loss += loss_size.data.item()   
-            if i % 1000 == 0: # change to True if you want detailed logging
+            if i % 1000 == 0 and False: # change to True if you want detailed logging
                 if abstain:
                     acc = evaluate(net, dev_loader, abs_class=output_size - 1)
                 else:
@@ -64,31 +64,4 @@ def init_loader(data_dir, stage, batch_size = 16):
     ds = SenseInstanceDataset(sents, vecmgr)
     loader = SenseInstanceLoader(ds, batch_size)
     return loader
-
-
-"""
-if __name__ == '__main__':
-    batch_size = 16
-    logger = Logger(verbose = True)
-    data_dir = sys.argv[1]
-    train_corpus_id = 'data/WSD_Evaluation_Framework/Training_Corpora/SemCor/semcor.data.xml'
-    filename = join(data_dir, 'raganato.json')
-    st_sents = SenseTaggedSentences.from_json(filename, train_corpus_id)
-    vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), train_corpus_id))
-    ds = SenseInstanceDataset(st_sents, vecmgr)
-    train_loader = SenseInstanceLoader(ds, batch_size)
-    dev_loader = init_dev_loader(data_dir, batch_size)
-    net = train_all_words_classifier(train_loader, dev_loader, logger)  
-    save_path = join(file_dir, "saved")
-    if not os.path.isdir(save_path):
-        os.mkdir(save_path)
-    torch.save(net.state_dict(), join(save_path, "bert_simple.py")) 
-    predictions = decode(net, dev_loader) 
-    results = []
-    for inst_id, target, predicted_sense_index, _ in predictions:
-        results.append((inst_id, st_sents.inventory.sense(predicted_sense_index)))
-    with open('foo.txt', 'w') as writer:
-        for (inst_id, sense) in results:
-            writer.write('{} {}\n'.format(inst_id, sense))
-"""
 

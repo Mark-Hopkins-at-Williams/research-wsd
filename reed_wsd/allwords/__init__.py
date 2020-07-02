@@ -1,1 +1,0 @@
-from allwords import bert

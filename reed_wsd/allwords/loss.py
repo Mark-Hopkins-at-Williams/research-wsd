@@ -37,23 +37,17 @@ def zone_based_loss(predicted, gold, zones, f):
     result = neglog_pred[list(range(len(neglog_pred))), gold]
     return torch.mean(result)
 
-def apply_zones(predicted, zones):
+def apply_zones(predicted, zones, abstain = False):
     revised_pred = torch.zeros(predicted.shape)
     for i, (zone_start, zone_stop) in enumerate(zones):
         normalizer = sum(predicted[i, zone_start:zone_stop])
+        if abstain:
+            normalizer += predicted[i, -1]
         revised_pred[i,zone_start:zone_stop] = (predicted[i, zone_start:zone_stop] 
-                                                / normalizer)    
+                                                / normalizer) 
+        if abstain:
+            revised_pred[i, -1] = predicted[i, -1] / normalizer
     return revised_pred
-
-def apply_zones_with_abstain(predicted, zones):
-    revised_pred = torch.zeros(predicted.shape)
-    for i, (zone_start, zone_stop) in enumerate(zones):
-        normalizer = sum(predicted[i, zone_start:zone_stop]) + predicted[i, -1]
-        revised_pred[i,zone_start:zone_stop] = (predicted[i, zone_start:zone_stop] 
-                                                / normalizer)    
-        revised_pred[i, -1] = predicted[i, -1] / normalizer
-    return revised_pred
-
 
 class LossWithZones:
     
@@ -75,7 +69,7 @@ class ConfidenceLossWithZones:
     
     def __call__(self, predicted, gold, zones):
         predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
-        revised_pred = apply_zones_with_abstain(predicted, zones)
+        revised_pred = apply_zones(predicted, zones, abstain=True)
         label_ps = revised_pred[list(range(len(revised_pred))), gold]
         losses = label_ps + self.p0 * revised_pred[:, -1]
         return torch.mean(- torch.log(losses), dim=-1)

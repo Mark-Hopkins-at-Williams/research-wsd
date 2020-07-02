@@ -42,7 +42,7 @@ def closs_py(confidence):
               "n_epochs": 20}
 
     decoder = decode_gen(True, confidence)
-    data_dir = "./data"
+    data_dir = "../../data"
     batch_size = 16    
 
     print("Initializing data loader.")
