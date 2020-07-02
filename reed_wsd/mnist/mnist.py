@@ -66,9 +66,8 @@ def confuse(labels):
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 3, one_seven_shape)
     new_labels[new_labels > 0] = 7
-    new_labels[new_labels == 0] = 1
+    new_labels[new_labels == 0] = 1    
     labels[one_and_sevens] = new_labels
-    """
     one_and_sevens = (labels == 2) + (labels == 3)
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 2, one_seven_shape)
@@ -81,7 +80,6 @@ def confuse(labels):
     new_labels[new_labels > 0] = 4
     new_labels[new_labels == 0] = 5
     labels[one_and_sevens] = new_labels    
-    """
     return labels
 
 def decode_gen(confidence):
@@ -114,10 +112,8 @@ def train(criterion):
     best_model = None
     best_model_score = float('-inf')
     for e in range(epochs):
-        if e == 3:
+        if e == 2:
             criterion.p0 = 0.5
-        elif e == 7:
-            criterion.p0 = 0.6
         running_loss = 0
         for images, labels in trainloader:
             # Flatten MNIST images into a 784 long vector
@@ -138,7 +134,7 @@ def train(criterion):
                                                                                                                                         
             running_loss += loss.item()
         _, precision = validate_and_analyze(model, criterion)
-        if precision > best_model_score and e > 7:
+        if precision > best_model_score:
             print("Updating best model.")
             best_model = copy.deepcopy(model)
             best_model_score = precision
@@ -147,7 +143,6 @@ def train(criterion):
                                                                       precision))
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
     outfile = "params_" + str(criterion) + ".pt"
-    print(outfile)
     torch.save(best_model.state_dict(), join(model_dir, "params_" + str(criterion) + ".pt"))
     return best_model
 
@@ -180,7 +175,6 @@ def validate_and_analyze(model, criterion):
                 n_confident += 1
             else:
                 n_confident += 1            
-    print(data_dict)
     return data_dict, correct_count / n_confident
 
 

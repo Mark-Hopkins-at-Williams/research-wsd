@@ -1,10 +1,11 @@
 import unittest
 import torch
 from torch import tensor
-from reed_wsd.allwords.evaluate import predict, accuracy, yielde, ABSTAIN
-from reed_wsd.plot import py_curve
+from reed_wsd.allwords.evaluate import predict, accuracy, yielde
+from reed_wsd.plot import PYCurve
 from reed_wsd.allwords.evaluate import apply_zone_masks
 
+ABSTAIN = -1
 class TestEvaluate(unittest.TestCase):
     
     def test_predict(self):
@@ -55,7 +56,8 @@ class TestEvaluate(unittest.TestCase):
         confs = [0.1 * i for i in range(5)]
         expected = [(1.0, 0.2), (0.5, 0.2), (0.667, 0.4), (0.75, 0.6), 
                     (0.8, 0.8)]
-        for (i, (p, r)) in enumerate(py_curve(preds, gold, confs)):
+        print(PYCurve.py_curve(preds, gold, confs))
+        for (i, (p, r)) in enumerate(PYCurve.py_curve(preds, gold, confs)):
             (other_p, other_r) = expected[i]
             assert (round(p*1000)/1000 == other_p)
             assert (round(r*1000)/1000 == other_r)
