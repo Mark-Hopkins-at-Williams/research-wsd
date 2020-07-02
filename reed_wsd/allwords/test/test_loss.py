@@ -1,7 +1,8 @@
 import unittest
 import torch
 from torch import tensor
-from allwords.loss import LossWithZones, NLLLossWithZones, zone_based_loss
+from reed_wsd.allwords.loss import LossWithZones, NLLLossWithZones, zone_based_loss, ConfidenceLossWithZones
+import math
 
 def approx(x, y, num_digits = 4):
     return abs(x-y) < 1.0 * (10 ** -num_digits)
@@ -55,9 +56,17 @@ class TestLoss(unittest.TestCase):
         zones = [(0, 2), (2, 4)]
         assert(approx(loss(predicted, gold, zones).item(), 0.6931))
 
+    def test_confidence_loss_with_zones(self):
+        loss = ConfidenceLossWithZones(0.5)
+        predicted = tensor([[0, 0, 0, 0., 0], [0, 0, 0, 0., 0]])
+        gold = tensor([0, 3])
+        zones = [(0, 2), (2, 4)]
+        e = loss(predicted, gold, zones).item()
+        assert(approx(e, 0.6931))
 
 
         
      
 if __name__ == "__main__":
-	unittest.main()
+    unittest.main()
+
