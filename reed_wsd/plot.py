@@ -25,7 +25,7 @@ class PYCurve:
         preds = [inst['pred'] for inst in decoded]
         gold = [inst['gold'] for inst in decoded]
         confidences = [inst['confidence'] for inst in decoded]
-        return cls.__py_curve(preds, gold, confidences)
+        return cls.py_curve(preds, gold, confidences)
 
     @staticmethod    
     def py_curve(preds, gold, confidences):
