@@ -51,6 +51,7 @@ def decode_gen(abstain, confidence):
     assert(confidence == "baseline" or confidence == "neg_abs")
     assert(not (confidence == "neg_abs" and not abstain),
             "neg_abs must work with an abstention class!")
+
     def decode(net, data):
         """
         Runs a trained neural network classifier on validation data, and iterates
@@ -64,10 +65,7 @@ def decode_gen(abstain, confidence):
         for inst_ids, targets, evidence, response, zones in val_loader:
             val_outputs = net(evidence)
             val_outputs = F.softmax(val_outputs, dim=1)
-            if abstain:
-                revised = apply_zone_masks_with_abstain(val_outputs, zones)
-            else:
-                revised = apply_zone_masks(val_outputs, zones)
+            revised = apply_zone_masks(val_outputs, zones, abstain)
             if abstain:
                 maxes, preds = revised[:, :-1].max(dim=-1)
                 if confidence == "baseline":
@@ -86,17 +84,21 @@ def decode_gen(abstain, confidence):
         net.train()
     return decode
 
-def evaluate(net, data, abs_class=None):
+def evaluate(net, data, abstain=False):
     """
     The accuracy (i.e. percentage of correct classifications) is returned.
     net: trained network used to decode the data
     abstain: Boolean, whether the outout has an abstention class
     
     """
-    decode = decode_gen((abs_class != None), "baseline")
+    decode = decode_gen(abstain, "baseline")
     decoded = list(decode(net, data))
     predictions = [inst['pred'] for inst in decoded]
     gold = [inst['gold'] for inst in decoded]
-    correct, total = accuracy(predictions, gold, abs_class)
+    if abstain:
+        abstain_i = data.num_senses()
+    else:
+        abstain_i = -1
+    correct, total = accuracy(predictions, gold, abstain_i)
     return correct/total
 

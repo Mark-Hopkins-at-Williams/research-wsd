@@ -8,14 +8,14 @@ LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 class PYCurve:
-    def __init__(self, threshold_dict):
-        self.dict = threshold_dict
+    def __init__(self, scatters):
+        self.scatters = scatters
 
-    def get_dict(self):
-        return self.dict
+    def get_list(self):
+        return self.scatters
     
     @classmethod
-    def __precision_yield_curve(cls, net, data, decoder):
+    def precision_yield_curve(cls, net, data, decoder):
         """
         decode must be a iterable in which each element is of the form (prediction, gold, confidence)
         
@@ -33,7 +33,7 @@ class PYCurve:
         for c, p, g in triples:
             if p != g:
                 print('with conf {}, classified a gold {} as {}'.format(-c, g, p))
-        correct = [int(p == g) for (c,p,g) in triples]
+        correct = [int(p == g) for (_,p,g) in triples]
         cumul_correct = []
         sum_so_far = 0
         for element in correct:
@@ -45,16 +45,14 @@ class PYCurve:
     
     @classmethod
     def from_data(cls, net, data, decoder):
-        return cls(cls.__precision_yield_curve(net, data, decoder))
+        return cls(cls.precision_yield_curve(net, data, decoder))
 
-    def aupy(self, threses=None):
-        if threses == None:
-            threses = sorted(list(self.dict.keys()), reverse=True)
+    def aupy(self):
         area = 0
         prev_x = 0
-        for thres in threses:
-            x = self.dict[thres][1]
-            y = self.dict[thres][0]
+        for yx in self.scatters:
+            x = yx[1]
+            y = yx[0]
             area += y * (x - prev_x)
             prev_x = x
         return area
