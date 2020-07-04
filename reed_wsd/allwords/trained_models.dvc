@@ -1,0 +1,7 @@
+md5: eb578beeda4dacf25605af1766816cd6
+outs:
+- md5: fd9ff85e8061e56dfbdac797206fe726.dir
+  path: trained_models
+  cache: true
+  metric: false
+  persist: false
