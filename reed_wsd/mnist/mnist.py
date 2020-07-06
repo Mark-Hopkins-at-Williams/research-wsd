@@ -64,10 +64,10 @@ def confuse(labels):
     labels = labels.clone()
     one_and_sevens = (labels == 1) + (labels == 7)
     one_seven_shape = labels[one_and_sevens].shape
-    new_labels = torch.randint(0, 3, one_seven_shape)
-    new_labels[new_labels > 0] = 7
-    new_labels[new_labels == 0] = 1    
+    new_labels = torch.randint(0, 2, one_seven_shape) #change the second argument for different weights
+    new_labels[new_labels == 0] = 7    
     labels[one_and_sevens] = new_labels
+    """
     one_and_sevens = (labels == 2) + (labels == 3)
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 2, one_seven_shape)
@@ -79,7 +79,8 @@ def confuse(labels):
     new_labels = torch.randint(0, 4, one_seven_shape)
     new_labels[new_labels > 0] = 4
     new_labels[new_labels == 0] = 5
-    labels[one_and_sevens] = new_labels    
+    labels[one_and_sevens] = new_labels
+    """
     return labels
 
 def decode_gen(confidence):
@@ -108,7 +109,7 @@ def train(criterion):
     model = FFN()
     optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
     time0 = time()
-    epochs = 15
+    epochs = 10
     best_model = None
     best_model_score = float('-inf')
     for e in range(epochs):

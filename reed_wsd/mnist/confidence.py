@@ -2,6 +2,7 @@ import reed_wsd.plot as plt
 import reed_wsd.mnist.mnist as mnist
 from reed_wsd.mnist.loss import ConfidenceLoss1, NLL
 import json
+from reed_wsd.plot import PYCurve, plot_curves
 
 
 """
@@ -33,7 +34,7 @@ def create_pr_curve(config, output_file = '../results.json'):
         results = []
     with open(output_file, "w") as f:
         r = {'config': config,
-             'result': pyc.get_dict()}
+             'result': pyc.get_list()}
         results.append(r)
         json.dump(results, f)
         
@@ -49,4 +50,8 @@ def nll_py():
               'confidence': 'baseline'}    
     create_pr_curve(config)
     
+
+if __name__ == "__main__":
+    closs_py('baseline')
+
 
