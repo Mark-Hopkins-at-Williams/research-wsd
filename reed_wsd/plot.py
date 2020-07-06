@@ -8,14 +8,13 @@ LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 class PYCurve:
-    def __init__(self, threshold_dict):
-        self.dict = threshold_dict
+    def __init__(self, scatters):        self.scatters = scatters
 
-    def get_dict(self):
-        return self.dict
+    def get_list(self):
+        return self.scatters
     
     @classmethod
-    def __precision_yield_curve(cls, net, data, decoder):
+    def precision_yield_curve(cls, net, data, decoder):
         """
         decode must be a iterable in which each element is of the form (prediction, gold, confidence)
         
@@ -33,7 +32,7 @@ class PYCurve:
         for c, p, g in triples:
             if p != g:
                 print('with conf {}, classified a gold {} as {}'.format(-c, g, p))
-        correct = [int(p == g) for (c,p,g) in triples]
+        correct = [int(p == g) for (_,p,g) in triples]
         cumul_correct = []
         sum_so_far = 0
         for element in correct:
@@ -45,38 +44,35 @@ class PYCurve:
     
     @classmethod
     def from_data(cls, net, data, decoder):
-        return cls(cls.__precision_yield_curve(net, data, decoder))
+        return cls(cls.precision_yield_curve(net, data, decoder))
 
-    def aupy(self, threses=None):
-        if threses == None:
-            threses = sorted(list(self.dict.keys()), reverse=True)
+    def aupy(self):
         area = 0
-        prev_x = 0
-        for thres in threses:
-            x = self.dict[thres][1]
-            y = self.dict[thres][0]
+        prev_x = self.scatters[0][1]
+        for yx in self.scatters:
+            x = yx[1]
+            y = yx[0]
             area += y * (x - prev_x)
             prev_x = x
         return area
 
-    def plot(self):
-        sns.set()
-        thresholds = sorted(self.dict.keys())
-        x = [self.dict[thres][1] for thres in thresholds]
-        y = [self.dict[thres][0] for thres in thresholds]
-        fig = plt.figure()
-        fig.subplots_adjust(top=0.8)
-        ax1 = fig.add_subplot(211)
-        ax1.set_title('Precision-Yield Curve')
-        ax1.set_ylabel('precision')
-        ax1.set_xlabel('yield')
-        ax1.plot(x, y)
+    def plot(self, label=None):
+        os.environ['KMP_DUPLICATE_LIB_OK']='True'
+        #sns.set()
+        x = [yx[1] for yx in self.scatters]
+        y = [yx[0] for yx in self.scatters]
+        if label != None:
+            plt.plot(x, y, label=label)
+        else:
+            plt.plot(x, y)
 
-def save_py_curve(curve):
-    confidence_path = join(file_dir, "../confidence")
-    if not os.path.isdir(confidence_path):
-        os.mkdir(confidence_path)
-    jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")
-    with open(jsonfile, "w") as f:
-        json.dump(curve, f)
-
+def plot_curves(*pycs):
+    for i in range(len(pycs)):
+        curve = pycs[i][0]
+        label = pycs[i][1]
+        label = label + "; aupy = {:.3f}".format(curve.aupy())
+        curve.plot(label)
+    plt.legend()
+    plt.xlabel('recall')
+    plt.ylabel('precision')
+    plt.show()

@@ -37,12 +37,12 @@ def train_all_words_classifier(net, train_loader, dev_loader, loss, n_epochs, lo
             total_train_loss += loss_size.data.item()   
             if i % 1000 == 0 and False: # change to True if you want detailed logging
                 if abstain:
-                    acc = evaluate(net, dev_loader, abs_class=output_size - 1)
+                    acc = evaluate(net, dev_loader, abstain)
                 else:
                     acc = evaluate(net, dev_loader)
                 print(acc)                
         net.eval()
-        acc = evaluate(net, dev_loader, abs_class=output_size - 1)
+        acc = evaluate(net, dev_loader, abstain)
         if acc > best_acc:
             best_net = net
             best_acc = acc
