@@ -8,8 +8,7 @@ LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 class PYCurve:
-    def __init__(self, scatters):
-        self.scatters = scatters
+    def __init__(self, scatters):        self.scatters = scatters
 
     def get_list(self):
         return self.scatters
@@ -49,7 +48,7 @@ class PYCurve:
 
     def aupy(self):
         area = 0
-        prev_x = 0
+        prev_x = self.scatters[0][1]
         for yx in self.scatters:
             x = yx[1]
             y = yx[0]
@@ -57,24 +56,23 @@ class PYCurve:
             prev_x = x
         return area
 
-    def plot(self):
-        sns.set()
-        thresholds = sorted(self.dict.keys())
-        x = [self.dict[thres][1] for thres in thresholds]
-        y = [self.dict[thres][0] for thres in thresholds]
-        fig = plt.figure()
-        fig.subplots_adjust(top=0.8)
-        ax1 = fig.add_subplot(211)
-        ax1.set_title('Precision-Yield Curve')
-        ax1.set_ylabel('precision')
-        ax1.set_xlabel('yield')
-        ax1.plot(x, y)
+    def plot(self, label=None):
+        os.environ['KMP_DUPLICATE_LIB_OK']='True'
+        #sns.set()
+        x = [yx[1] for yx in self.scatters]
+        y = [yx[0] for yx in self.scatters]
+        if label != None:
+            plt.plot(x, y, label=label)
+        else:
+            plt.plot(x, y)
 
-def save_py_curve(curve):
-    confidence_path = join(file_dir, "../confidence")
-    if not os.path.isdir(confidence_path):
-        os.mkdir(confidence_path)
-    jsonfile = join(file_dir, "../confidence/precision_yield_curve.json")
-    with open(jsonfile, "w") as f:
-        json.dump(curve, f)
-
+def plot_curves(*pycs):
+    for i in range(len(pycs)):
+        curve = pycs[i][0]
+        label = pycs[i][1]
+        label = label + "; aupy = {:.3f}".format(curve.aupy())
+        curve.plot(label)
+    plt.legend()
+    plt.xlabel('recall')
+    plt.ylabel('precision')
+    plt.show()

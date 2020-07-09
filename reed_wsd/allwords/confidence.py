@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from os.path import join
 import torch
 import json
-from reed_wsd.plot import PYCurve
+from reed_wsd.plot import PYCurve, plot_curves
 from reed_wsd.allwords.networks import AffineClassifier
 from reed_wsd.util import cudaify
 from reed_wsd.allwords.run import init_loader, decode_gen, train_all_words_classifier
@@ -28,7 +28,7 @@ def main(data_dir):
     print(py_curve)
     return py_curve
     
-def closs_py(confidence):
+def closs_py(net, confidence):
     """
     cofidence can be either 'baseline' or 'neg_abs'
     the 'baseline' confidence metric uses the maximum class prob. among 
@@ -73,12 +73,14 @@ def closs_py(confidence):
     
     
 if __name__ == "__main__":
-    decoder = decode_gen(True, "baseline")
+    decoder_base = decode_gen(True, "baseline")
+    decoder_neg = decode_gen(True, "neg_abs")
+    decoder_wo = decode_gen(False, "baseline")
     data_dir = "./data"
     batch_size = 16    
 
     print("Initializing data loader.")
-    train_loader = init_loader(data_dir, "train", batch_size)
+    #train_loader = init_loader(data_dir, "train", batch_size)
     dev_loader = init_loader(data_dir, "dev", batch_size)
     input_size = 768 # TODO: what is it in general?
     output_size = dev_loader.num_senses()
