@@ -1,6 +1,6 @@
 import unittest
 from reed_wsd.allwords.wordsense import SenseInstance
-from reed_wsd.allwords.bert import BertVectorizer
+from reed_wsd.allwords.bert import BertVectorizer, tokenize_with_target
 from torch import tensor
 
 class TestBert(unittest.TestCase):
@@ -176,6 +176,24 @@ class TestBert(unittest.TestCase):
             -1.1779e-02, -4.5650e-01, -8.6922e-01, -1.4814e-01,  3.7370e-01,
             -3.1986e-01,  5.5159e-01, -3.2156e-01])
         assert(self.compare_tensors(expected, result, num_digits = 3))
+
+    def test_tokenize_with_target(self):
+        sent = ['my', 'name', 'is', 'johnason', 'wells', '.']
+        target_i = 4
+        expected_ids = [101, 2026, 2171, 2003, 2198, 3022, 2239, 7051, 1012, 102]
+        expected_range = [7, 8]
+        input_ids, target_range = tokenize_with_target(sent, target_i)
+        assert(expected_ids == input_ids)
+        assert(expected_range == target_range)
+
+        sent = ['this', 'summer', 'johnathan', 'works', 'with', 'johnathan', 'wells']
+        target_i = 6
+        expected_ids = [101, 2023, 2621, 2198, 29246, 2573, 2007, 2198, 29246, 7051, 102]
+        expected_range = [9, 10]
+        input_ids, target_range = tokenize_with_target(sent, target_i)
+        assert(expected_ids == input_ids)
+        assert(expected_range == target_range)
+
     
 
 if __name__ == "__main__":

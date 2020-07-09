@@ -2,6 +2,7 @@ import unittest
 import torch
 from torch import tensor
 from reed_wsd.allwords.loss import LossWithZones, NLLLossWithZones, zone_based_loss, ConfidenceLossWithZones
+from reed_wsd.allwords.loss import CrossEntropyLossBEM
 
 def approx(x, y, num_digits = 4):
     return abs(x-y) < 1.0 * (10 ** -num_digits)
@@ -63,8 +64,16 @@ class TestLoss(unittest.TestCase):
         e = loss(predicted, gold, zones).item()
         assert(approx(e, 0.6931))
 
+    def test_cross_entropy_loss_BEM(self):
+        loss = CrossEntropyLossBEM()
+        scores = torch.tensor([[1., 0, 0, float('-inf'), float('-inf')],
+                                 [0.5, 0.5, 0.1, 0.1, 0.1],
+                                 [0.8, 0.6, 0.2, 0.1, float('-inf')]])
+        gold = [0, 1, 3]
+        expected_output = (0.5514 + 1.3890 + 1.7523) / 3
+        output = loss(scores, gold).item()
+        assert( approx(expected_output, output) )
 
-        
      
 if __name__ == "__main__":
     unittest.main()

@@ -2,6 +2,8 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
+from transformers import BertModel
 
 class AffineClassifier(nn.Module): 
     
@@ -36,6 +38,56 @@ class DropoutClassifier(nn.Module):
         nextout = self.linear3(nextout)
         return F.log_softmax(nextout, dim=1)
 
+class BEMforWSD(nn.Module):
+    """
+    This is the Bi-encoder Model proposed by Blevins et al.
+    in this paper: https://github.com/facebookresearch/wsd-biencoders
+    """
+    def __init__(self):
+        super(BEMforWSD, self).__init__()
+        self.context_encoder = BertModel.from_pretrained('bert-base-uncased')
+        self.gloss_encoder = BertModel.from_pretrained('bert-base-uncased')
+
+    def forward(self, contexts, glosses, pos):
+        scores = []
+        context_inputs = contexts['input_ids']
+        context_masks = contexts['attention_mask']
+        context_rep = self.context_encoder(input_ids=context_inputs,
+                                           attention_mask=context_masks)[0] # last hidden state
+        target_rep = self.target_representation(context_rep, pos)
+        for i, g in enumerate(glosses):
+            input_ids = g['input_ids']
+            attention_mask = g['attention_mask']
+            last_layer = self.gloss_encoder(input_ids=input_ids,
+                                            attention_mask=attention_mask)[0]
+            gloss_reps = last_layer[:, 0, :] # the vector that corresponds to CLS
+            score = target_rep[i] * gloss_reps
+            score = score.sum(dim=1)
+            scores.append(score)
+        result = pad_sequence(scores, batch_first=True)
+        return result
+
+    @staticmethod
+    def target_representation(context_rep, pos):
+        result = context_rep.clone()
+        idx = torch.ones(context_rep.shape).bool()
+        for i, p in enumerate(pos):
+            idx[i, p[0]:p[1], :] = 0
+        result[idx] = 0
+        result = result.sum(dim=1)
+        for i, p in enumerate(pos):
+            result[i] /= (p[1] - p[0])
+        return result
+    
+    def train(self):
+        self.context_encoder.train()
+        self.gloss_encoder.train()
+
+    def eval(self):
+        self.context_encoder.eval()
+        self.gloss_encoder.eval()
+
+    
 
 """
 from pytorch_transformers import BertModel

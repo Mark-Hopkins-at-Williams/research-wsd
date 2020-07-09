@@ -73,4 +73,17 @@ class ConfidenceLossWithZones:
         label_ps = revised_pred[list(range(len(revised_pred))), gold]
         losses = label_ps + self.p0 * revised_pred[:, -1]
         return torch.mean(- torch.log(losses), dim=-1)
-    
+
+class CrossEntropyLossBEM:
+    def __call__(self, scores, gold):
+        """
+        scores: a batch of scores for each sense
+        gold: a batch of ids of the right senses
+        """
+
+        gold_scores = scores[list(range(scores.shape[0])), gold]
+        entropies = torch.log(torch.sum(torch.exp(scores), dim=-1))
+        losses = entropies - gold_scores
+        return losses.mean()
+        
+        

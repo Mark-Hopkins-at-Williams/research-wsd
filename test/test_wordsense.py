@@ -2,6 +2,7 @@ import unittest
 import json
 from torch import tensor
 from reed_wsd.allwords import wordsense, vectorize
+import torch
 
 class TestWordsense(unittest.TestCase):
     
@@ -24,16 +25,16 @@ class TestWordsense(unittest.TestCase):
                            'tokens': ['he', 'was', 'laughed', 'off', 
                                       'the', 'screen', '.']}}                         
         self.vec_mgr = vectorize.RamBasedVectorManager(vec_map)
-        self.data = {'inventory': {'be': ['be%1'],
-                                   'laugh_off': ['laugh_off%1'],
-                                   'screen': ['screen%2']},
+        self.data = {'inventory': {'be': ['be%2:42:06::'],
+                     'laugh_off': ['laugh_off%2:32:00::'],
+                     'screen': ['screen%1:06:06::']},
                      'corpora': 
                          {'corpus1':
                             {'sents':
                                 [{'sentid': 37163, 
                                  'words': [{'word': 'It', 'tag': 'PRP'}, 
                                            {'word': 'was', 'tag': 'VB', 
-                                            'sense': 'be%1', 'id': 'i1'}, 
+                                            'sense': 'be%2:42:06::', 'id': 'i1'}, 
                                            {'word': 'a', 'tag': 'DT'}, 
                                            {'word': 'disaster', 'tag': 'NN'}, 
                                            {'word': '!', 'tag': 'punc'}]},
@@ -41,10 +42,10 @@ class TestWordsense(unittest.TestCase):
                                  'words': [{'word': 'He', 'tag': 'PRP'}, 
                                            {'word': 'was', 'tag': 'VBD'}, 
                                            {'word': 'laughed_off', 'tag': 'VB', 
-                                            'sense': 'laugh_off%1', 'id': 'i1'}, 
+                                            'sense': 'laugh_off%2:32:00::', 'id': 'i1'}, 
                                            {'word': 'the', 'tag': 'DT'}, 
                                            {'word': 'screen', 'tag': 'NN', 
-                                            'sense': 'screen%2', 'id': 'i1'}, 
+                                            'sense': 'screen%1:06:06::', 'id': 'i1'}, 
                                            {'word': '.', 'tag': 'punc'}]}],
                              'n_insts': 3                            
                             }
@@ -97,26 +98,26 @@ class TestWordsense(unittest.TestCase):
         assert(sent1['sentid'] == 37165)
         assert(sent1['words'][2]['word'] == 'laughed_off')
         assert(sent1['words'][2]['tag'] == 'VB')
-        assert(sent1['words'][2]['sense'] == 'laugh_off%1')
+        assert(sent1['words'][2]['sense'] == 'laugh_off%2:32:00::')
  
     def test_sense_instance_dataset(self):
         dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr,
                                                  randomize_sents = False)
         sense_inst0 = dataset[0]
-        assert(sense_inst0.sense == 'be%1')
+        assert(sense_inst0.sense == 'be%2:42:06::')
         assert(sense_inst0.tokens ==  ['It', 'was', 'a', 'disaster', '!'])
         assert(sense_inst0.pos == 1)
         assert(self.compare_lists(sense_inst0.get_embedding('embed'), 
                                   [21.0, 22.0, 23.0]))
         sense_inst1 = dataset[1]
-        assert(sense_inst1.sense == 'laugh_off%1')
+        assert(sense_inst1.sense == 'laugh_off%2:32:00::')
         assert(sense_inst1.tokens ==  ['He', 'was', 'laughed_off', 'the', 
                                        'screen', '.'])
         assert(sense_inst1.pos == 2)
         assert(self.compare_lists(sense_inst1.get_embedding('embed'), 
                                   [72.2, 74.2, 76.2]))      
         sense_inst2 = dataset[2]
-        assert(sense_inst2.sense == 'screen%2')
+        assert(sense_inst2.sense == 'screen%1:06:06::')
         assert(sense_inst2.tokens ==  ['He', 'was', 'laughed_off', 'the', 
                                        'screen', '.'])
         assert(sense_inst2.pos == 4)
@@ -156,6 +157,60 @@ class TestWordsense(unittest.TestCase):
         assert(self.compare_matrices(evid, expected_evid))
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
        
+    def test_BEMDataset(self):
+        sent0 = 'It was a disaster!'
+        ds = wordsense.BEMDataset(self.sents, randomize_sents = False)
+        inst0 = ds[0]
+        expected_input_ids = torch.tensor([101, 2009, 2001, 1037, 7071, 999, 102])
+        expected_range = [2, 3]
+        expected_gloss = torch.tensor([[101, 2022, 7235, 2000, 1025, 2022, 2619, 2030, 2242, 102]])
+        expected_gold = 0
+        assert(torch.equal(expected_input_ids, inst0['input_ids']))
+        assert(expected_range == inst0['pos'])
+        assert(torch.equal(expected_gloss, inst0['glosses_ids']['input_ids']))
+        assert(expected_gold == inst0['sense_id'])
+
+    def test_BEMLoader(self):
+        ds = wordsense.BEMDataset(self.sents, randomize_sents = False)
+        loader = wordsense.BEMLoader(ds, batch_size = 3)
+        batch_iter = loader.batch_iter()
+        pkg = next(batch_iter)
+        print(pkg)
+
+        expected_contexts = torch.tensor(
+                             [[101, 2009, 2001, 1037, 7071, 999, 102, 0, 0, 0],
+                             [101, 2002, 2001, 4191, 1035, 2125, 1996, 3898, 1012, 102], 
+                             [101, 2002, 2001, 4191, 1035, 2125, 1996, 3898, 1012, 102]])
+        expected_context_masks = torch.tensor(
+                             [[1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        expected_pos = [[2, 3], [3, 6], [7, 8]]
+        be = {'input_ids': torch.tensor([[101, 2022, 7235, 2000, 1025, 2022, 2619, 2030, 2242, 102]]), 
+              'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+              'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}
+        lo = {'input_ids': torch.tensor([[101, 3066, 2007, 1037, 3291, 2011, 5870, 2030, 12097, 2000, 2022, 11770, 2011, 2009, 102]]),
+                'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}  
+        screen = {'input_ids': torch.tensor([[101, 1037, 2317, 2030, 3165, 2098, 3302, 2073, 4620, 2064, 2022, 11310, 2005, 10523, 102]]),
+                  'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                  'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}  
+        expected_glosses = [be, lo, screen]
+        expected_gold = [0, 0, 0]
+
+        print(pkg['contexts'])
+        assert(torch.equal(expected_contexts, pkg['contexts']['input_ids']))
+        assert(torch.equal(expected_context_masks, pkg['contexts']['attention_mask']))
+
+        for i, inst in enumerate(expected_glosses):
+            assert(torch.equal(inst['input_ids'], pkg['glosses'][i]['input_ids']))
+
+        assert(expected_pos == pkg['pos'])
+        assert(expected_gold == pkg['gold'])
+
+        
+
+
         
 if __name__ == "__main__":
 	unittest.main()

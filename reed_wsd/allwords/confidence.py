@@ -81,16 +81,18 @@ if __name__ == "__main__":
     train_loader = init_loader(data_dir, "train", batch_size)
     dev_loader = init_loader(data_dir, "dev", batch_size)
     input_size = 768 # TODO: what is it in general?
-    output_size = dev_loader.num_senses() + 1
+    output_size = dev_loader.num_senses()
     
     print("teaching to classification")
     net = AffineClassifier(input_size, output_size)
-    loss1 = NLLLossWithZones()
-    net = train_all_words_classifier(net, train_loader, dev_loader, loss1, n_epochs=20, logger=Logger(verbose=True), abstain=True)
     
+    loss1 = NLLLossWithZones()
+    net = train_all_words_classifier(net, train_loader, dev_loader, loss1, n_epochs=30, logger=Logger(verbose=True), abstain=False)
+    """
     print("teaching abstention")
     loss2 = ConfidenceLossWithZones(0.5)
     net = train_all_words_classifier(net, train_loader, dev_loader, loss2, n_epochs=20, logger=Logger(verbose=True), abstain=True)
+    """
 
-    with open("trained_models/abstain.pt", "w") as f:
-        torch.save(net.state_dict(), "trained_models/abstain.pt")
+    with open("trained_models/wo_abstain.pt", "w") as f:
+        torch.save(net.state_dict(), "trained_models/wo_abstain.pt")
