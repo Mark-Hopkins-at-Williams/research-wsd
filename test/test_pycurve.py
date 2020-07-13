@@ -11,8 +11,6 @@ class TestPYCurve(unittest.TestCase):
         expected_aupy = 0.2 * 0.75 + 0.2 * 0.6
         pycurve = PYCurve(scatters)
         aupy = pycurve.aupy()
-        print(aupy)
-        print(expected_aupy)
         assert approx(aupy, expected_aupy)
        
 if __name__ == "__main__":
