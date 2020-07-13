@@ -73,4 +73,4 @@ class ConfidenceLossWithZones:
         label_ps = revised_pred[list(range(len(revised_pred))), gold]
         losses = label_ps + self.p0 * revised_pred[:, -1]
         return torch.mean(- torch.log(losses), dim=-1)
-    
+

@@ -8,7 +8,7 @@ class TestPYCurve(unittest.TestCase):
         scatters = [[0.9, 0.1],
                          [0.75, 0.3],
                          [0.6, 0.5]]
-        expected_aupy = 0.1 * 0.9 + 0.2 * 0.75 + 0.2 * 0.6
+        expected_aupy = 0.2 * 0.75 + 0.2 * 0.6
         pycurve = PYCurve(scatters)
         aupy = pycurve.aupy()
         assert approx(aupy, expected_aupy)

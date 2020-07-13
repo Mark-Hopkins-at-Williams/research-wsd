@@ -1,6 +1,27 @@
 import torch
 from transformers import BertModel, BertTokenizer
 
+
+def tokenize_with_target(tokenizer, sent, target_i):
+    """
+    sent: a list of words to be tokenized
+    target: the target word
+    """
+    sent = ['[CLS]'] + sent + ['[SEP]']
+    tks = []
+    start = 0
+    tracker = 0
+    for i, word in enumerate(sent):
+        if i == target_i + 1:
+            start = tracker
+        curr_tks = tokenizer.tokenize(word)
+        tracker += len(curr_tks)
+        if i == target_i + 1:
+            end = tracker
+        tks += curr_tks
+    return torch.tensor(tokenizer.convert_tokens_to_ids(tks)), [start, end]
+    
+
 class BertSentenceVectorizer:
     """
     A BertSentenceVectorizer produces a function that maps a sentence

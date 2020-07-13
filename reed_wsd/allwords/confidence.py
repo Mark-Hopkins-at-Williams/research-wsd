@@ -84,29 +84,17 @@ if __name__ == "__main__":
     dev_loader = init_loader(data_dir, "dev", batch_size)
     input_size = 768 # TODO: what is it in general?
     output_size = dev_loader.num_senses()
-    """
+    
     print("teaching to classification")
     net = AffineClassifier(input_size, output_size)
+    
     loss1 = NLLLossWithZones()
-    net = train_all_words_classifier(net, train_loader, dev_loader, loss1, n_epochs=20, logger=Logger(verbose=True), abstain=True)
-
+    net = train_all_words_classifier(net, train_loader, dev_loader, loss1, n_epochs=30, logger=Logger(verbose=True), abstain=False)
+    """
     print("teaching abstention")
     loss2 = ConfidenceLossWithZones(0.5)
     net = train_all_words_classifier(net, train_loader, dev_loader, loss2, n_epochs=20, logger=Logger(verbose=True), abstain=True)
-    
-    with open("trained_models/abstain.pt", "w") as f:
-        torch.save(net.state_dict(), "trained_models/abstain.pt")
     """
 
-    net_abs = AffineClassifier(input_size, output_size + 1)
-    net_wo = AffineClassifier(input_size, output_size)
-    with open("trained_models/abstain.pt", "r") as f:
-        net_abs.load_state_dict(torch.load("trained_models/abstain.pt", map_location=torch.device("cpu")))
-    with open("trained_models/abstain.pt", "r") as f:
-        net_wo.load_state_dict(torch.load("trained_models/wo_abstain.pt", map_location=torch.device("cpu")))
-    
-    pyc_base = PYCurve.from_data(net_abs, dev_loader, decoder_base)
-    pyc_neg = PYCurve.from_data(net_abs, dev_loader, decoder_neg)
-    pyc_wo = PYCurve.from_data(net_wo, dev_loader, decoder_wo)
-    print('pycs constructed successfully')
-    plot_curves([pyc_wo, 'w/o abs'], [pyc_base, 'baseline'], [pyc_neg, 'neg_abs'])
+    with open("trained_models/wo_abstain.pt", "w") as f:
+        torch.save(net.state_dict(), "trained_models/wo_abstain.pt")
