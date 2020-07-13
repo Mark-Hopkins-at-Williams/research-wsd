@@ -4,6 +4,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 from transformers import BertModel
+from reed_wsd.util import cudaify
 
 class AffineClassifier(nn.Module): 
     
@@ -51,13 +52,17 @@ class BEMforWSD(nn.Module):
     def forward(self, contexts, glosses, pos):
         scores = []
         context_inputs = contexts['input_ids']
+        context_inputs = cudaify(context_inputs)
         context_masks = contexts['attention_mask']
+        context_masks = cudaify(context_masks)
         context_rep = self.context_encoder(input_ids=context_inputs,
                                            attention_mask=context_masks)[0] # last hidden state
         target_rep = self.target_representation(context_rep, pos)
         for i, g in enumerate(glosses):
             input_ids = g['input_ids']
+            input_ids = cudaify(input_ids)
             attention_mask = g['attention_mask']
+            attention_mask = cudaify(attention_mask)
             last_layer = self.gloss_encoder(input_ids=input_ids,
                                             attention_mask=attention_mask)[0]
             gloss_reps = last_layer[:, 0, :] # the vector that corresponds to CLS

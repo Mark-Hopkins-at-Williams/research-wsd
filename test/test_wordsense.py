@@ -185,7 +185,7 @@ class TestWordsense(unittest.TestCase):
                              [[1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
-        expected_pos = [[2, 3], [3, 6], [7, 8]]
+        expected_span = [[2, 3], [3, 6], [7, 8]]
         be = {'input_ids': torch.tensor([[101, 2022, 7235, 2000, 1025, 2022, 2619, 2030, 2242, 102]]), 
               'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
               'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}
@@ -205,7 +205,7 @@ class TestWordsense(unittest.TestCase):
         for i, inst in enumerate(expected_glosses):
             assert(torch.equal(inst['input_ids'], pkg['glosses'][i]['input_ids']))
 
-        assert(expected_pos == pkg['pos'])
+        assert(expected_span == pkg['span'])
         assert(expected_gold == pkg['gold'])
 
         

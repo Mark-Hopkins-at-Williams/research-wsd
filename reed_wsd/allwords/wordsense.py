@@ -1,5 +1,6 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import math
 import json
 import torch
 import random
@@ -7,7 +8,7 @@ from torch import tensor
 from torch.utils.data import Dataset
 import reed_wsd.util as util
 import reed_wsd.allwords.align as align
-from reed_wsd.allwords.bert import Tokenizers
+from reed_wsd.allwords.bert import tokenize_with_target
 from collections import defaultdict
 from nltk.corpus import wordnet as wn
 from transformers import BertTokenizer
@@ -188,6 +189,7 @@ class BEMDataset(Dataset):
         self.st_sents = st_sents
         self.instance_index = 0
         self.randomize_sents = randomize_sents
+        self.tknz = BertTokenizer.from_pretrained('bert-base-uncased')
         self.num_insts = self.st_sents.get_n_insts()
         self.inv = self.st_sents.get_inventory()
         self.instance_iter = self.item_iter()
@@ -203,7 +205,6 @@ class BEMDataset(Dataset):
         self.randomize_sents = value
 
     def item_iter(self):
-        tknz = Tokenizers()
         sent_ids = list(range(len(self.st_sents)))
         if self.randomize_sents:
             random.shuffle(sent_ids)
@@ -214,11 +215,11 @@ class BEMDataset(Dataset):
                 if 'sense' in word:
                     s = word['sense']
                     lemma = self.inv.sense_lemma(s)
-                    input_ids, target_range = tknz.tokenize_with_target(old_toks, i)
+                    input_ids, target_range = tokenize_with_target(self.tknz, old_toks, i)
                     senses = self.inv.get_senses(lemma)
                     correct_sense_i = senses.index(s) 
                     glosses = [wn.lemma_from_key(sense).synset().definition() for sense in senses]
-                    glosses_ids = tknz.get_tokenizer()(glosses, padding=True, return_tensors='pt')
+                    glosses_ids = self.tknz(glosses, padding=True, return_tensors='pt')
                     yield {'input_ids': input_ids, 'pos': target_range,
                            'glosses_ids': glosses_ids, 'sense_id': correct_sense_i}
 
@@ -297,6 +298,7 @@ class BEMLoader:
 
     def __init__(self, bem_ds, batch_size, desired_ids = None):
         self.ds = bem_ds
+        self.n_insts = len(self.ds)
         self.batch_size = batch_size
         if desired_ids is None:
             self.desired_ids = list(range(len(self.ds)))
@@ -320,6 +322,9 @@ class BEMLoader:
     def sense(self, sense_id):
         return self.inventory.sense(sense_id)
 
+    def __len__(self):
+        return math.ceil(self.n_insts / self.batch_size)
+
     def batch_iter(self):
         input_sents_batch = []
         glosses_ids_batch = []
@@ -336,17 +341,17 @@ class BEMLoader:
                 contexts = self.tknz(input_sents_batch, padding=True, return_tensors='pt')
                 yield {'contexts': contexts,
                        'glosses': glosses_ids_batch,
-                       'pos': pos_batch,
+                       'span': pos_batch,
                        'gold': gold_batch}
                 input_sents_batch = []
-                glosses_id_batch = []
+                glosses_ids_batch = []
                 pos_batch = []
                 gold_batch = []
         if len(input_sents_batch) > 0:
             contexts = self.tknz(input_sents_batch, padding=True, return_tensors='pt')
             yield {'contexts': contexts,
                    'glosses': glosses_ids_batch,
-                   'pos': pos_batch,
+                   'span': pos_batch,
                    'gold': gold_batch}
 
 
@@ -355,12 +360,16 @@ class SenseInstanceLoader:
     
     def __init__(self, inst_ds, batch_size, desired_ids = None):
         self.inst_ds = inst_ds
+        self.n_insts = len(self.inst_ds)
         self.batch_size = batch_size
         if desired_ids is None:
             self.desired_ids = list(range(len(self.inst_ds)))
         else:
             self.desired_ids = desired_ids            
         self.inventory = self.inst_ds.get_inventory()
+
+    def __len__(self):
+        return math.ceil(self.n_insts / self.batch_size)
             
     def get_instance_dataset(self):
         return self.inst_ds

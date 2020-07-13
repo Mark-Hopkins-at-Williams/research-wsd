@@ -38,6 +38,26 @@ def apply_zone_masks(outputs, zones, abstain=False):
     revised = F.normalize(revised, dim=-1, p=1)
     return revised
 
+def decode_BEM(net, data):
+    net.eval()
+    val_loader = data.batch_iter()
+    with torch.no_grad():
+        for batch in val_loader:
+            contexts = batch['contexts']
+            glosses = batch['glosses']
+            span = batch['span']
+            gold = batch['gold']
+            scores = net(contexts, glosses, span)
+            max_scores, preds = scores.max(dim=-1)
+            for element in zip(max_scores,
+                               zip(preds,
+                                   gold)):
+                (max_score, (pred, g)) = element
+                yield({'pred': pred.item(), 'gold': g, 'confidence': max_scores})
+            
+
+
+
 def decode_gen(abstain, confidence):
     """
     abstain: boolean
@@ -62,37 +82,37 @@ def decode_gen(abstain, confidence):
         """
         net.eval()
         val_loader = data.batch_iter()
-        for inst_ids, targets, evidence, response, zones in val_loader:
-            val_outputs = net(evidence)
-            val_outputs = F.softmax(val_outputs, dim=1)
-            revised = apply_zone_masks(val_outputs, zones, abstain)
-            if abstain:
-                maxes, preds = revised[:, :-1].max(dim=-1)
-                if confidence == "baseline":
-                    cs = maxes
-                elif confidence == "neg_abs":
-                    cs = 1 - revised[:, -1]
-            else:
-                maxes, preds = revised.max(dim=-1)
-                if confidence == "baseline":
-                    cs = maxes
-            for element in zip(inst_ids, 
-                               zip(targets,
-                                   zip(preds, zip(response.tolist(), cs)))):                    
-                (inst_id, (target, (prediction, (gold, c)))) = element
-                yield {'pred': prediction.item(), 'gold': gold, 'confidence': c.item()}
+        with torch.no_grad():
+            for inst_ids, targets, evidence, response, zones in val_loader:
+                val_outputs = net(evidence)
+                val_outputs = F.softmax(val_outputs, dim=1)
+                revised = apply_zone_masks(val_outputs, zones, abstain)
+                if abstain:
+                    maxes, preds = revised[:, :-1].max(dim=-1)
+                    if confidence == "baseline":
+                        cs = maxes
+                    elif confidence == "neg_abs":
+                        cs = 1 - revised[:, -1]
+                else:
+                    maxes, preds = revised.max(dim=-1)
+                    if confidence == "baseline":
+                        cs = maxes
+                for element in zip(inst_ids, 
+                                   zip(targets,
+                                       zip(preds, zip(response.tolist(), cs)))):                    
+                    (inst_id, (target, (prediction, (gold, c)))) = element
+                    yield {'pred': prediction.item(), 'gold': gold, 'confidence': c.item()}
         net.train()
     return decode
 
-def evaluate(net, data, abstain=False):
+def evaluate(net, data, decoder, abstain=False):
     """
     The accuracy (i.e. percentage of correct classifications) is returned.
     net: trained network used to decode the data
     abstain: Boolean, whether the outout has an abstention class
     
     """
-    decode = decode_gen(abstain, "baseline")
-    decoded = list(decode(net, data))
+    decoded = list(decoder(net, data))
     predictions = [inst['pred'] for inst in decoded]
     gold = [inst['gold'] for inst in decoded]
     if abstain:
