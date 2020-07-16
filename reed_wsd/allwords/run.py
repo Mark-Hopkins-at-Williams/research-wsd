@@ -47,6 +47,8 @@ def BEM_batch_trainer(net, train_loader, optimizer, loss, max_grad_norm):
 
 def train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs, max_grad_norm=1.0, logger=Logger(verbose=True)):
     logger('Training classifier.\n')   
+    best_net = net
+    best_acc = 0.0
     net = cudaify(net)
     for epoch in range(n_epochs): 
         logger("  Epoch {} Accuracy = ".format(epoch)) 
@@ -55,14 +57,18 @@ def train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, b
         running_loss = batch_trainer(net, train_loader, optimizer, loss, max_grad_norm)
         net.eval()
         acc = evaluate(net, dev_loader, decoder)
+        if acc > best_acc:
+            best_net = net
         logger("{:.2f}\n".format(acc))
         logger("    Running Loss = {:.3f}\n".format(running_loss))
     logger("The final dev acc is {:.3f}\n".format(acc))
-    return net, acc
+    return best_net, acc
 
-def init_loader(data_dir, stage, style, batch_size = 16):
+def init_loader(data_dir, stage, style, batch_size = 16, sense_sz=-1, gloss=None):
     assert(stage == "train" or stage == "dev")
     assert(style == "bem" or stage == "fnn")
+    if gloss is not None:
+        assert(style == "bem")
     if stage == "dev":
         corpus_id = 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2007/semeval2007.data.xml'
     elif stage == "train":
@@ -71,7 +77,10 @@ def init_loader(data_dir, stage, style, batch_size = 16):
     filename = join(data_dir, 'raganato.json')
     sents = SenseTaggedSentences.from_json(filename, corpus_id) 
     if style == "bem":
-        ds = BEMDataset(sents)
+        if gloss == None:
+            ds = BEMDataset(sents, sense_sz)
+        else:
+            ds = BEMDataset(sents, sense_sz, gloss)
         loader = BEMLoader(ds, batch_size)
     if style == 'fnn':
         vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), corpus_id))
@@ -85,9 +94,9 @@ if __name__ == "__main__":
     train_loader = init_loader("./data", stage="train", style="bem", batch_size=4)
     dev_loader = init_loader("./data", stage="dev", style="bem", batch_size=4)
     loss = torch.nn.CrossEntropyLoss(reduction='mean')
-    optimizer = optim.Adam(net.parameters(), lr=10**(-5))
+    optimizer = optim.Adam(net.parameters(), lr=5 * 10**(-5))
     decoder = decode_BEM
-    n_epochs = 20
+    n_epochs = 10
 
     best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs)
     with open("trained_models/bem.pt", "w") as f:

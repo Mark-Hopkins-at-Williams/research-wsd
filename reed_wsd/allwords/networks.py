@@ -65,7 +65,11 @@ class BEMforWSD(nn.Module):
             attention_mask = cudaify(attention_mask)
             last_layer = self.gloss_encoder(input_ids=input_ids,
                                             attention_mask=attention_mask)[0]
-            gloss_reps = last_layer[:, 0, :] # the vector that corresponds to CLS
+            if 'span' not in g:
+                gloss_reps = last_layer[:, 0, :] # the vector that corresponds to CLS
+            else:
+                span = g['span']
+                gloss_reps = self.target_representation(last_layer, span)
             score = target_rep[i] * gloss_reps
             score = score.sum(dim=1)
             scores.append(score)
@@ -83,14 +87,6 @@ class BEMforWSD(nn.Module):
         for i, p in enumerate(pos):
             result[i] /= (p[1] - p[0])
         return result
-    
-    def train(self):
-        self.context_encoder.train()
-        self.gloss_encoder.train()
-
-    def eval(self):
-        self.context_encoder.eval()
-        self.gloss_encoder.eval()
 
     
 
