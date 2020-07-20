@@ -120,5 +120,7 @@ def evaluate(net, data, decoder, abstain=False):
     else:
         abstain_i = -1
     correct, total = accuracy(predictions, gold, abstain_i)
-    return correct/total
+    acc = correct / total if total > 0 else 0
+    print('correct, total: ', correct, total)
+    return acc
 

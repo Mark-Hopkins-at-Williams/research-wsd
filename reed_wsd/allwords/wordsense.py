@@ -14,6 +14,7 @@ from nltk.corpus import wordnet as wn
 from transformers import BertTokenizer
 from nltk.tokenize import word_tokenize
 import nltk
+from nltk.stem import WordNetLemmatizer
 
 class SenseInventory:
     def __init__(self, senses_by_lemma):
@@ -191,13 +192,17 @@ class SenseInstance:
 
 class BEMDataset(Dataset):
 
-    def __init__(self, st_sents, randomize_sents = True, sense_sz=-1, gloss='defn_cls'):
+    def __init__(self, st_sents, randomize_sents = True, sense_sz=-1, gloss='defn_cls', random_wneg=False):
         assert(sense_sz == -1 or sense_sz > 0,
                "sense_sz must be either positive integer or -1")
-        assert(gloss in ['defn_cls', 'defn_tgt', 'wneg']
+        assert(gloss in ['defn_cls', 'defn_tgt', 'wneg'])
+        if random_wneg:
+            assert(gloss == 'wneg',
+                   'need wneg gloss to turn on random examples')
         self.st_sents = st_sents
         self.instance_index = 0
         self.gloss = gloss
+        self.random_wneg = random_wneg
         self.randomize_sents = randomize_sents
         self.tknz = BertTokenizer.from_pretrained('bert-base-uncased')
         self.num_insts = self.st_sents.get_n_insts()
@@ -221,9 +226,10 @@ class BEMDataset(Dataset):
         for i, index in enumerate(sent_ids):            
             st_sent = self.st_sents[index] 
             for i, word in enumerate(st_sent['words']):
-                lemma = self.inv.sense_lemma(word['sense'])
-                if 'sense' in word and lemma in self.inv.get_senses_by_lemma():
-                    n_insts += 1
+                if 'sense' in word:
+                    lemma = self.inv.sense_lemma(word['sense'])
+                    if lemma in self.inv.get_senses_by_lemma():
+                        n_insts += 1
         self.num_insts = n_insts
         
     def onehot(self, sense):
@@ -239,69 +245,76 @@ class BEMDataset(Dataset):
     def set_randomize_sents(self, value):
         self.randomize_sents = value
 
-    @staticmethod
-    def random_wn_example(lemma, word):
+    def random_wn_example(self, lemma, word):
+        return self.wn_example(lemma, word, rand=True)
+
+    def wn_example(self, lemma, word, rand=False):
+        lemmatizer = WordNetLemmatizer()
+
         def nltk_tag_to_wordnet_tag(nltk_tag):
-	    if nltk_tag.startswith('J'):
-		return wordnet.ADJ
-	    elif nltk_tag.startswith('V'):
-		return wordnet.VERB
-	    elif nltk_tag.startswith('N'):
-		return wordnet.NOUN
-	    elif nltk_tag.startswith('R'):
-		return wordnet.ADV
-	    else:          
-		return None
+            if nltk_tag.startswith('J'):
+                return wn.ADJ
+            elif nltk_tag.startswith('V'):
+                return wn.VERB
+            elif nltk_tag.startswith('N'):
+                return wn.NOUN
+            elif nltk_tag.startswith('R'):
+                return wn.ADV
+            else:
+                return None
 
         def lemmatize_sentence(sentence):
-	    """
+            """
             takes a str sentence and return a list of lemmatized tokens
             """
-	    #tokenize the sentence and find the POS tag for each token
-	    nltk_tagged = nltk.pos_tag(nltk.word_tokenize(sentence))  
+            #tokenize the sentence and find the POS tag for each token
+            nltk_tagged = nltk.pos_tag(nltk.word_tokenize(sentence))  
 	    #tuple of (token, wordnet_tag)
-	    wordnet_tagged = map(lambda x: (x[0], nltk_tag_to_wordnet_tag(x[1])), nltk_tagged)
-	    lemmatized_sentence = []
-	    for word, tag in wordnet_tagged:
-		if tag is None:
-		    #if there is no available tag, append the token as is
-		    lemmatized_sentence.append(word)
-		else:        
-		    #else use the tag to lemmatize the token
-		    lemmatized_sentence.append(lemmatizer.lemmatize(word, tag))
-	    return lemmatized_sentence
+            wordnet_tagged = map(lambda x: (x[0], nltk_tag_to_wordnet_tag(x[1])), nltk_tagged)
+            lemmatized_sentence = []
+            for word, tag in wordnet_tagged:
+                if tag is None:
+                    #if there is no available tag, append the token as is
+                    lemmatized_sentence.append(word)
+                else:
+                    #else use the tag to lemmatize the token
+                    lemmatized_sentence.append(lemmatizer.lemmatize(word, tag))
+            return lemmatized_sentence
         syns_egs = lemma.synset().examples()
+        syns_egs_tks = [word_tokenize(eg) for eg in syns_egs]
         lemmatized_syns_egs = [lemmatize_sentence(sent) for sent in syns_egs]
-	tgt_lemma = lemmatize_sentence(word)[0]
+        tgt_lemma = lemmatize_sentence(word)[0]
         example_pairs = []
-        for i, eg in enumerate(lammatized_syns_egs):
+        for i, eg in enumerate(lemmatized_syns_egs):
             if tgt_lemma in eg:
                 index = eg.index(tgt_lemma)
-                example_paris.append([syns_egs[i], index])
+                example_pairs.append([i, index])
         if len(example_pairs) == 0:
-            gloss, span = wn_definition_with_target(lemma)
+            gloss, span = self.wn_definition_with_target(lemma)
             return gloss, span
-        random_pair = random.sample(example_pairs, 1)[0]
-        _, span = tokenize_with_target(self.tknz, random_pair[0], random_pair[1])
-        return random_pair[0], span
+        if rand:
+            random_pair = random.sample(example_pairs, 1)[0]
+        else:
+            random_pair = example_pairs[0]
+        _, span = tokenize_with_target(self.tknz, syns_egs_tks[random_pair[0]], random_pair[1])
+        return syns_egs[random_pair[0]], span
 
-    @staticmethod
-    def wn_definition_with_target(wn_lemma):
+    def wn_definition_with_target(self, wn_lemma):
         pos = wn_lemma.synset().pos()
         defn = wn_lemma.synset().definition()
-        if pos = 'n':
+        if pos == 'n':
             gloss = wn_lemma.name() + ' is ' + defn
             rep_span = [1, 1 + len(self.tknz.tokenize(wn_lemma.name()))]
         if pos in ['a', 's', 'r']:
             gloss = wn_lemma.name() + ' means ' + defn
             rep_span = [1, 1 + len(self.tknz.tokenize(wn_lemma.name()))]
         if pos == 'v':
-            gloss = 'to ' + wn_lemma.name() ' is to ' + defn
+            gloss = 'to ' + wn_lemma.name() + ' is to ' + defn
             rep_span = [2, 2 + len(self.tknz.tokenize(wn_lemma.name()))]
         return gloss, rep_span
 
 
-def item_iter(self):
+    def item_iter(self):
         sent_ids = list(range(len(self.st_sents)))
         if self.randomize_sents:
             random.shuffle(sent_ids)
@@ -312,16 +325,16 @@ def item_iter(self):
                 if 'sense' in word:
                     s = word['sense']
                     lemma = self.inv.sense_lemma(s)
-                    if lemma in self.inv:
+                    if lemma in self.inv.get_senses_by_lemma():
                         input_ids, target_range = tokenize_with_target(self.tknz, old_toks, i)
                         senses = self.inv.get_senses(lemma)
                         correct_sense_i = senses.index(s) 
-                        if self.gloss = 'defn_cls':
+                        if self.gloss == 'defn_cls':
                             glosses = [wn.lemma_from_key(sense).synset().definition() for sense in senses]
                             glosses_ids = self.tknz(glosses, padding=True, return_tensors='pt')
                             gloss_span = [[0, 1]] * len(glosses)
                             glosses_ids['span'] = gloss_span
-                        if self.gloss = 'defn_tgt':
+                        if self.gloss == 'defn_tgt':
                             glosses = []
                             rep_spans = []
                             for sense in senses:
@@ -331,12 +344,12 @@ def item_iter(self):
                                 rep_spans.append(rep_span)
                             glosses_ids = self.tknz(glosses, padding=True, return_tensors='pt')
                             glosses_ids['span'] = rep_spans
-                        if self.gloss = 'wneg':
+                        if self.gloss == 'wneg':
                             glosses = []
                             rep_spans = []
                             for sense in senses:
                                 wn_lemma = wn.lemma_from_key(sense)
-                                gloss, rep_span = self.random_wn_example(wn_lemma, word['word'])
+                                gloss, rep_span = self.wn_example(wn_lemma, word['word'], rand=self.random_wneg)
                                 glosses.append(gloss)
                                 rep_spans.append(rep_span)
                             glosses_ids = self.tknz(glosses, padding=True, return_tensors='pt')
@@ -452,6 +465,9 @@ class BEMLoader:
 
     def get_inventory(self):
         return self.inventory
+
+    def set_inventory(self, inv):
+        self.ds.set_inventory(inv)
 
     def sense_id(self, sense):
         return self.inventory.sense_id(sense)

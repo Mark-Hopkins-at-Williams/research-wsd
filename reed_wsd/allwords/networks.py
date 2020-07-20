@@ -44,25 +44,30 @@ class BEMforWSD(nn.Module):
     This is the Bi-encoder Model proposed by Blevins et al.
     in this paper: https://github.com/facebookresearch/wsd-biencoders
     """
-    def __init__(self):
+    def __init__(self, gpu=False):
         super(BEMforWSD, self).__init__()
+        self.gpu = gpu
         self.context_encoder = BertModel.from_pretrained('bert-base-uncased')
         self.gloss_encoder = BertModel.from_pretrained('bert-base-uncased')
 
     def forward(self, contexts, glosses, pos):
         scores = []
         context_inputs = contexts['input_ids']
-        context_inputs = cudaify(context_inputs)
+        if self.gpu:
+            context_inputs = cudaify(context_inputs)
         context_masks = contexts['attention_mask']
-        context_masks = cudaify(context_masks)
+        if self.gpu:
+            context_masks = cudaify(context_masks)
         context_rep = self.context_encoder(input_ids=context_inputs,
                                            attention_mask=context_masks)[0] # last hidden state
         target_rep = self.target_representation(context_rep, pos)
         for i, g in enumerate(glosses):
             input_ids = g['input_ids']
-            input_ids = cudaify(input_ids)
+            if self.gpu:
+                input_ids = cudaify(input_ids)
             attention_mask = g['attention_mask']
-            attention_mask = cudaify(attention_mask)
+            if self.gpu:
+                attention_mask = cudaify(attention_mask)
             last_layer = self.gloss_encoder(input_ids=input_ids,
                                             attention_mask=attention_mask)[0]
             if 'span' not in g:
