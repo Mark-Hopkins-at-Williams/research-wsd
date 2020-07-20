@@ -1,11 +1,12 @@
 import unittest
 from reed_wsd.allwords.networks import BEMforWSD
 import torch
-from transformers import BertModel
 
 class TestBEMforWSD(unittest.TestCase):
 
     def test_target_rep(self):
+        # shape is 3x3x4 (batch size x num tokens x encoding length)
+        # note [0, 0, 0, 0] is a "padding" token encoding
         context_rep = torch.tensor([[[1, 2, 3, 4],
                                      [4, 3, 2, 1],
                                      [0, 0, 0, 0]],
@@ -15,14 +16,15 @@ class TestBEMforWSD(unittest.TestCase):
                                     [[1, 0, 0, 0],
                                      [0, 1, 0, 0],
                                      [0, 0, 1, 0]]]).float()
-        pos = [[0, 1],
-               [1, 3],
-               [2, 3]]
+        # spans of the target token(s)
+        spans = [[0, 1],
+                 [1, 3],
+                 [2, 3]]
 
         expected_result = torch.tensor([[1, 2, 3, 4],
-                           [2.5, 2.5, 2.5, 2.5],
-                           [0, 0, 1, 0]]).float()
-        result = BEMforWSD.target_representation(context_rep, pos)
+                                        [2.5, 2.5, 2.5, 2.5],
+                                        [0, 0, 1, 0]]).float()
+        result = BEMforWSD.target_representation(context_rep, spans)
         assert( torch.equal(result, expected_result))
 
     def test_forward(self):

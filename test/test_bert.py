@@ -184,7 +184,7 @@ class TestBert(unittest.TestCase):
         sent = ['my', 'name', 'is', 'johnason', 'wells', '.']
         target_i = 4
         expected_ids = tensor([101, 2026, 2171, 2003, 2198, 3022, 2239, 7051, 1012, 102])
-        expected_range = [7, 8]
+        expected_range = [7, 8] # token 4 ('wells') maps to span (7,8)
         input_ids, target_range = tokenize_with_target(tknz, sent, target_i)
         assert(torch.equal(expected_ids, input_ids))
         assert(expected_range == target_range)
@@ -192,7 +192,7 @@ class TestBert(unittest.TestCase):
         sent = ['this', 'summer', 'johnathan', 'works', 'with', 'johnathan', 'wells']
         target_i = 6
         expected_ids = tensor([101, 2023, 2621, 2198, 29246, 2573, 2007, 2198, 29246, 7051, 102])
-        expected_range = [9, 10]
+        expected_range = [9, 10] # token 6 ('wells') maps to span (9, 10)
         input_ids, target_range = tokenize_with_target(tknz, sent, target_i)
         assert(torch.equal(expected_ids, input_ids))
         assert(expected_range == target_range)
