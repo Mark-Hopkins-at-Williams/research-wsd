@@ -8,6 +8,7 @@ sys.path.insert(1, join(file_dir, ".."))
 import torch
 from reed_wsd.mnist.loss import NLL, NLLA, AWNLL, CAWNLL, CRANLL, LRANLL
 from reed_wsd.mnist.loss import CABNLL, ConfidenceLoss1, ConfidenceLoss2
+from reed_wsd.mnist.loss import PairwiseConfidenceLoss
 from reed_wsd.mnist.mnist import confuse
 
 class Test(unittest.TestCase):
@@ -148,6 +149,47 @@ class Test(unittest.TestCase):
         loss = criterion(preds, gold, abstain_i=4).item()
         assert self.close_enough(loss, expected_loss)
 
+    def test_pairwise_confidence_loss(self):
+        criterion = PairwiseConfidenceLoss('neg_abs')
+        #test compute_loss
+        gold_probs_x = torch.tensor([0.2, 0.5, 1])
+        gold_probs_y = torch.tensor([0.5, 0.5, 0.2])
+        confidence_x = torch.tensor([0.5, 0.5, 0.8])
+        confidence_y = torch.tensor([0.6, 0.6, 0.6])
+        
+        expected_losses = torch.tensor([1.1284, 0.6931, 0.7246])
+        losses = criterion.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+        assert(torch.allclose(expected_losses, losses, atol=10**(-4)))
+        
+        #test loss function
+        #neg_abs
+        
+        output_x = torch.tensor([[0.2, 0.2, 0.5],
+                                 [0.5, 0.4, 0.5],
+                                 [1, 0.2, 0.2]])
+        output_y = torch.tensor([[0.5, 0.1, 0.4],
+                                 [0.5, 0.1, 0.4],
+                                 [0.2, 0.2, 0.4]])
+        gold_x = [1, 0, 0]
+        gold_y = [0, 0, 0]
+
+        expected_loss = torch.tensor(0.8487)
+        loss = criterion(output_x, output_y, gold_x, gold_y)
+        assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
+
+        #baseline
+        criterion = PairwiseConfidenceLoss('baseline')
+        output_x = torch.tensor([[0.2, 0.5, 0.3],
+                                 [0.5, 0.5, 0],
+                                 [1, 0., 0.]])
+        gold_x = torch.tensor([0, 1, 0])
+        output_y = torch.tensor([[0.5, 0.6, 0],
+                                 [0.5, 0.6, 0],
+                                 [0.6, 0.2, 0.4]])
+        gold_y = torch.tensor([0, 0, 1])
+        expected_loss = torch.tensor(0.8225)
+        loss = criterion(output_x, output_y, gold_x, gold_y)
+        assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
 
 
 if __name__ == '__main__':

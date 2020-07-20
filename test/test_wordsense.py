@@ -2,7 +2,6 @@ import unittest
 import json
 from torch import tensor
 from reed_wsd.allwords import wordsense, vectorize
-import torch
 
 class TestWordsense(unittest.TestCase):
     
@@ -156,59 +155,6 @@ class TestWordsense(unittest.TestCase):
         expected_resp = tensor([0, 1])
         assert(self.compare_matrices(evid, expected_evid))
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
-       
-    def test_BEMDataset(self):
-        sent0 = 'It was a disaster!'
-        ds = wordsense.BEMDataset(self.sents, randomize_sents = False)
-        inst0 = ds[0]
-        expected_input_ids = torch.tensor([101, 2009, 2001, 1037, 7071, 999, 102])
-        expected_range = [2, 3]
-        expected_gloss = torch.tensor([[101, 2022, 7235, 2000, 1025, 2022, 2619, 2030, 2242, 102]])
-        expected_gold = 0
-        assert(torch.equal(expected_input_ids, inst0['input_ids']))
-        assert(expected_range == inst0['pos'])
-        assert(torch.equal(expected_gloss, inst0['glosses_ids']['input_ids']))
-        assert(expected_gold == inst0['sense_id'])
-
-    def test_BEMLoader(self):
-        ds = wordsense.BEMDataset(self.sents, randomize_sents = False)
-        loader = wordsense.BEMLoader(ds, batch_size = 3)
-        batch_iter = loader.batch_iter()
-        pkg = next(batch_iter)
-        print(pkg)
-
-        expected_contexts = torch.tensor(
-                             [[101, 2009, 2001, 1037, 7071, 999, 102, 0, 0, 0],
-                             [101, 2002, 2001, 4191, 1035, 2125, 1996, 3898, 1012, 102], 
-                             [101, 2002, 2001, 4191, 1035, 2125, 1996, 3898, 1012, 102]])
-        expected_context_masks = torch.tensor(
-                             [[1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
-                              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                              [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
-        expected_span = [[2, 3], [3, 6], [7, 8]]
-        be = {'input_ids': torch.tensor([[101, 2022, 7235, 2000, 1025, 2022, 2619, 2030, 2242, 102]]), 
-              'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-              'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}
-        lo = {'input_ids': torch.tensor([[101, 3066, 2007, 1037, 3291, 2011, 5870, 2030, 12097, 2000, 2022, 11770, 2011, 2009, 102]]),
-                'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-                'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}  
-        screen = {'input_ids': torch.tensor([[101, 1037, 2317, 2030, 3165, 2098, 3302, 2073, 4620, 2064, 2022, 11310, 2005, 10523, 102]]),
-                  'token_type_ids': [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-                  'attention_mask': [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]}  
-        expected_glosses = [be, lo, screen]
-        expected_gold = [0, 0, 0]
-
-        print(pkg['contexts'])
-        assert(torch.equal(expected_contexts, pkg['contexts']['input_ids']))
-        assert(torch.equal(expected_context_masks, pkg['contexts']['attention_mask']))
-
-        for i, inst in enumerate(expected_glosses):
-            assert(torch.equal(inst['input_ids'], pkg['glosses'][i]['input_ids']))
-
-        assert(expected_span == pkg['span'])
-        assert(expected_gold == pkg['gold'])
-
-        
 
 
         
