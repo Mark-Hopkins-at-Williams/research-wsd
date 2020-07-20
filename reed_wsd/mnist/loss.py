@@ -4,6 +4,37 @@ import torch.nn.functional as F
 
 ABSTAIN = 10
 
+class PairwiseConfidenceLoss:
+    def __init__(self, confidence='neg_abs'):
+        assert(confidence in ['baseline', 'neg_abs'])
+        self.confidence = confidence
+
+    @staticmethod
+    def compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y):
+        nll_x = - torch.log(gold_probs_x)
+        nll_y = - torch.log(gold_probs_y)
+        confidence_pair = torch.stack([confidence_x, confidence_y], dim=-1)
+        softmaxed_pair = F.softmax(confidence_pair, dim=-1)
+        nll_pair = torch.stack([nll_x, nll_y], dim=-1)
+        losses = torch.sum(nll_pair * softmaxed_pair, dim=-1)
+        return losses
+
+    def __call__(self, output_x, output_y, gold_x, gold_y):
+        probs_x, probs_y = output_x[:, :-1], output_y[:, :-1] # 2d
+        gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
+        gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
+        if self.confidence == 'neg_abs':
+            confidence_x, confidence_y = 1 - output_x[:, -1], 1 - output_y[:, -1] #1d
+            losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+        elif self.confidence == 'baseline':
+            confidence_x, max_ids_x = probs_x.max(dim=-1)
+            confidence_y, max_ids_y = probs_y.max(dim=-1)
+            losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+        return losses.mean()
+            
+
+        
+
 
 class ConfidenceLoss1:
     def __init__(self, p0):

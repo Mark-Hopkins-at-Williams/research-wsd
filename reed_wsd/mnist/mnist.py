@@ -12,7 +12,7 @@ from torch import nn, optim
 import os
 from reed_wsd.util import cudaify
 from reed_wsd.mnist.loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
-from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4
+from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4, PairwiseConfidenceLoss
 from os.path import join
 
 
@@ -104,6 +104,53 @@ def decode_gen(confidence):
                 gold = labels[i].item()
                 yield {'pred': pred, 'gold': gold, 'confidence': c}
     return decode
+
+def train_pair(criterion):
+    trainloader_x = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+    trainloader_y = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+    model = FFN()
+    optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
+    time0 = time()
+    epochs = 10
+    best_model = None
+    best_model_score = float('-inf')
+    for e in range(epochs):
+        running_loss = 0
+        for img_x, lbl_x in trainloader_x:
+            for img_y, lbl_y in trainloader_y:
+                if img_x.shape[0] == img_y.shape[0]:
+                    # Flatten MNIST images into a 784 long vector
+                    images_x = img_x.view(img_x.shape[0], -1)
+                    images_y = img_y.view(img_y.shape[0], -1)
+                    # randomly assign labels between 1 and 7
+                    lbl_x = confuse(lbl_x)
+                    lbl_y = confuse(lbl_y)
+                    # Training pass
+                    optimizer.zero_grad()
+                                                                        
+                    output_x = model(cudaify(images_x))
+                    output_y = model(cudaify(images_y))
+                    loss = criterion(output_x, output_y, cudaify(lbl_x), cudaify(lbl_y))
+                                                                                                
+                    #This is where the model learns by backpropagating
+                    loss.backward()
+                                                                                                                        
+                    #And optimizes its weights here
+                    optimizer.step()
+                                                                                                                                                
+                    running_loss += loss.item()
+        _, precision = validate_and_analyze(model, criterion)
+        if precision > best_model_score:
+            print("Updating best model.")
+            best_model = copy.deepcopy(model)
+            best_model_score = precision
+        print("Epoch {} - Training loss: {}; Dev precision: {}".format(e, 
+                                                                      running_loss/len(trainloader),
+                                                                      precision))
+        print("\nTraining Time (in minutes) =",(time()-time0)/60)
+    outfile = "params_" + str(criterion) + ".pt"
+    torch.save(best_model.state_dict(), join(model_dir, "params_" + str(criterion) + ".pt"))
+    return best_model
     
 def train(criterion):
     model = FFN()
@@ -180,8 +227,14 @@ def validate_and_analyze(model, criterion):
 
 
 if __name__ == "__main__":
-    criterion = ConfidenceLoss4(0)
-    train(criterion)
+    criterion = PairwiseConfidenceLoss('baseline')
+    net = train_pair(criterion)
+    with open('saved/pair_baseline.pt', 'w') as f:
+        torch.save(net.state_dict(), 'saved/pair_baseline.pt')
+    criterion = PairwiseConfidenceLoss('neg_abs')
+    net = train_pair(criterion)
+    with open('saved/pair_negabs.pt', 'w') as f:
+        torch.save(net.state_dict(), 'saved/pair_neg_abs.pt')
     
 
 
