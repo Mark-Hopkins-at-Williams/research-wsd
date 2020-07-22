@@ -16,6 +16,7 @@ from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4, PairwiseConfid
 from os.path import join
 from reed_wsd.mnist.loader import PairLoader
 from collections import defaultdict
+from reed_wsd.plot import PYCurve, plot_curves
 
 
 # TODO: refactor this into something more modular
@@ -235,11 +236,11 @@ def validate_and_analyze(model):
 
 
 if __name__ == "__main__":
+    """
     criterion = PairwiseConfidenceLoss('baseline')
     net = train_pair(criterion)
     with open('saved/pair_baseline.pt', 'w') as f:
         torch.save(net.state_dict(), 'saved/pair_baseline.pt')
-    """
     criterion = PairwiseConfidenceLoss('neg_abs')
     net = train_pair(criterion)
     with open('saved/pair_negabs.pt', 'w') as f:
@@ -249,4 +250,10 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load('saved/pair_baseline.pt'))
     validate_and_analyze(model)
     """
-
+    net_base = FFN()
+    net_base.load_state_dict(torch.load('saved/pair_baseline.pt', map_location=torch.device('cpu')))
+    net_neg = FFN()
+    net_neg.load_state_dict(torch.load('saved/pair_neg_abs.pt', map_location=torch.device('cpu')))
+    pyc_base = PYCurve.from_data(net_base, valloader, decode_gen('baseline'))
+    pyc_neg = PYCurve.from_data(net_neg, valloader, decode_gen('neg_abs'))
+    plot_curves([pyc_base, 'baseline'], [pyc_neg, 'neg_abs'])

@@ -8,7 +8,8 @@ LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
 class PYCurve:
-    def __init__(self, scatters):        self.scatters = scatters
+    def __init__(self, scatters):
+        self.scatters = scatters
 
     def get_list(self):
         return self.scatters
@@ -69,7 +70,9 @@ class PYCurve:
 def plot_curves(*pycs):
     for i in range(len(pycs)):
         curve = pycs[i][0]
+        print(type(curve))
         label = pycs[i][1]
+        print(type(label))
         label = label + "; aupy = {:.3f}".format(curve.aupy())
         curve.plot(label)
     plt.legend()
