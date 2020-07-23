@@ -11,12 +11,13 @@ from torchvision import datasets, transforms
 from torch import nn, optim
 import os
 from reed_wsd.util import cudaify
-from reed_wsd.mnist.loss import NLLA, AWNLL, CAWNLL, ConfidenceLoss1
+from reed_wsd.mnist.loss import ConfidenceLoss1
 from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4, PairwiseConfidenceLoss
 from os.path import join
 from reed_wsd.mnist.loader import PairLoader
 from collections import defaultdict
 from reed_wsd.plot import PYCurve, plot_curves
+import torch.nn.functional as F
 
 
 # TODO: refactor this into something more modular
@@ -59,8 +60,7 @@ def FFN():
                           nn.ReLU(),
                           nn.Linear(hidden_sizes[0], hidden_sizes[1]),
                           nn.ReLU(),
-                          nn.Linear(hidden_sizes[1], output_size),
-                          nn.Softmax(dim=1))
+                          nn.Linear(hidden_sizes[1], output_size))
     return cudaify(model)
 
 def confuse(labels):
@@ -87,10 +87,10 @@ def confuse(labels):
     return labels
 
 def decode_gen(confidence):
-    assert(confidence == "baseline" or
-           confidence == "neg_abs")
+    assert(confidence in ['max_non_abs', 'abs', 'neg_abs'])
     def decode(net, data):
         net.eval()
+        net = cudaify(net)
         for images, labels in data:
             for i in range(len(labels)):
                 img = images[i].view(1, 784)
@@ -98,22 +98,24 @@ def decode_gen(confidence):
                 with torch.no_grad():
                     ps = net(cudaify(img))
                 ps = ps.squeeze(dim=0)
-                if confidence == "baseline":
+                if confidence == "max_non_abs":
                     c, _ = ps[:-1].max(dim=0)
                     c = c.item()
                 if confidence == "neg_abs":
                     c = (1 - ps[-1]).item()
+                if confidence == "abs":
+                    c = ps[-1].item()
                 pred = ps[:-1].argmax(dim=0).item()
                 gold = labels[i].item()
                 yield {'pred': pred, 'gold': gold, 'confidence': c}
     return decode
 
-def train_pair(criterion):
+def train_pair(net, criterion, n_epochs):
     train_loader = PairLoader(trainset, bsz=64, shuffle=True)
-    model = FFN()
+    model = net
     optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
     time0 = time()
-    epochs = 20
+    epochs = n_epochs
     best_model = None
     best_model_score = float('-inf')
     for e in range(epochs):
@@ -148,16 +150,14 @@ def train_pair(criterion):
         print("\nTraining Time (in minutes) =",(time()-time0)/60)
     return best_model
     
-def train(criterion):
-    model = FFN()
+def train(net, criterion, n_epochs):
+    model = net
     optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
     time0 = time()
-    epochs = 10
+    epochs = n_epochs
     best_model = None
     best_model_score = float('-inf')
     for e in range(epochs):
-        if e == 2:
-            criterion.p0 = 0.5
         running_loss = 0
         for images, labels in trainloader:
             # Flatten MNIST images into a 784 long vector
@@ -205,6 +205,7 @@ def validate_and_analyze(model):
             # Turn off gradients to speed up this part
             with torch.no_grad():
                 ps = model(cudaify(img))
+                ps = F.softmax(ps, dim=-1)
 
             # Output of the network are log-probabilities, need to take 
             # exponential for probabilities
@@ -236,24 +237,8 @@ def validate_and_analyze(model):
 
 
 if __name__ == "__main__":
-    """
-    criterion = PairwiseConfidenceLoss('baseline')
-    net = train_pair(criterion)
-    with open('saved/pair_baseline.pt', 'w') as f:
-        torch.save(net.state_dict(), 'saved/pair_baseline.pt')
-    criterion = PairwiseConfidenceLoss('neg_abs')
-    net = train_pair(criterion)
-    with open('saved/pair_negabs.pt', 'w') as f:
-        torch.save(net.state_dict(), 'saved/pair_neg_abs.pt')
-    model = FFN()
-    print('evaluating baseline...')
-    model.load_state_dict(torch.load('saved/pair_baseline.pt'))
-    validate_and_analyze(model)
-    """
-    net_base = FFN()
-    net_base.load_state_dict(torch.load('saved/pair_baseline.pt', map_location=torch.device('cpu')))
-    net_neg = FFN()
-    net_neg.load_state_dict(torch.load('saved/pair_neg_abs.pt', map_location=torch.device('cpu')))
-    pyc_base = PYCurve.from_data(net_base, valloader, decode_gen('baseline'))
-    pyc_neg = PYCurve.from_data(net_neg, valloader, decode_gen('neg_abs'))
-    plot_curves([pyc_base, 'baseline'], [pyc_neg, 'neg_abs'])
+    criterion = PairwiseConfidenceLoss('abs')
+    net = FFN()
+    net = train_pair(net, criterion, n_epochs=20)
+    torch.save(net.state_dict(), "saved/pair_abs.pt")
+    

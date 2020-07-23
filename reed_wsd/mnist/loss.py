@@ -6,7 +6,7 @@ ABSTAIN = 10
 
 class PairwiseConfidenceLoss:
     def __init__(self, confidence='neg_abs'):
-        assert(confidence in ['baseline', 'neg_abs'])
+        assert(confidence in ['max_non_abs', 'neg_abs', 'abs'])
         self.confidence = confidence
 
     @staticmethod
@@ -20,18 +20,30 @@ class PairwiseConfidenceLoss:
         return losses
 
     def __call__(self, output_x, output_y, gold_x, gold_y):
-        probs_x, probs_y = output_x[:, :-1], output_y[:, :-1] # 2d
-        gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
-        gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
-        if self.confidence == 'neg_abs':
-            confidence_x, confidence_y = 1 - output_x[:, -1], 1 - output_y[:, -1] #1d
-            losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
-        elif self.confidence == 'baseline':
-            confidence_x, max_ids_x = probs_x.max(dim=-1)
-            confidence_y, max_ids_y = probs_y.max(dim=-1)
-            confidence_x = torch.clamp(confidence_x, min=0.000000001)
-            confidence_y = torch.clamp(confidence_y, min=0.000000001)
-            losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+        if self.confidence != 'abs':
+            output_x = F.softmax(output_x, dim=-1)
+            output_y = F.softmax(output_y, dim=-1)
+            probs_x, probs_y = output_x[:, :-1], output_y[:, :-1] # 2d
+            gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
+            gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
+            if self.confidence == 'neg_abs':
+                confidence_x, confidence_y = 1 - output_x[:, -1], 1 - output_y[:, -1] #1d
+                losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+            elif self.confidence == 'max_non_abs':
+                confidence_x, max_ids_x = probs_x.max(dim=-1)
+                confidence_y, max_ids_y = probs_y.max(dim=-1)
+                confidence_x = torch.clamp(confidence_x, min=0.000000001)
+                confidence_y = torch.clamp(confidence_y, min=0.000000001)
+                losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+        else:
+            abstention_x = output_x[:, -1]
+            abstention_y = output_y[:, -1]
+            losses_x = F.cross_entropy(output_x[:, :-1], gold_x)
+            losses_y = F.cross_entropy(output_y[:, :-1], gold_y)
+            abstention_pair = torch.stack([abstention_x, abstention_y], dim=-1)
+            softmaxed_pair = F.softmax(abstention_pair, dim=-1)
+            losses_pair = torch.stack([losses_x, losses_y], dim=-1)
+            losses = torch.sum(losses_pair * softmaxed_pair, dim=-1)
         return losses.mean()
             
 
@@ -43,6 +55,7 @@ class ConfidenceLoss1:
         self.p0 = p0
     
     def __call__(self, output, gold, abstain_i=ABSTAIN):
+        output = F.softmax(output, dim=-1)
         label_ps = output[list(range(len(output))), gold]
         losses = label_ps + (self.p0 * output[:,-1])
         losses = torch.clamp(losses, min = 0.000000001)
@@ -56,6 +69,7 @@ class ConfidenceLoss2:
         self.p0 = p0
     
     def __call__(self, output, gold, abstain_i=ABSTAIN):
+        output = F.softmax(output, dim=-1)
         label_ps = output[list(range(len(output))), gold]
         losses = torch.max(label_ps, (self.p0 * output[:,-1]))
         losses = torch.clamp(losses, min = 0.000000001)
@@ -69,6 +83,7 @@ class ConfidenceLoss3:
         self.p0 = p0
     
     def __call__(self, output, gold, abstain_i=ABSTAIN):
+        output = F.softmax(output, dim=-1)
         label_ps = output[list(range(len(output))), gold]
         losses = label_ps - output[:,-1]
         return -torch.mean(losses)
@@ -92,16 +107,10 @@ class ConfidenceLoss4:
     
     def __str__(self):
         return "ConfidenceLoss4_p0_" + str(self.p0)
-
-
-class NLL:
-    def __call__(self, output, gold):
-        label_ps = output[list(range(len(output))), gold]
-        losses = - torch.log(label_ps)
-        return torch.mean(losses)
     
 class NLLA:
     def __call__(self, output, gold, abstain_i=ABSTAIN):
+        output = F.softmax(output, dim=-1)
         maxes, preds = torch.max(output, dim=-1)
         aps = output[:, abstain_i]
         discounters = 1 - aps
@@ -116,6 +125,7 @@ class AWNLL:
         self.b = b
 
     def __call__(self, output, gold, abstain_i = ABSTAIN):
+        output = F.softmax(output, dim=-1)
         a = self.a
         b = self.b
         maxes, preds = torch.max(output, dim=-1)
@@ -131,6 +141,7 @@ class CAWNLL:
         self.b = b
 
     def __call__(self, output, gold, abstain_i = ABSTAIN):
+        output = F.softmax(output, dim=-1)
         a = self.a
         b = self.b
         maxes, preds = torch.max(output, dim=-1)
@@ -149,6 +160,7 @@ class CRANLL:
         self.p0 = p0
 
     def __call__(self, output, gold, abstain_i = ABSTAIN):
+        output = F.softmax(output, dim=-1)
         maxes, preds = torch.max(output, dim=-1)
 
         abstained = (preds == abstain_i)
@@ -163,6 +175,7 @@ class LRANLL:
     # linear reward for abstention negative log likelihood
     
     def __call__(self, output, gold, abstain_i = ABSTAIN):
+        output = F.softmax(output, dim=-1)
         maxes, preds = torch.max(output, dim=-1)
         aps = output[:, abstain_i]
 
@@ -177,6 +190,7 @@ class LRANLL:
 class CABNLL:
     # confusion-abstention balanced negative log likelihood
     def __call__(self, output, gold, abstain_i = ABSTAIN):
+        output = F.softmax(output, dim=-1)
         lens = F.normalize(output[:, :-1], p=1, dim=1).norm(dim=-1)
         confusions = (1 - lens) / (1 - 1 / math.sqrt(output.shape[1] - 1))
         maxes, preds = torch.max(output, dim=-1)
