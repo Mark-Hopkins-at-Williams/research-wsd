@@ -11,6 +11,7 @@ from reed_wsd.allwords.blevins import BEMDataset, BEMLoader
 from reed_wsd.allwords.vectorize import DiskBasedVectorManager
 from reed_wsd.allwords.loss import NLLLossWithZones
 from tqdm import tqdm
+import copy
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -58,7 +59,7 @@ def train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, b
         net.eval()
         acc = evaluate(net, dev_loader, decoder)
         if acc > best_acc:
-            best_net = net.cpu().copy()
+            best_net = copy.deepcopy(net)
             best_acc = acc
         logger("{:.2f}\n".format(acc))
         logger("    Running Loss = {:.3f}\n".format(running_loss))
