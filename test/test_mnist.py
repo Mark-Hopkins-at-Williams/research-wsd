@@ -150,20 +150,39 @@ class Test(unittest.TestCase):
         assert self.close_enough(loss, expected_loss)
 
     def test_pairwise_confidence_loss(self):
-        criterion = PairwiseConfidenceLoss('neg_abs')
+        criterion = PairwiseConfidenceLoss('baseline')
         #test compute_loss
-        gold_probs_x = torch.tensor([0.2, 0.5, 1])
-        gold_probs_y = torch.tensor([0.5, 0.5, 0.2])
-        confidence_x = torch.tensor([0.5, 0.5, 0.8])
-        confidence_y = torch.tensor([0.6, 0.6, 0.6])
+        gold_probs_x = torch.tensor([0.2, 0.5, 1])   # probability of correct class from first network
+        gold_probs_y = torch.tensor([0.5, 0.5, 0.2]) # probability of correct class from second network
+        confidence_x = torch.tensor([0.5, 0.5, 0.8]) # confidences from first network
+        confidence_y = torch.tensor([0.6, 0.6, 0.6]) # confidences from second network
         
+        # softmax of (0.5, 0.6) == (.475, .525)
+        # then expected loss for first component is:
+        #   .475 * -log(0.2) + .525 * -log(.5)
         expected_losses = torch.tensor([1.1284, 0.6931, 0.7246])
-        losses = criterion.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+        losses = criterion.compute_loss(confidence_x, confidence_y, 
+                                        gold_probs_x, gold_probs_y)
         assert(torch.allclose(expected_losses, losses, atol=10**(-4)))
         
+
+        #baseline
+        output_x = torch.tensor([[0.2, 0.5, 0.3],   # distribution 1  over classA, classB, abstain
+                                 [0.5, 0.5, 0],     # distribution 2  over classA, classB, abstain
+                                 [1, 0., 0.]])      # distribution 3  over classA, classB, abstain
+        gold_x = torch.tensor([0, 1, 0])            # gold labels for instances 1, 2, 3
+        output_y = torch.tensor([[0.5, 0.6, 0],
+                                 [0.5, 0.6, 0],
+                                 [0.6, 0.2, 0.4]])
+        gold_y = torch.tensor([0, 0, 1])        
+        expected_loss = torch.tensor(0.8225)
+        loss = criterion(output_x, output_y, gold_x, gold_y)
+        assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
+
         #test loss function
         #neg_abs
-        
+        criterion = PairwiseConfidenceLoss('neg_abs')
+       
         output_x = torch.tensor([[0.2, 0.2, 0.5],
                                  [0.5, 0.4, 0.5],
                                  [1, 0.2, 0.2]])
@@ -174,20 +193,6 @@ class Test(unittest.TestCase):
         gold_y = [0, 0, 0]
 
         expected_loss = torch.tensor(0.8487)
-        loss = criterion(output_x, output_y, gold_x, gold_y)
-        assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
-
-        #baseline
-        criterion = PairwiseConfidenceLoss('baseline')
-        output_x = torch.tensor([[0.2, 0.5, 0.3],
-                                 [0.5, 0.5, 0],
-                                 [1, 0., 0.]])
-        gold_x = torch.tensor([0, 1, 0])
-        output_y = torch.tensor([[0.5, 0.6, 0],
-                                 [0.5, 0.6, 0],
-                                 [0.6, 0.2, 0.4]])
-        gold_y = torch.tensor([0, 0, 1])
-        expected_loss = torch.tensor(0.8225)
         loss = criterion(output_x, output_y, gold_x, gold_y)
         assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
 
