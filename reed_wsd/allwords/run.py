@@ -7,10 +7,11 @@ from reed_wsd.allwords.evaluate import evaluate, decode_gen, decode_BEM
 from reed_wsd.allwords.networks import AffineClassifier, DropoutClassifier, BEMforWSD
 from reed_wsd.util import cudaify, Logger
 from reed_wsd.allwords.wordsense import SenseTaggedSentences, SenseInstanceDataset, SenseInstanceLoader
-from reed_wsd.allwords.wordsense import BEMDataset, BEMLoader
+from reed_wsd.allwords.blevins import BEMDataset, BEMLoader
 from reed_wsd.allwords.vectorize import DiskBasedVectorManager
-from reed_wsd.allwords.loss import NLLLossWithZones, CrossEntropyLossBEM
+from reed_wsd.allwords.loss import NLLLossWithZones
 from tqdm import tqdm
+import copy
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -58,7 +59,7 @@ def train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, b
         net.eval()
         acc = evaluate(net, dev_loader, decoder)
         if acc > best_acc:
-            best_net = net.cpu().copy()
+            best_net = copy.deepcopy(net)
             best_acc = acc
         logger("{:.2f}\n".format(acc))
         logger("    Running Loss = {:.3f}\n".format(running_loss))
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     net = BEMforWSD(True)
     print(type(net))
     batch_trainer = BEM_batch_trainer
-    train_loader = init_loader("./data", stage="train", style="bem", batch_size=4, sense_sz=1000, gloss='defn_cls')
+    train_loader = init_loader("./data", stage="train", style="bem", batch_size=4, sense_sz=-1, gloss='defn_cls')
     inv = train_loader.get_inventory()
     dev_loader = init_loader("./data", stage="dev", style="bem", batch_size=4)
     dev_loader.set_inventory(inv)
@@ -100,6 +101,6 @@ if __name__ == "__main__":
     n_epochs = 10
 
     best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs)
-    with open("trained_models/bem1k.pt", "w") as f:
-        torch.save(best_net.state_dict(), 'trained_models/bem1k.pt')
+    with open("trained_models/bem.pt", "w") as f:
+        torch.save(best_net.state_dict(), 'trained_models/bem.pt')
 

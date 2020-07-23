@@ -29,6 +29,8 @@ class PairwiseConfidenceLoss:
         elif self.confidence == 'baseline':
             confidence_x, max_ids_x = probs_x.max(dim=-1)
             confidence_y, max_ids_y = probs_y.max(dim=-1)
+            confidence_x = torch.clamp(confidence_x, min=0.000000001)
+            confidence_y = torch.clamp(confidence_y, min=0.000000001)
             losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
         return losses.mean()
             
