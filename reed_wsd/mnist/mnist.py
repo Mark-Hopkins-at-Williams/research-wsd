@@ -99,12 +99,15 @@ def decode_gen(confidence):
                     ps = net(cudaify(img))
                 ps = ps.squeeze(dim=0)
                 if confidence == "max_non_abs":
+                    ps = F.softmax(ps, dim=-1)
                     c, _ = ps[:-1].max(dim=0)
                     c = c.item()
                 if confidence == "neg_abs":
+                    ps = F.softmax(ps, dim=-1)
                     c = (1 - ps[-1]).item()
                 if confidence == "abs":
                     c = ps[-1].item()
+                    ps[:-1] = F.softmax(ps[:-1], dim=-1)
                 pred = ps[:-1].argmax(dim=0).item()
                 gold = labels[i].item()
                 yield {'pred': pred, 'gold': gold, 'confidence': c}
@@ -237,8 +240,21 @@ def validate_and_analyze(model):
 
 
 if __name__ == "__main__":
-    criterion = PairwiseConfidenceLoss('abs')
     net = FFN()
-    net = train_pair(net, criterion, n_epochs=20)
-    torch.save(net.state_dict(), "saved/pair_abs.pt")
+    net.load_state_dict(torch.load('saved/pair_abs.pt', map_location=torch.device('cpu')))
+    pyc_pair_abs = PYCurve.from_data(net, valloader, decode_gen('abs'))
+
+    net.load_state_dict(torch.load('saved/pair_baseline.pt', map_location=torch.device('cpu')))
+    pyc_pair_max = PYCurve.from_data(net, valloader, decode_gen('max_non_abs'))
+
+    net.load_state_dict(torch.load('saved/pair_neg_abs.pt', map_location=torch.device('cpu')))
+    pyc_pair_neg = PYCurve.from_data(net, valloader, decode_gen('neg_abs'))
+
+    net.load_state_dict(torch.load('saved/single.pt', map_location=torch.device('cpu')))
+    pyc_single_max = PYCurve.from_data(net, valloader, decode_gen('max_non_abs'))
+
+    pyc_single_neg = PYCurve.from_data(net, valloader, decode_gen('neg_abs'))
+
+    plot_curves([pyc_pair_abs, 'pair-abs'], [pyc_pair_max, 'pair-max_non_abs'], [pyc_pair_neg, 'pair-neg_abs'], [pyc_single_max, 'single-max_non_abs'], [pyc_single_neg, 'single-neg_abs'])
+    
     
