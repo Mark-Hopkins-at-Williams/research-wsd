@@ -2,24 +2,6 @@ import reed_wsd.plot as plt
 import reed_wsd.mnist.mnist as mnist
 from reed_wsd.mnist.loss import ConfidenceLoss1, NLL
 import json
-from reed_wsd.plot import PYCurve, plot_curves
-
-
-"""
-def closs_py(model_file, confidence = 'baseline'):
-    decoder = mnist.decode_gen(confidence)
-    #criterion = ConfidenceLoss1(0.4)
-    net = mnist.FFN()
-    #saved_model = "saved/params_" + str(criterion) + ".pt"
-    saved_model = model_file
-    print("loading {}".format(saved_model))
-    net.load_state_dict(torch.load(saved_model))
-    pyc = plt.precision_yield_curve(net, mnist.valloader, decoder)
-    #f_name = "py_" + str(criterion) + "_" + confidence + ".json"
-    #with open(join(confidence_dir, f_name), "w") as f:
-    #    json.dump(pyc, f)
-    return pyc
-"""
 
 def create_pr_curve(config, output_file = '../results.json'):
     decoder = mnist.decode_gen(config['confidence'])
