@@ -12,7 +12,8 @@ from torch import nn, optim
 import os
 from reed_wsd.util import cudaify
 from reed_wsd.mnist.loss import ConfidenceLoss1
-from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4, PairwiseConfidenceLoss
+from reed_wsd.mnist.loss import ConfidenceLoss2, ConfidenceLoss4
+from reed_wsd.loss import PairwiseConfidenceLoss
 from os.path import join
 from reed_wsd.mnist.loader import PairLoader
 from collections import defaultdict
