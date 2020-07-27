@@ -10,6 +10,7 @@ from reed_wsd.allwords.wordsense import SenseTaggedSentences, SenseInstanceDatas
 from reed_wsd.allwords.blevins import BEMDataset, BEMLoader
 from reed_wsd.allwords.vectorize import DiskBasedVectorManager
 from reed_wsd.allwords.loss import NLLLossWithZones, PairwiseConfidenceLossWithZones
+from reed_wsd.plot import PYCurve, plot_curves
 from tqdm import tqdm
 import copy
 
@@ -115,56 +116,29 @@ if __name__ == "__main__":
     #train_loader = init_loader('./data', stage='train', style='fnn', batch_size=16)
     #train_loader2 = init_loader('./data', stage='train', style='fnn', batch_size=16)
     dev_loader = init_loader('./data', stage='dev', style='fnn', batch_size=16)
-    decoder = decode_gen(True, 'max_non_abs')
-    net = AffineClassifier(768, dev_loader.num_senses() + 1) # one more class for abstention
-    net.load_state_dict(torch.load('trained_models/ffn_single_neg_abs.pt'))
-    net = cudaify(net)
-    evaluate(net, dev_loader, decoder)
 
-
-    """
-    net = AffineClassifier(768, train_loader.num_senses() + 1) # one more class for abstention
-    batch_trainer =FNN_batch_trainer
-    loss = NLLLossWithZones()
-    optimizer = optim.Adam(net.parameters(), lr=10**(-3))
-    decoder = decode_gen(True, 'max_non_abs')
-    n_epochs = 15
-    best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs)
-    torch.save(best_net.state_dict(), 'trained_models/ffn_single_max.pt')
-
-    net = AffineClassifier(768, train_loader.num_senses() + 1) # one more class for abstention
-    batch_trainer =FNN_batch_trainer
-    loss = NLLLossWithZones()
-    optimizer = optim.Adam(net.parameters(), lr=10**(-3))
-    decoder = decode_gen(True, 'neg_abs')
-    n_epochs = 15
-    best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs)
-    torch.save(best_net.state_dict(), 'trained_models/ffn_single_neg_abs.pt')
-    
-    net = AffineClassifier(768, train_loader.num_senses() + 1) # one more class for abstention
-    batch_trainer = FNN_twin_batch_trainer
-    loss = PairwiseConfidenceLossWithZones('abs')
-    optimizer = optim.Adam(net.parameters(), lr=10**(-3))
     decoder = decode_gen(True, 'abs')
-    n_epochs = 15
-    best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs, train_loader2=train_loader2)
-    with open("trained_models/ffn_pair_abs.pt", "w") as f:
-        torch.save(best_net.state_dict(), 'trained_models/ffn_pair_abs.pt')
-    
-    net = AffineClassifier(768, train_loader.num_senses() + 1) # one more class for abstention
-    batch_trainer = FNN_twin_batch_trainer
-    n_epochs = 15
-    optimizer = optim.Adam(net.parameters(), lr=10**(-3))
-    loss = PairwiseConfidenceLossWithZones('max_non_abs')
-    decoder = decode_gen(True, 'max_non_abs')
-    best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs, train_loader2=train_loader2)
-    torch.save(best_net.state_dict(), 'trained_models/ffn_pair_max.pt')
+    net = AffineClassifier(768, dev_loader.num_senses() + 1)
+    net.load_state_dict(torch.load('trained_models/ffn_pair_abs.pt', map_location=torch.device('cpu')))
+    pyc_pair_abs = PYCurve.from_data(net, dev_loader, decoder)
 
-    net = AffineClassifier(768, train_loader.num_senses() + 1) # one more class for abstention
-    optimizer = optim.Adam(net.parameters(), lr=10**(-3))
-    loss = PairwiseConfidenceLossWithZones('neg_abs')
+    decoder = decode_gen(True, 'max_non_abs')
+    net.load_state_dict(torch.load('trained_models/ffn_pair_max.pt', map_location=torch.device('cpu')))
+    pyc_pair_max = PYCurve.from_data(net, dev_loader, decoder)
+
+    net.load_state_dict(torch.load('trained_models/ffn_single_max.pt', map_location=torch.device('cpu')))
+    pyc_single_max = PYCurve.from_data(net, dev_loader, decoder)
+
     decoder = decode_gen(True, 'neg_abs')
-    best_net, acc = train_all_words_classifier(net, train_loader, dev_loader, loss, optimizer, batch_trainer, decoder, n_epochs, train_loader2=train_loader2)
-    torch.save(best_net.state_dict(), 'trained_models/ffn_pair_neg.pt')
-    """
+    net.load_state_dict(torch.load('trained_models/ffn_pair_neg.pt', map_location=torch.device('cpu')))
+    pyc_pair_neg = PYCurve.from_data(net, dev_loader, decoder)
+
+    net.load_state_dict(torch.load('trained_models/ffn_single_neg_abs.pt', map_location=torch.device('cpu')))
+    pyc_single_neg = PYCurve.from_data(net, dev_loader, decoder)
+
+    plot_curves([pyc_pair_abs, 'ffn-pair-abs'],
+                [pyc_pair_max, 'ffn-pair-max_non_abs'],
+                [pyc_single_max, 'ffn-single-max_non_abs'],
+                [pyc_pair_neg, 'ffn-pair-neg_abs'],
+                [pyc_single_neg, 'ffn-single-neg_abs'])
 
