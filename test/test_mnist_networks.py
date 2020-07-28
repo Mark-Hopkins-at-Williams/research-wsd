@@ -1,12 +1,13 @@
 import unittest
 import torch
-from reed_wsd.mnist.networks import ConfidentFFN, inv_abstain_prob, max_nonabstain_prob
+from reed_wsd.mnist.networks import AbstainingFFN
+from reed_wsd.mnist.networks import inv_abstain_prob, max_nonabstain_prob
 
 
 class TestMnistNetworks(unittest.TestCase):
     
     def build_simple_ffn(self):
-        net = ConfidentFFN(input_size = 2, hidden_sizes = [2,2], output_size=3)
+        net = AbstainingFFN(input_size = 2, hidden_sizes = [2,2], output_size=2)
         for param in net.parameters():
             if param.shape == torch.Size([3]):
                 param[0] = 1.4640
@@ -28,7 +29,8 @@ class TestMnistNetworks(unittest.TestCase):
                 param[2][0] = -0.4705
                 param[2][1] = 1.1624
             else:
-                torch.nn.init.ones_(param)        
+                torch.nn.init.ones_(param) 
+        net.eval()
         return net
 
     def test_ffn(self):

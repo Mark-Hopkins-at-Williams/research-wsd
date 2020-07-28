@@ -1,14 +1,13 @@
 import unittest
 import os
-import math
 from os.path import join
 import sys
 file_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(1, join(file_dir, ".."))
 import torch
-from reed_wsd.mnist.loss import ConfidenceLoss1, ConfidenceLoss2
+from reed_wsd.mnist.loss import ConfidenceLoss1
 from reed_wsd.mnist.loss import PairwiseConfidenceLoss
-from reed_wsd.mnist.mnist import confuse
+from reed_wsd.mnist.loader import confuse
 
 class Test(unittest.TestCase):
     
@@ -33,17 +32,6 @@ class Test(unittest.TestCase):
         preds = torch.tensor([pred1, pred2, pred3])
         criterion = ConfidenceLoss1(p0 = 0.5)
         expected_loss = 1.0264
-        assert self.close_enough(criterion(preds, gold, abstain_i=4).item(),
-                                 expected_loss)
-
-    def test_closs2(self):
-        pred1 = [0.1, 0.2, 0.3, 0.3, 0.1] # 0.2, 0.1
-        pred2 = [0.25, 0.1, 0.3, 0.05, 0.2] # 0.3 0.2
-        pred3 = [0.05, 0.02, 0.02, 0.01, 0.9] # 0.01, 0.9
-        gold = torch.tensor([1, 2, 3])
-        preds = torch.tensor([pred1, pred2, pred3])
-        criterion = ConfidenceLoss2(p0 = 0.5)
-        expected_loss = (-math.log(.2) + -math.log(.3) + -math.log(.45)) / 3
         assert self.close_enough(criterion(preds, gold, abstain_i=4).item(),
                                  expected_loss)
 

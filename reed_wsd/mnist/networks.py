@@ -15,14 +15,14 @@ class BasicFFN(nn.Module):
     def __init__(self, 
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
-                 output_sz = 10,
+                 output_size = 10,
                  confidence_extractor = max_prob):
         super().__init__()
         self.confidence_extractor = confidence_extractor
         self.dropout = nn.Dropout(p=0.2)        
         self.linear1 = cudaify(nn.Linear(input_size, hidden_sizes[0]))
         self.linear2 = cudaify(nn.Linear(hidden_sizes[0], hidden_sizes[1]))
-        self.final = cudaify(nn.Linear(hidden_sizes[1], output_sz))
+        self.final = cudaify(nn.Linear(hidden_sizes[1], output_size))
         self.softmax = cudaify(nn.Softmax(dim=1))
 
     def initial_layers(self, input_vec):
@@ -48,11 +48,11 @@ class AbstainingFFN(BasicFFN):
     def __init__(self, 
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
-                 output_sz = 10,
+                 output_size = 10,
                  confidence_extractor = inv_abstain_prob):
-        super().__init__()
+        super().__init__(input_size, hidden_sizes, output_size, confidence_extractor)
         self.confidence_extractor = confidence_extractor
-        self.final = cudaify(nn.Linear(hidden_sizes[1], output_sz + 1))
+        self.final = cudaify(nn.Linear(hidden_sizes[1], output_size + 1))
 
 
 class ConfidentFFN(BasicFFN): 
@@ -61,7 +61,7 @@ class ConfidentFFN(BasicFFN):
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
                  output_size = 10):
-        super().__init__()
+        super().__init__(input_size, hidden_sizes, output_size)
         self.confidence_layer = cudaify(nn.Linear(hidden_sizes[1], 1))
 
     def final_layers(self, input_vec):

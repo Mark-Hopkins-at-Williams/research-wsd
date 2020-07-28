@@ -1,7 +1,7 @@
-from reed_wsd.mnist.mnist import validate_and_analyze
 from reed_wsd.mnist.loss import PairwiseConfidenceLoss, ConfidenceLoss1, CrossEntropyLoss
 from reed_wsd.mnist.loader import PairLoader, ConfusedMnistLoader
-from reed_wsd.mnist.mnist import SingleTrainer, PairwiseTrainer
+from reed_wsd.mnist.train import SingleTrainer, PairwiseTrainer
+from reed_wsd.mnist.train import validate_and_analyze
 from reed_wsd.mnist.networks import BasicFFN
 import torch
 from os.path import join
