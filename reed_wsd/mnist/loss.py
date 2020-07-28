@@ -1,5 +1,4 @@
 import torch
-import math
 import torch.nn.functional as F
 
 class ConfidenceLoss:
@@ -19,7 +18,18 @@ class PairwiseConfidenceLoss(ConfidenceLoss):
         nll_pair = torch.stack([gold_probs_x, gold_probs_y]).t()
         losses = torch.sum(nll_pair * softmaxed_pair, dim=-1)  
         return -torch.log(losses.mean())
-            
+ 
+class CrossEntropyLoss(ConfidenceLoss):
+    def __init__(self):
+        super().__init__()
+        self.loss = torch.nn.CrossEntropyLoss()
+
+    def __call__(self, output, gold):
+        return self.loss(output, gold)
+    
+    def __str__(self):
+        return "CrossEntropyLoss"
+           
 class ConfidenceLoss1(ConfidenceLoss):
     def __init__(self, p0):
         super().__init__()

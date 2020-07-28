@@ -20,13 +20,11 @@ class MnistLoader:
 
 def confuse(labels):
     labels = labels.clone()
-    """
     one_and_sevens = (labels == 1) + (labels == 7)
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 2, one_seven_shape) #change the second argument for different weights
     new_labels[new_labels == 0] = 7    
     labels[one_and_sevens] = new_labels
-    """
     #one_and_sevens = (labels == 2) + (labels == 3)
     #one_seven_shape = labels[one_and_sevens].shape
     #new_labels = torch.randint(0, 2, one_seven_shape)

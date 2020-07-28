@@ -6,52 +6,67 @@ def inv_abstain_prob(output_tensor):
     
 def max_nonabstain_prob(output_tensor):
     return output_tensor[:,:-1].max(dim=1).values
-    
-class ConfidentFFN(nn.Module): 
+
+def max_prob(output_tensor):
+    return output_tensor[:,:-1].max(dim=1).values
+
+class BasicFFN(nn.Module): 
  
     def __init__(self, 
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
-                 output_size = 11,
-                 confidence_extractor = inv_abstain_prob):
-        super(ConfidentFFN, self).__init__()
+                 output_sz = 10,
+                 confidence_extractor = max_prob):
+        super().__init__()
         self.confidence_extractor = confidence_extractor
+        self.dropout = nn.Dropout(p=0.2)        
         self.linear1 = cudaify(nn.Linear(input_size, hidden_sizes[0]))
         self.linear2 = cudaify(nn.Linear(hidden_sizes[0], hidden_sizes[1]))
-        self.linear3 = cudaify(nn.Linear(hidden_sizes[1], output_size))
+        self.final = cudaify(nn.Linear(hidden_sizes[1], output_sz))
         self.softmax = cudaify(nn.Softmax(dim=1))
 
-    def forward(self, input_vec):
+    def initial_layers(self, input_vec):
         nextout = cudaify(input_vec)
-        nextout = self.linear1(nextout).clamp(min=0)
+        nextout = self.linear1(nextout).clamp(min=0)        
+        nextout = self.dropout(nextout)
         nextout = self.linear2(nextout).clamp(min=0)
-        nextout = self.linear3(nextout)
+        nextout = self.dropout(nextout)
+        return nextout
+    
+    def final_layers(self, input_vec):
+        nextout = self.final(input_vec)
         nextout = self.softmax(nextout)
         return nextout, self.confidence_extractor(nextout)
 
-class PairedConfidentFFN(nn.Module): 
+    def forward(self, input_vec):
+        nextout = self.initial_layers(input_vec)
+        result, confidence = self.final_layers(nextout)
+        return result, confidence
+    
+class AbstainingFFN(BasicFFN): 
  
     def __init__(self, 
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
-                 output_size = 10,
+                 output_sz = 10,
                  confidence_extractor = inv_abstain_prob):
-        super(PairedConfidentFFN, self).__init__()
+        super().__init__()
         self.confidence_extractor = confidence_extractor
-        self.linear1 = cudaify(nn.Linear(input_size, hidden_sizes[0]))
-        self.linear2 = cudaify(nn.Linear(hidden_sizes[0], hidden_sizes[1]))
-        self.final1 = cudaify(nn.Linear(hidden_sizes[1], output_size))
-        self.final2 = cudaify(nn.Linear(hidden_sizes[1], 1))
-        self.softmax = cudaify(nn.Softmax(dim=1))
+        self.final = cudaify(nn.Linear(hidden_sizes[1], output_sz + 1))
 
-    def forward(self, input_vec):
-        nextout = cudaify(input_vec)
-        nextout = self.linear1(nextout).clamp(min=0)
-        nextout = self.linear2(nextout).clamp(min=0)
-        savepoint = nextout
-        nextout = self.final1(nextout)
+
+class ConfidentFFN(BasicFFN): 
+ 
+    def __init__(self, 
+                 input_size = 784, 
+                 hidden_sizes = [128, 64], 
+                 output_size = 10):
+        super().__init__()
+        self.confidence_layer = cudaify(nn.Linear(hidden_sizes[1], 1))
+
+    def final_layers(self, input_vec):
+        nextout = self.final(input_vec)
         nextout = self.softmax(nextout)
-        confidence = self.final2(savepoint)
-        return nextout, confidence
+        return nextout, self.confidence_layer(input_vec)
     
     
