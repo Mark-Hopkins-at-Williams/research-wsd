@@ -153,4 +153,3 @@ def plot_saved_models(val_loader,
         pyc_base = PYCurve.from_data(decoded)
         curves.append((pyc_base, filename))
     plot_curves(*curves)
-    

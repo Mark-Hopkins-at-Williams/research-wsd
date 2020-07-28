@@ -72,4 +72,3 @@ class ConfidenceLoss4(ConfidenceLoss):
     
     def __str__(self):
         return "ConfidenceLoss4_p0_" + str(self.p0)
-

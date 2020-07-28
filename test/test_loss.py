@@ -3,14 +3,29 @@ import math
 import torch
 from torch import tensor
 from reed_wsd.allwords.loss import LossWithZones, NLLLossWithZones, zone_based_loss, ConfidenceLossWithZones
-#from reed_wsd.allwords.loss import CrossEntropyLossBEM
 from reed_wsd.mnist.loss import PairwiseConfidenceLoss
-
+from reed_wsd.allwords.loss import PairwiseConfidenceLossWithZones
 
 def approx(x, y, num_digits = 4):
     return abs(x-y) < 1.0 * (10 ** -num_digits)
 
 class TestLoss(unittest.TestCase):
+    def test_pairwise_confidence_loss_with_zones(self):
+        criterion = PairwiseConfidenceLossWithZones('abs')
+
+        output_x = torch.tensor([[1,1,1,1,1.],
+                                 [0,1,0,0,0.]])
+        output_y = torch.tensor([[1,1,0,0,0.],
+                                 [0,0,1,1,1.]])
+        zones_x = [[0, 2], [1, 3]]
+        zones_y = [[2, 4], [3, 4]]
+        gold_x = [1, 1]
+        gold_y = [2, 3]
+        expected_losses = torch.tensor((0.6931 + 0.0842) / 2)
+
+        losses = criterion(output_x, output_y, gold_x, gold_y, zones_x, zones_y)
+        assert(torch.allclose(losses, expected_losses, atol=10**(-4)))
+
     
     def test_nll_loss(self):
         loss = torch.nn.NLLLoss()
@@ -120,6 +135,7 @@ class TestLoss(unittest.TestCase):
         expected_loss = torch.tensor(1.406497)
         loss = criterion(output_x, output_y, gold_x, gold_y, confidence_x, confidence_y)
         assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
+
      
 if __name__ == "__main__":
     unittest.main()
