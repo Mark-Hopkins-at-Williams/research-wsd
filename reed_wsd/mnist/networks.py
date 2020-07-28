@@ -8,7 +8,7 @@ def max_nonabstain_prob(output_tensor):
     return output_tensor[:,:-1].max(dim=1).values
 
 def max_prob(output_tensor):
-    return output_tensor[:,:-1].max(dim=1).values
+    return output_tensor[:,:].max(dim=1).values
 
 class BasicFFN(nn.Module): 
  
