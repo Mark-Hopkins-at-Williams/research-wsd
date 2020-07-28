@@ -36,14 +36,7 @@ valset = datasets.MNIST(test_dir, download=True, train=False, transform=transfor
 trainloader = ConfusedMnistLoader(trainset, batch_size=64, shuffle=True)
 valloader = ConfusedMnistLoader(valset, batch_size=64, shuffle=True)
 
-def simple1(num_epochs=20):
-    criterion = CrossEntropyLoss()
-    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = num_epochs)
-    net = run(trainer)
-    torch.save(net.state_dict(), 'saved/simple.pt')
-    return net
-
-def simple2():
+def basic1():
     criterion = CrossEntropyLoss()
     trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 20)
     net = run(trainer, starting_model = BasicFFN())
@@ -58,10 +51,14 @@ def pairwise1():
     torch.save(net.state_dict(), 'saved/pair_baseline.pt')
 
 def pairwise2():
-    net = simple1(num_epochs=10)
+    # pretrain
+    criterion = CrossEntropyLoss()
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
+    net = run(trainer)
+    # train
     train_loader = PairLoader(trainset, bsz=64, shuffle=True)
     criterion = PairwiseConfidenceLoss()
-    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 20)
+    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 30)
     net = trainer(net)
     torch.save(net.state_dict(), 'saved/pair_baseline.pt')
 
