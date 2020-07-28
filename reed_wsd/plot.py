@@ -15,12 +15,11 @@ class PYCurve:
         return self.scatters
     
     @classmethod
-    def precision_yield_curve(cls, net, data, decoder):
+    def precision_yield_curve(cls, decoded):
         """
         decode must be a iterable in which each element is of the form (prediction, gold, confidence)
         
-        """
-        decoded = list(decoder(net, data))
+        """     
         decoded.sort(key = lambda inst: inst['confidence']) # sort decoded by confidence
         preds = [inst['pred'] for inst in decoded]
         gold = [inst['gold'] for inst in decoded]
@@ -30,9 +29,9 @@ class PYCurve:
     @staticmethod    
     def py_curve(preds, gold, confidences):
         triples = sorted([(-c,p,g) for (c,(p,g)) in zip(confidences, zip(preds, gold))])
-        for c, p, g in triples:
-            if p != g:
-                print('with conf {}, classified a gold {} as {}'.format(-c, g, p))
+        #for c, p, g in triples:
+        #    if p != g:
+        #        print('with conf {}, classified a gold {} as {}'.format(-c, g, p))
         correct = [int(p == g) for (_,p,g) in triples]
         cumul_correct = []
         sum_so_far = 0
@@ -44,8 +43,8 @@ class PYCurve:
         return list(zip(precisions, recalls))    
     
     @classmethod
-    def from_data(cls, net, data, decoder):
-        return cls(cls.precision_yield_curve(net, data, decoder))
+    def from_data(cls, decoded):
+        return cls(cls.precision_yield_curve(decoded))
 
     def aupy(self):
         area = 0
@@ -70,9 +69,7 @@ class PYCurve:
 def plot_curves(*pycs):
     for i in range(len(pycs)):
         curve = pycs[i][0]
-        print(type(curve))
         label = pycs[i][1]
-        print(type(label))
         label = label + "; aupy = {:.3f}".format(curve.aupy())
         curve.plot(label)
     plt.legend()

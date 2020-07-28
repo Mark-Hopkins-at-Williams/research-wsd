@@ -1,46 +1,82 @@
-from reed_wsd.mnist.mnist import train, validate_and_analyze, FFN, model_dir, validation_dir
-from reed_wsd.mnist.loss import AWNLL, CAWNLL, CRANLL, LRANLL, CABNLL, NLL
+from reed_wsd.mnist.loss import PairwiseConfidenceLoss, ConfidenceLoss1, CrossEntropyLoss
+from reed_wsd.mnist.loader import PairLoader, ConfusedMnistLoader
+from reed_wsd.mnist.train import SingleTrainer, PairwiseTrainer
+from reed_wsd.mnist.train import validate_and_analyze
+from reed_wsd.mnist.networks import BasicFFN
 import torch
 from os.path import join
 import json
+from torchvision import datasets, transforms
+import os
 
-def nll():
-    run(NLL())
 
-def awnll():
-    ab = [[6,1], [8, 1]]
-    for (a, b) in ab:
-        print("training with weight: ({}, {})".format(a, b))
-        c = AWNLL(a, b)
-        run(c, "awnll" + "_" + str(a) + "_" + str(b))
-    
+file_dir = os.path.dirname(os.path.realpath(__file__))
+data_dir = join(file_dir, "data")
+train_dir = join(data_dir, "train")
+test_dir = join(data_dir, "test")
+model_dir = join(file_dir, "saved")
+validation_dir = join(file_dir, "validations")
+if not os.path.isdir(data_dir):
+    os.mkdir(data_dir)
+if not os.path.isdir(train_dir):
+    os.mkdir(train_dir)
+if not os.path.isdir(test_dir):
+    os.mkdir(test_dir)
+if not os.path.isdir(model_dir):
+    os.mkdir(model_dir)
+if not os.path.isdir(validation_dir):
+    os.mkdir(validation_dir)
 
-def cawnll():
-    ab = [[1 + 0.1 * i, 1] for i in range(11)]
-    for (a, b) in ab:
-        print("training with weight: ({}, {})".format(a, b))
-        c = CAWNLL(a, b)
-        run(c, "cawnll" + "_" + str(a) + "_" + str(b))
+transform = transforms.Compose([transforms.ToTensor(),
+                              transforms.Normalize((0.5,), (0.5,)),
+                              ])
 
-def cranll():
-    p0 = 0.5
-    run(CRANLL(p0)) 
+trainset = datasets.MNIST(train_dir, download=True, train=True, transform=transform)
+valset = datasets.MNIST(test_dir, download=True, train=False, transform=transform)
+trainloader = ConfusedMnistLoader(trainset, batch_size=64, shuffle=True)
+valloader = ConfusedMnistLoader(valset, batch_size=64, shuffle=True)
 
-def lranll():
-    run(LRANLL())
+def basic1():
+    criterion = CrossEntropyLoss()
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 20)
+    net = run(trainer, starting_model = BasicFFN())
+    torch.save(net.state_dict(), 'saved/simple.pt')
+    return net
 
-def cabnll():
-    run(CABNLL())        
+def pairwise1():
+    train_loader = PairLoader(trainset, bsz=64, shuffle=True)
+    criterion = PairwiseConfidenceLoss()
+    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 30)
+    net = run(trainer)    
+    torch.save(net.state_dict(), 'saved/pair_baseline.pt')
 
-def run(criterion, name = None):
+def pairwise2():
+    # pretrain
+    criterion = CrossEntropyLoss()
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
+    net = run(trainer)
+    # train
+    train_loader = PairLoader(trainset, bsz=64, shuffle=True)
+    criterion = PairwiseConfidenceLoss()
+    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 30)
+    net = trainer(net)
+    torch.save(net.state_dict(), 'saved/pair_baseline.pt')
+
+
+def closs1(p0):
+    criterion = ConfidenceLoss1(p0)
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
+    net = run(trainer)
+    torch.save(net.state_dict(), 'saved/closs1.pt')
+
+def run(trainer, starting_model = None, name = None):
     if name is None:
-        name = type(criterion).__name__
+        name = type(trainer.criterion).__name__
     print("================{} EXPERIMENT======================".format(name))
-    net = train(criterion)
-    data_dict = validate_and_analyze(net, criterion)
+    net = trainer(starting_model)
+    data_dict, _ = validate_and_analyze(net, trainer.val_loader)
     results_file = "{}.json".format(name.lower())
     with open(join(validation_dir, results_file), "w") as f:
         json.dump(data_dict, f)
+    return net
     
-if __name__ == "__main__":
-    nll()
