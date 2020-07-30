@@ -6,7 +6,7 @@ file_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(1, join(file_dir, ".."))
 import torch
 from reed_wsd.mnist.loss import ConfidenceLoss1
-from reed_wsd.mnist.loss import PairwiseConfidenceLoss
+from reed_wsd.loss import PairwiseConfidenceLoss
 from reed_wsd.mnist.loader import confuse
 
 class Test(unittest.TestCase):
@@ -31,13 +31,14 @@ class Test(unittest.TestCase):
         gold = torch.tensor([1, 2, 3])
         preds = torch.tensor([pred1, pred2, pred3])
         criterion = ConfidenceLoss1(p0 = 0.5)
+        criterion.notify(2)
         expected_loss = 1.0264
-        assert self.close_enough(criterion(preds, gold, abstain_i=4).item(),
+        assert self.close_enough(criterion(preds, gold).item(),
                                  expected_loss)
 
 
     def test_pairwise_confidence_loss(self):
-        criterion = PairwiseConfidenceLoss('baseline')
+        criterion = PairwiseConfidenceLoss('max_non_abs')
         #test compute_loss
         gold_probs_x = torch.tensor([0.2, 0.5, 1])   # probability of correct class from first network
         gold_probs_y = torch.tensor([0.5, 0.5, 0.2]) # probability of correct class from second network
@@ -54,21 +55,21 @@ class Test(unittest.TestCase):
         
 
         #baseline
-        output_x = torch.tensor([[0.2, 0.5, 0.3],   # distribution 1  over classA, classB, abstain
-                                 [0.5, 0.5, 0],     # distribution 2  over classA, classB, abstain
+        output_x = torch.tensor([[1, 1, 0.],   # distribution 1  over classA, classB, abstain
+                                 [1., 1., 1],     # distribution 2  over classA, classB, abstain
                                  [1, 0., 0.]])      # distribution 3  over classA, classB, abstain
         gold_x = torch.tensor([0, 1, 0])            # gold labels for instances 1, 2, 3
-        output_y = torch.tensor([[0.5, 0.6, 0],
-                                 [0.5, 0.6, 0],
-                                 [0.6, 0.2, 0.4]])
+        output_y = torch.tensor([[1, 1, 0.],
+                                 [1., 1., 1.],
+                                 [1., 0, 0]])
         gold_y = torch.tensor([0, 0, 1])        
-        expected_loss = torch.tensor(0.8225)
+        expected_loss = torch.tensor(1.0040)
         loss = criterion(output_x, output_y, gold_x, gold_y)
         assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
 
         #test loss function
-        #neg_abs
-        criterion = PairwiseConfidenceLoss('neg_abs')
+        #inv_abs
+        criterion = PairwiseConfidenceLoss('inv_abs')
        
         output_x = torch.tensor([[0.2, 0.2, 0.5],
                                  [0.5, 0.4, 0.5],
@@ -79,7 +80,7 @@ class Test(unittest.TestCase):
         gold_x = [1, 0, 0]
         gold_y = [0, 0, 0]
 
-        expected_loss = torch.tensor(0.8487)
+        expected_loss = torch.tensor(0.9890)
         loss = criterion(output_x, output_y, gold_x, gold_y)
         assert(torch.allclose(loss, expected_loss, atol=10**(-4)))
 

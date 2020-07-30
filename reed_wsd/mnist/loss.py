@@ -1,23 +1,24 @@
 import torch
 import torch.nn.functional as F
+from reed_wsd.loss import PairwiseConfidenceLoss
 
 class ConfidenceLoss:
     
     def notify(self, epoch):
         pass
 
-class PairwiseConfidenceLoss(ConfidenceLoss):
-    def __init__(self):
-        super().__init__()
+class PairwiseConfidenceLoss(PairwiseConfidenceLoss, ConfidenceLoss):
+    def __init__(self, confidence='inv_abs'):
+        super().__init__(confidence)
+
+    def notify(self, epoch):
+        pass
 
     def __call__(self, output_x, output_y, gold_x, gold_y, conf_x, conf_y):
         gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
         gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
-        confidence_pair = torch.stack([conf_x, conf_y], dim=-1)
-        softmaxed_pair = F.softmax(confidence_pair, dim=-1)
-        nll_pair = torch.stack([gold_probs_x, gold_probs_y]).t()
-        losses = torch.sum(nll_pair * softmaxed_pair, dim=-1)  
-        return -torch.log(losses.mean())
+        losses = self.compute_loss(conf_x, conf_y, gold_probs_x, gold_probs_y)
+        return losses.mean()
  
 class CrossEntropyLoss(ConfidenceLoss):
     def __init__(self):
@@ -29,7 +30,19 @@ class CrossEntropyLoss(ConfidenceLoss):
     
     def __str__(self):
         return "CrossEntropyLoss"
-           
+
+class NLLLoss(ConfidenceLoss):
+    def __init__(self):
+        super().__init__()
+        self.loss = torch.nn.NLLLoss()
+
+    def __call__(self, output, gold):
+        log_output = torch.log(output)
+        return self.loss(log_output, gold)
+    
+    def __str__(self):
+        return "NLLLoss"
+
 class ConfidenceLoss1(ConfidenceLoss):
     def __init__(self, p0):
         super().__init__()

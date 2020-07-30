@@ -73,7 +73,7 @@ class Trainer:
     def _default_starting_model(self):
         return ConfidentFFN()
     
-    def _take_step(self, optimizer, model):
+    def _epoch_step(self, optimizer, model):
         raise NotImplementedError("Must be overridden by inheriting classes.")
             
     def __call__(self, starting_model=None):
@@ -88,7 +88,7 @@ class Trainer:
         best_model_score = float('-inf')
         for e in range(self.n_epochs):
             self.criterion.notify(e)
-            batch_loss = self._take_step(optimizer, model)            
+            batch_loss = self._epoch_step(optimizer, model)            
             data_dict, precision = validate_and_analyze(model, self.val_loader)
             print(data_dict)
             if precision > best_model_score:
@@ -106,8 +106,11 @@ class PairwiseTrainer(Trainer):
     
     def __init__(self, criterion, train_loader, val_loader, n_epochs):
         super().__init__(criterion, train_loader, val_loader, n_epochs)
+
+    def _default_starting_model(self):
+        return AbstainingFFN()
          
-    def _take_step(self, optimizer, model):
+    def _epoch_step(self, optimizer, model):
         running_loss = 0
         denom = 0.
         batch_iter = self.train_loader.batch_iter()
@@ -128,7 +131,10 @@ class SingleTrainer(Trainer):
     def __init__(self, criterion, train_loader, val_loader, n_epochs):
         super().__init__(criterion, train_loader, val_loader, n_epochs)
 
-    def _take_step(self, optimizer, model):
+    def _default_starting_model(self):
+        return AbstainingFFN()
+
+    def _epoch_step(self, optimizer, model):
         running_loss = 0
         denom = 0.
         for images, labels in self.train_loader:

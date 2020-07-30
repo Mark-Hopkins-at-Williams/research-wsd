@@ -1,8 +1,9 @@
 from reed_wsd.mnist.loss import PairwiseConfidenceLoss, ConfidenceLoss1, CrossEntropyLoss
-from reed_wsd.mnist.loader import PairLoader, ConfusedMnistLoader
+from reed_wsd.mnist.loss import NLLLoss
+from reed_wsd.mnist.loader import PairLoader, ConfusedMnistLoader, MnistLoader
 from reed_wsd.mnist.train import SingleTrainer, PairwiseTrainer
 from reed_wsd.mnist.train import validate_and_analyze
-from reed_wsd.mnist.networks import BasicFFN
+from reed_wsd.mnist.networks import BasicFFN, AbstainingFFN
 import torch
 from os.path import join
 import json
@@ -34,25 +35,30 @@ transform = transforms.Compose([transforms.ToTensor(),
 trainset = datasets.MNIST(train_dir, download=True, train=True, transform=transform)
 valset = datasets.MNIST(test_dir, download=True, train=False, transform=transform)
 trainloader = ConfusedMnistLoader(trainset, batch_size=64, shuffle=True)
-valloader = ConfusedMnistLoader(valset, batch_size=64, shuffle=True)
+valloader = MnistLoader(valset, batch_size=64, shuffle=True)
 
 def basic1():
-    criterion = CrossEntropyLoss()
+    criterion = NLLLoss()
     trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 20)
     net = run(trainer, starting_model = BasicFFN())
     torch.save(net.state_dict(), 'saved/simple.pt')
     return net
 
 def pairwise1():
+    #pretrain
+    criterion = NLLLoss()
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
+    net = run(trainer, starting_model = AbstainingFFN())
+    #pairwise train 
     train_loader = PairLoader(trainset, bsz=64, shuffle=True)
     criterion = PairwiseConfidenceLoss()
     trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 30)
-    net = run(trainer)    
+    net = run(trainer, starting_model=AbstainingFFN(confidence_extractor='max_non_abs'))
     torch.save(net.state_dict(), 'saved/pair_baseline.pt')
 
 def pairwise2():
     # pretrain
-    criterion = CrossEntropyLoss()
+    criterion = NLLLoss()
     trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
     net = run(trainer)
     # train
@@ -79,4 +85,7 @@ def run(trainer, starting_model = None, name = None):
     with open(join(validation_dir, results_file), "w") as f:
         json.dump(data_dict, f)
     return net
+
+if __name__ == "__main__":
+    pairwise1()
     

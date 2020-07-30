@@ -3,8 +3,8 @@ import math
 import torch.nn.functional as F
 
 class PairwiseConfidenceLoss:
-    def __init__(self, confidence='neg_abs'):
-        assert(confidence in ['max_non_abs', 'neg_abs', 'abs'])
+    def __init__(self, confidence='inv_abs'):
+        assert(confidence in ['max_non_abs', 'inv_abs', 'abs'])
         self.confidence = confidence
 
     @staticmethod
@@ -24,7 +24,7 @@ class PairwiseConfidenceLoss:
             probs_x, probs_y = output_x[:, :-1], output_y[:, :-1] # 2d
             gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
             gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
-            if self.confidence == 'neg_abs':
+            if self.confidence == 'inv_abs':
                 confidence_x, confidence_y = 1 - output_x[:, -1], 1 - output_y[:, -1] #1d
                 losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
             elif self.confidence == 'max_non_abs':

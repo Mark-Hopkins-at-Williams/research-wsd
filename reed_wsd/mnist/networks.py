@@ -8,7 +8,7 @@ def max_nonabstain_prob(output_tensor):
     return output_tensor[:,:-1].max(dim=1).values
 
 def max_prob(output_tensor):
-    return output_tensor[:,:].max(dim=1).values
+    return output_tensor[:,:-1].max(dim=1).values
 
 class BasicFFN(nn.Module): 
  
@@ -24,17 +24,22 @@ class BasicFFN(nn.Module):
         self.linear2 = cudaify(nn.Linear(hidden_sizes[0], hidden_sizes[1]))
         self.final = cudaify(nn.Linear(hidden_sizes[1], output_size))
         self.softmax = cudaify(nn.Softmax(dim=1))
+        self.relu1 = nn.ReLU()
+        self.relu2 = nn.ReLU()
 
     def initial_layers(self, input_vec):
         nextout = cudaify(input_vec)
-        nextout = self.linear1(nextout).clamp(min=0)        
+        nextout = self.linear1(nextout)
         nextout = self.dropout(nextout)
-        nextout = self.linear2(nextout).clamp(min=0)
+        nextout = self.relu1(nextout)
+        nextout = self.linear2(nextout)
+        nextout = self.relu2(nextout)
         nextout = self.dropout(nextout)
         return nextout
     
     def final_layers(self, input_vec):
         nextout = self.final(input_vec)
+        nextout = nextout.clamp(min=-25, max=25)
         nextout = self.softmax(nextout)
         return nextout, self.confidence_extractor(nextout)
 
@@ -49,9 +54,13 @@ class AbstainingFFN(BasicFFN):
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
                  output_size = 10,
-                 confidence_extractor = inv_abstain_prob):
+                 confidence_extractor = 'inv_abs'):
+        assert(confidence_extractor in ['inv_abs', 'max_non_abs'])
         super().__init__(input_size, hidden_sizes, output_size, confidence_extractor)
-        self.confidence_extractor = confidence_extractor
+        if confidence_extractor == 'inv_abs':
+            self.confidence_extractor = inv_abstain_prob
+        if confidence_extractor == 'max_non_abs':
+            self.confidence_extractor = max_nonabstain_prob
         self.final = cudaify(nn.Linear(hidden_sizes[1], output_size + 1))
 
 

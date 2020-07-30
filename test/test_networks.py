@@ -28,7 +28,7 @@ class TestBEMforWSD(unittest.TestCase):
         assert( torch.equal(result, expected_result))
 
     def test_forward(self):
-        model = BEMforWSD(cuda=False)
+        model = BEMforWSD()
         model.eval()
         #defn_cls
         glosses = [{'input_ids': torch.tensor([[101, 1037, 5164, 1997, 2616, 17087, 1996, 24402, 3513, 1997, 1037, 2653, 102],
