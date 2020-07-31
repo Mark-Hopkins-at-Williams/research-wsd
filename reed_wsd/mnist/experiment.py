@@ -44,30 +44,55 @@ def basic1():
     torch.save(net.state_dict(), 'saved/simple.pt')
     return net
 
-def pairwise1():
+def pairwise_max_non_abs():
     #pretrain
     criterion = NLLLoss()
-    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
-    net = run(trainer, starting_model = AbstainingFFN())
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 15)
+    net = run(trainer, starting_model = AbstainingFFN(confidence_extractor='max_non_abs'))
     #pairwise train 
     train_loader = PairLoader(trainset, bsz=64, shuffle=True)
     criterion = PairwiseConfidenceLoss()
-    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 30)
-    net = run(trainer, starting_model=AbstainingFFN(confidence_extractor='max_non_abs'))
+    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 20)
+    net = run(trainer, starting_model=net)
     torch.save(net.state_dict(), 'saved/pair_baseline.pt')
 
-def pairwise2():
+def pairwise_inv_abs():
     # pretrain
     criterion = NLLLoss()
-    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 10)
-    net = run(trainer)
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 15)
+    net = run(trainer, starting_model = AbstainingFFN(confidence_extractor='inv_abs'))
     # train
     train_loader = PairLoader(trainset, bsz=64, shuffle=True)
     criterion = PairwiseConfidenceLoss()
-    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 30)
-    net = trainer(net)
-    torch.save(net.state_dict(), 'saved/pair_baseline.pt')
+    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 20)
+    net = run(trainer, starting_model = net)
+    torch.save(net.state_dict(), 'saved/pair_inv_abs.pt')
 
+def pairwise_abs():
+    # pretrain
+    criterion = NLLLoss()
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 15)
+    net = run(trainer, starting_model = AbstainingFFN(confidence_extractor='abs'))
+    # train
+    train_loader = PairLoader(trainset, bsz=64, shuffle=True)
+    criterion = PairwiseConfidenceLoss()
+    trainer = PairwiseTrainer(criterion, train_loader, valloader, n_epochs = 20)
+    net = run(trainer, starting_model = net)
+    torch.save(net.state_dict(), 'saved/pair_abs.pt')
+
+def single_confidence_max():
+    criterion = ConfidenceLoss1(0.5)
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 20)
+    net = run(trainer, starting_model = AbstainingFFN(confidence_extractor='max_non_abs'))
+    torch.save(net.state_dict(), 'saved/single_max.pt')
+    return net
+
+def single_confidence_inv():
+    criterion = ConfidenceLoss1(0.5)
+    trainer = SingleTrainer(criterion, trainloader, valloader, n_epochs = 20)
+    net = run(trainer, starting_model = AbstainingFFN(confidence_extractor='inv_abs'))
+    torch.save(net.state_dict(), 'saved/single_inv.pt')
+    return net
 
 def closs1(p0):
     criterion = ConfidenceLoss1(p0)
@@ -87,5 +112,5 @@ def run(trainer, starting_model = None, name = None):
     return net
 
 if __name__ == "__main__":
-    pairwise1()
+    single_confidence_max()
     

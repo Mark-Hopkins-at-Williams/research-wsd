@@ -1,23 +1,20 @@
 import torch
 import torch.nn.functional as F
-from reed_wsd.loss import PairwiseConfidenceLoss
+import reed_wsd.loss as loss
 
 class ConfidenceLoss:
     
     def notify(self, epoch):
         pass
 
-class PairwiseConfidenceLoss(PairwiseConfidenceLoss, ConfidenceLoss):
-    def __init__(self, confidence='inv_abs'):
-        super().__init__(confidence)
-
-    def notify(self, epoch):
-        pass
-
+class PairwiseConfidenceLoss(ConfidenceLoss):
+    def __init__(self):
+        super().__init__()
+    
     def __call__(self, output_x, output_y, gold_x, gold_y, conf_x, conf_y):
         gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
         gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
-        losses = self.compute_loss(conf_x, conf_y, gold_probs_x, gold_probs_y)
+        losses = loss.PairwiseConfidenceLoss.compute_loss(conf_x, conf_y, gold_probs_x, gold_probs_y)
         return losses.mean()
  
 class CrossEntropyLoss(ConfidenceLoss):
@@ -51,7 +48,7 @@ class ConfidenceLoss1(ConfidenceLoss):
         self.notify(0)
 
     def notify(self, epoch):
-        if epoch >= 2:
+        if epoch >= 10:
             self.p0 = self.target_p0
     
     def __call__(self, output, gold):

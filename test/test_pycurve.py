@@ -12,6 +12,16 @@ class TestPYCurve(unittest.TestCase):
         pycurve = PYCurve(scatters)
         aupy = pycurve.aupy()
         assert approx(aupy, expected_aupy)
+
+    def test_from_data(self):
+        decoded = [{'pred': 0, 'gold': 0, 'confidence': 0.9},
+                   {'pred': 0, 'gold': 1, 'confidence': 0.6},
+                   {'pred': 1, 'gold': 1, 'confidence': 1.0},
+                   {'pred': 1, 'gold': 0, 'confidence': 0.5}]
+        pyc = PYCurve.from_data(decoded)
+        expected_aupy = 0.25
+        aupy = pyc.aupy()
+        assert(aupy == expected_aupy)
        
 if __name__ == "__main__":
     unittest.main()

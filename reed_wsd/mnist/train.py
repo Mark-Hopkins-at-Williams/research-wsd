@@ -31,14 +31,15 @@ def decoder(net, data):
 def validate_and_analyze(model, val_loader, output_size = 10):
     results = list(decoder(model, val_loader))
     pyc_base = PYCurve.from_data(results)
-    correct_count, n_confident = 0, 0
     avg_err_conf = 0
     avg_crr_conf = 0
     n_error = 0
+    n_correct = 0
     data_dict = {}
     error_dict = defaultdict(int)
+    n_total = len(results)
     for i in range(output_size):
-        data_dict[i] = [0, 0, 0] # [n_correct, n_wrong, n_abstain]
+        data_dict[i] = [0, 0] # [n_correct, n_wrong, n_abstain]
     for result in results:
         prediction = result['pred']
         gold = result['gold']
@@ -46,21 +47,17 @@ def validate_and_analyze(model, val_loader, output_size = 10):
         if prediction == gold:
             data_dict[gold][0] += 1
             avg_crr_conf += confidence
-            correct_count += 1
-            n_confident += 1            
+            n_correct += 1
         else:
             #print("mistook {} for {}".format(gold, prediction))
             data_dict[gold][1] += 1
             avg_err_conf += confidence
             error_dict[gold] += 1
-            n_confident += 1            
             n_error += 1            
-    for lbl in error_dict:
-        error_dict[lbl] /= n_error
     print('average error confidence:', avg_err_conf / n_error)
-    print('average correct confidence:', avg_crr_conf / correct_count)
+    print('average correct confidence:', avg_crr_conf / n_correct)
     print('aupy: {}'.format(pyc_base.aupy()))
-    return data_dict, correct_count / n_confident
+    return data_dict, n_correct / n_total
 
 class Trainer:
     
@@ -99,6 +96,8 @@ class Trainer:
                                                                           batch_loss,
                                                                           precision))
             print("\nTraining Time (in minutes) =",(time()-time0)/60)
+        data_dict, precision = validate_and_analyze(best_model, self.val_loader)
+        print("Best Model Dev precision: {}".format(precision))
         return best_model    
 
 
