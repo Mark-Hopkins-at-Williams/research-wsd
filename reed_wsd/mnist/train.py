@@ -12,6 +12,24 @@ from reed_wsd.util import cudaify
 from collections import defaultdict
 from reed_wsd.plot import PYCurve, plot_curves
 from reed_wsd.mnist.networks import AbstainingFFN, ConfidentFFN
+from reed_wsd.train import validate_and_analyze, Trainer
+from reed_wsd.train import Decoder
+
+class MnistDecoder(Decoder):
+    
+    def __call__(self, net, data):
+        net.eval()
+        for images, labels in data:
+            for i in range(len(labels)):
+                img = images[i].view(1, 784)
+                # Turn off gradients to speed up this part
+                with torch.no_grad():
+                    ps, conf = net(cudaify(img))                
+                ps = ps.squeeze(dim=0)
+                c = conf.squeeze(dim=0).item()
+                pred = ps.argmax(dim=0).item()
+                gold = labels[i].item()
+                yield {'pred': pred, 'gold': gold, 'confidence': c}
 
 
 def decoder(net, data):
@@ -28,91 +46,15 @@ def decoder(net, data):
             gold = labels[i].item()
             yield {'pred': pred, 'gold': gold, 'confidence': c}
     
-def validate_and_analyze(model, val_loader, output_size = 10):
-    results = list(decoder(model, val_loader))
-    pyc_base = PYCurve.from_data(results)
-    avg_err_conf = 0
-    avg_crr_conf = 0
-    n_error = 0
-    n_correct = 0
-    data_dict = {}
-    error_dict = defaultdict(int)
-    n_total = len(results)
-    for i in range(output_size):
-        data_dict[i] = [0, 0] # [n_correct, n_wrong, n_abstain]
-    for result in results:
-        prediction = result['pred']
-        gold = result['gold']
-        confidence = result['confidence']
-        if prediction == gold:
-            data_dict[gold][0] += 1
-            avg_crr_conf += confidence
-            n_correct += 1
-        else:
-            #print("mistook {} for {}".format(gold, prediction))
-            data_dict[gold][1] += 1
-            avg_err_conf += confidence
-            error_dict[gold] += 1
-            n_error += 1            
-    print('average error confidence:', avg_err_conf / n_error)
-    print('average correct confidence:', avg_crr_conf / n_correct)
-    print('aupy: {}'.format(pyc_base.aupy()))
-    return data_dict, n_correct / n_total
-
-class Trainer:
-    
-    def __init__(self, criterion, train_loader, val_loader, n_epochs):
-        self.criterion = criterion
-        self.train_loader = train_loader
-        self.val_loader = val_loader
-        self.n_epochs = n_epochs
-        
-    def _default_starting_model(self):
-        return ConfidentFFN()
-    
-    def _epoch_step(self, optimizer, model):
-        raise NotImplementedError("Must be overridden by inheriting classes.")
-            
-    def __call__(self, starting_model=None):
-        if starting_model is not None:
-            model = starting_model
-        else:
-            model = self._default_starting_model()
-
-        optimizer = optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-        time0 = time()
-        best_model = None
-        best_model_score = float('-inf')
-        for e in range(self.n_epochs):
-            self.criterion.notify(e)
-            batch_loss = self._epoch_step(optimizer, model)            
-            data_dict, precision = validate_and_analyze(model, self.val_loader)
-            print(data_dict)
-            if precision > best_model_score:
-                print("Updating best model.")
-                best_model = copy.deepcopy(model)
-                best_model_score = precision
-            print("Epoch {} - Training loss: {}; Dev precision: {}".format(e, 
-                                                                          batch_loss,
-                                                                          precision))
-            print("\nTraining Time (in minutes) =",(time()-time0)/60)
-        data_dict, precision = validate_and_analyze(best_model, self.val_loader)
-        print("Best Model Dev precision: {}".format(precision))
-        return best_model    
 
 
 class PairwiseTrainer(Trainer):
-    
-    def __init__(self, criterion, train_loader, val_loader, n_epochs):
-        super().__init__(criterion, train_loader, val_loader, n_epochs)
-
-    def _default_starting_model(self):
-        return AbstainingFFN()
          
     def _epoch_step(self, optimizer, model):
-        running_loss = 0
-        denom = 0.
+        running_loss = 0.
+        denom = 0
         batch_iter = self.train_loader.batch_iter()
+        batch_iter = tqdm(batch_iter, total=len(train_loader))
         for img_x, img_y, lbl_x, lbl_y in batch_iter:
             optimizer.zero_grad()                           
             output_x, conf_x = model(cudaify(img_x))
@@ -127,21 +69,17 @@ class PairwiseTrainer(Trainer):
      
 class SingleTrainer(Trainer):
 
-    def __init__(self, criterion, train_loader, val_loader, n_epochs):
-        super().__init__(criterion, train_loader, val_loader, n_epochs)
-
-    def _default_starting_model(self):
-        return AbstainingFFN()
-
-    def _epoch_step(self, optimizer, model):
-        running_loss = 0
-        denom = 0.
+    def _epoch_step(self, model):
+        running_loss = 0.
+        denom = 0
+        batch_iter = self.train_loader.batch_iter()
+        batch_iter = tqdm(batch_iter, total=len(train_loader))
         for images, labels in self.train_loader:
             optimizer.zero_grad()                       
             output, conf = model(cudaify(images))
             loss = self.criterion(output, cudaify(labels))
             loss.backward()
-            optimizer.step()                                                                                             
+            optimizer.step()                                         
             running_loss += loss.item()
             denom += 1
         return running_loss / denom

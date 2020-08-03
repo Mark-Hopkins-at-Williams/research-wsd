@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from reed_wsd.loss import PairwiseConfidenceLoss
+from reed_wsd.loss import ConfidenceLoss
 
 def zone_based_loss(predicted, gold, zones, f):
     """
@@ -54,60 +55,39 @@ def apply_zones(predicted, zones, abstain = False):
             revised_pred[i, -1] = predicted[i, -1] / normalizer
     return revised_pred
 
-class LossWithZones:
+class LossWithZones(ConfidenceLoss):
     
-    def __call__(self, predicted, gold, zones):
-        predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
+    def __call__(self, predicted, gold, conf, zones):
         return zone_based_loss(predicted, gold, zones, lambda x: -x)
 
     
-class NLLLossWithZones:
+class NLLLossWithZones(ConfidenceLoss):
         
-    def __call__(self, predicted, gold, zones):
-        predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
+    def __call__(self, predicted, gold, conf, zones):
         return zone_based_loss(predicted, gold, zones, lambda x: -torch.log(x))
 
-
-class ConfidenceLossWithZones:
+class ConfidenceLossWithZones(ConfidenceLoss):
     def __init__(self, p0):
-        self.p0 = p0
+        self.target_p0 = p0
+        self.p0 = 0
+
+    def notify(self, e):
+        if e >= 10:
+            self.p0 = self.target_p0
     
-    def __call__(self, predicted, gold, zones):
-        predicted = F.softmax(predicted.clamp(min=-10).clamp(max=10), dim=1)
+    def __call__(self, predicted, gold, conf, zones):
         revised_pred = apply_zones(predicted, zones, abstain=True)
         label_ps = revised_pred[list(range(len(revised_pred))), gold]
-        losses = label_ps + self.p0 * revised_pred[:, -1]
-        return torch.mean(- torch.log(losses), dim=-1)
+        losses = - torch.log(label_ps + self.target_p0 * conf)
+        return torch.mean(losses, dim=-1)
 
 class PairwiseConfidenceLossWithZones(PairwiseConfidenceLoss):
 
-    def __call__(self, output_x, output_y, gold_x, gold_y, zones_x, zones_y):
-        if self.confidence != 'abs':
-            output_x = F.softmax(output_x.clamp(min=-10, max=10), dim=-1)
-            output_x = apply_zones(output_x, zones_x, abstain=True)
-            output_y = F.softmax(output_y.clamp(min=-10, max=10), dim=-1)
-            output_y = apply_zones(output_y, zones_y, abstain=True)
-            probs_x, probs_y = output_x[:, :-1], output_y[:, :-1] # 2d
-            gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
-            gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
-            if self.confidence == 'neg_abs':
-                confidence_x, confidence_y = 1 - output_x[:, -1], 1 - output_y[:, -1] #1d
-                losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
-            elif self.confidence == 'max_non_abs':
-                confidence_x, max_ids_x = probs_x.max(dim=-1)
-                confidence_y, max_ids_y = probs_y.max(dim=-1)
-                confidence_x = torch.clamp(confidence_x, min=0.000000001)
-                confidence_y = torch.clamp(confidence_y, min=0.000000001)
-                losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
-        else:
-            confidence_x = output_x[:, -1]
-            confidence_y = output_y[:, -1]
-            probs_x = F.softmax(output_x[:, :-1].clamp(min=-10, max=10), dim=-1)
-            probs_y = F.softmax(output_y[:, :-1].clamp(min=-10, max=10), dim=-1)
-            probs_x = apply_zones(probs_x, zones_x, abstain=False)
-            probs_y = apply_zones(probs_y, zones_y, abstain=False)
-            gold_probs_x = probs_x[list(range(output_x.shape[0])), gold_x]
-            gold_probs_y = probs_y[list(range(output_y.shape[0])), gold_y]
-            losses = self.compute_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y)
+    def __call__(self, output_x, output_y, gold_x, gold_y, conf_x, conf_y, zones_x, zones_y):
+        output_x = apply_zones(output_x, zones_x, abstain=True)
+        output_y = apply_zones(output_y, zones_y, abstain=True)
+        gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
+        gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
+        losses = self.compute_loss(conf_x, conf_y, gold_probs_x, gold_probs_y)
         return losses.mean()
 

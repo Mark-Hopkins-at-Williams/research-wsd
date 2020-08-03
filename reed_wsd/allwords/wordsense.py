@@ -14,6 +14,7 @@ from collections import defaultdict
 from nltk.corpus import wordnet as wn
 from transformers import BertTokenizer
 import nltk
+from reed_wsd.loader import Loader
 
 class SenseInventory:
     def __init__(self, senses_by_lemma):
@@ -221,11 +222,19 @@ class SenseInstanceDataset(Dataset):
                         n_insts += 1
             self.num_insts = n_insts
 
+    def duplicate(self):
+        new_ds = SenseInstanceDataset(self.st_sents, self.vec_manager, self.randomize_sents)
+        new_ds.set_inventory(self.get_inventory())
+        return new_ds
+
     def onehot(self, sense):
         return self.st_sents.onehot(sense)
 
     def get_inventory(self):
         return self.inv
+    
+    def set_inventory(self, inv):
+        self.inv = inv
     
     def set_randomize_sents(self, value):
         self.randomize_sents = value
@@ -267,7 +276,7 @@ class SenseInstanceDataset(Dataset):
 
 
 
-class SenseInstanceLoader:
+class SenseInstanceLoader(Loader):
     
     def __init__(self, inst_ds, batch_size, desired_ids = None):
         self.inst_ds = inst_ds
@@ -313,8 +322,8 @@ class SenseInstanceLoader:
             if len(evidence_batch) == self.batch_size:
                 yield (inst_ids,
                        target_batch, 
-                       util.cudaify(torch.tensor(evidence_batch)), 
-                       util.cudaify(torch.tensor(response_batch)),
+                       torch.tensor(evidence_batch), 
+                       torch.tensor(response_batch),
                        zones)                
                 inst_ids = []
                 target_batch = []
@@ -324,12 +333,23 @@ class SenseInstanceLoader:
         if len(inst_ids) > 0:
             yield (inst_ids,
                    target_batch, 
-                   util.cudaify(torch.tensor(evidence_batch)), 
-                   util.cudaify(torch.tensor(response_batch)),
+                   torch.tensor(evidence_batch), 
+                   torch.tensor(response_batch),
                    zones)
             
-                
-    
+class TwinSenseInstanceLoader:
+    def __init__(self, inst_ds, batch_size, desired_ids = None):
+        self.inst_ds1 = inst_ds
+        self.inst_ds2 = inst_ds.duplicate()
+        self.inst_loader1 = SenseInstanceLoader(self.inst_ds1, batch_size, desired_ids)
+        self.inst_loader2 = SenseInstanceLoader(self.inst_ds2, batch_size, desired_ids)
+        assert(len(self.inst_loader1) == len(self.inst_loader2), "two loaders have unequal length.")
+        self.batch_iter1 = self.inst_loader1.batch_iter()
+        self.batch_iter2 = self.inst_loader2.batch_iter()
 
+    def __len__(self):
+        return len(self.inst_loader1)
 
-
+    def batch_iter(self):
+        for pkg1, pkg2 in zip(self.batch_iter1, self.batch_iter2):
+            yield pkg1, pkg2
