@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from reed_wsd.loss import PairwiseConfidenceLoss
+from reed_wsd.loss import PairwiseConfidenceLoss, confidence_weighted_loss
 from reed_wsd.loss import ConfidenceLoss
 
 def zone_based_loss(predicted, gold, zones, f):
@@ -55,10 +55,17 @@ def apply_zones(predicted, zones, abstain = False):
             revised_pred[i, -1] = predicted[i, -1] / normalizer
     return revised_pred
 
-class LossWithZones(ConfidenceLoss):
+
+
+class SingleLossWithZones(ConfidenceLoss):
     
     def __call__(self, predicted, gold, conf, zones):
-        return zone_based_loss(predicted, gold, zones, lambda x: -x)
+        raise NotImplementedError("This has to be implemented by the child class.")
+
+class TwinLossWithZones(ConfidenceLoss):
+
+    def __call__(self, predicted, gold, conf, zones):
+        raise NotImplementedError("This has to be implemented by the child class."
 
     
 class NLLLossWithZones(ConfidenceLoss):
@@ -66,7 +73,7 @@ class NLLLossWithZones(ConfidenceLoss):
     def __call__(self, predicted, gold, conf, zones):
         return zone_based_loss(predicted, gold, zones, lambda x: -torch.log(x))
 
-class ConfidenceLossWithZones(ConfidenceLoss):
+class ConfidenceLossWithZones(LossWithZones):
     def __init__(self, p0):
         self.target_p0 = p0
         self.p0 = 0
@@ -88,6 +95,6 @@ class PairwiseConfidenceLossWithZones(PairwiseConfidenceLoss):
         output_y = apply_zones(output_y, zones_y, abstain=True)
         gold_probs_x = output_x[list(range(output_x.shape[0])), gold_x]
         gold_probs_y = output_y[list(range(output_y.shape[0])), gold_y]
-        losses = self.compute_loss(conf_x, conf_y, gold_probs_x, gold_probs_y)
+        losses = self.confidence_weighted_loss(conf_x, conf_y, gold_probs_x, gold_probs_y)
         return losses.mean()
 

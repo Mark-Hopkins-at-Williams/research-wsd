@@ -50,7 +50,7 @@ def decoder(net, data):
 
 class PairwiseTrainer(Trainer):
          
-    def _epoch_step(self, optimizer, model):
+    def _epoch_step(self, model):
         running_loss = 0.
         denom = 0
         batch_iter = self.train_loader.batch_iter()
