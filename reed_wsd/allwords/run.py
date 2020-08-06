@@ -107,7 +107,7 @@ def confidence_pair():
     train_loader = TwinSenseInstanceLoader(train_ds, batch_size=16)
     val_loader = SenseInstanceLoader(val_ds, batch_size=16)
     criterion = PairwiseConfidenceLoss()
-    model = SimpleAbstainingFFN(768, train_loader.num_senses(), zone_applicant='inv_abs')
+    model = SimpleAbstainingFFN(768, train_loader.num_senses(), zone_applicant='abs')
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     decoder = AllwordsEmbeddingDecoder()
     n_epochs = 20

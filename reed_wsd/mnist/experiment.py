@@ -1,4 +1,4 @@
-from reed_wsd.mnist.loss import NLLLoss, ConfidenceLoss1, PairwiseConfidenceLoss
+from reed_wsd.loss import NLLLoss, ConfidenceLoss1, PairwiseConfidenceLoss
 from reed_wsd.mnist.networks import BasicFFN, AbstainingFFN
 from reed_wsd.mnist.train import MnistDecoder, SingleTrainer, PairwiseTrainer
 from reed_wsd.mnist.loader import MnistLoader, ConfusedMnistLoader, ConfusedMnistPairLoader
@@ -66,7 +66,7 @@ def confidence_twin():
     criterion = PairwiseConfidenceLoss()
     trainloader = ConfusedMnistPairLoader(trainset, bsz = 64, shuffle=True)
     valloader = ConfusedMnistLoader(valset, bsz = 64, shuffle=True)
-    model = AbstainingFFN(confidence_extractor='inv_abs')
+    model = AbstainingFFN(confidence_extractor='abs')
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
     decoder = MnistDecoder()
     n_epochs = 20
@@ -87,5 +87,5 @@ def run(trainer, starting_model, name = None):
     return net
 
 if __name__ == "__main__":
-    baseline()
+    confidence_twin()
     

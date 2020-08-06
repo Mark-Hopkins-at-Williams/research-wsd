@@ -34,8 +34,8 @@ def inv_abs(input_vec, zones):
     return normalized, confidence
 
 def abstention(input_vec, zones):
+    new_vec = input_vec.clone()
     new_vec[:, :-1] = F.softmax(input_vec[:, :-1].clamp(min=-25, max=25), dim=1)
-    new_vec[:, -1] = input_vec[:, -1]
     new_vec = zero_out_probs(new_vec, zones)
     normalized = F.normalize(new_vec, dim=-1, p=1)
     normalized[:, -1] = input_vec[:, -1]
