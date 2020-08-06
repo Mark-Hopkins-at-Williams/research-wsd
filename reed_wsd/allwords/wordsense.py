@@ -306,7 +306,7 @@ class SenseInstanceLoader(Loader):
     def sense(self, sense_id):
         return self.inventory.sense(sense_id)
             
-    def batch_iter(self):
+    def __iter__(self):
         inst_ids = []
         target_batch = []
         evidence_batch = []
@@ -337,19 +337,33 @@ class SenseInstanceLoader(Loader):
                    torch.tensor(response_batch),
                    zones)
             
-class TwinSenseInstanceLoader:
+class TwinSenseInstanceLoader(Loader):
     def __init__(self, inst_ds, batch_size, desired_ids = None):
         self.inst_ds1 = inst_ds
+        self.inventory = self.inst_ds1.get_inventory()
         self.inst_ds2 = inst_ds.duplicate()
         self.inst_loader1 = SenseInstanceLoader(self.inst_ds1, batch_size, desired_ids)
         self.inst_loader2 = SenseInstanceLoader(self.inst_ds2, batch_size, desired_ids)
         assert(len(self.inst_loader1) == len(self.inst_loader2), "two loaders have unequal length.")
-        self.batch_iter1 = self.inst_loader1.batch_iter()
-        self.batch_iter2 = self.inst_loader2.batch_iter()
+
+    def get_instance_dataset(self):
+        return self.inst_ds1
+
+    def get_inventory(self):
+        return self.inventory
+
+    def sense_id(self, sense):
+        return self.inventory.sense_id(sense)
+            
+    def num_senses(self):
+        return self.inventory.num_senses()
+    
+    def sense(self, sense_id):
+        return self.inventory.sense(sense_id)
 
     def __len__(self):
         return len(self.inst_loader1)
 
-    def batch_iter(self):
-        for pkg1, pkg2 in zip(self.batch_iter1, self.batch_iter2):
+    def __iter__(self):
+        for pkg1, pkg2 in zip(self.inst_loader1, self.inst_loader2):
             yield pkg1, pkg2

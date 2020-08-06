@@ -14,6 +14,7 @@ from reed_wsd.plot import PYCurve, plot_curves
 from reed_wsd.mnist.networks import AbstainingFFN, ConfidentFFN
 from reed_wsd.train import validate_and_analyze, Trainer
 from reed_wsd.train import Decoder
+from tqdm import tqdm
 
 class MnistDecoder(Decoder):
     
@@ -53,16 +54,14 @@ class PairwiseTrainer(Trainer):
     def _epoch_step(self, model):
         running_loss = 0.
         denom = 0
-        batch_iter = self.train_loader.batch_iter()
-        batch_iter = tqdm(batch_iter, total=len(train_loader))
-        for img_x, img_y, lbl_x, lbl_y in batch_iter:
-            optimizer.zero_grad()                           
+        for img_x, img_y, lbl_x, lbl_y in tqdm(self.train_loader, total=len(self.train_loader)):
+            self.optimizer.zero_grad()                           
             output_x, conf_x = model(cudaify(img_x))
             output_y, conf_y = model(cudaify(img_y))
             loss = self.criterion(output_x, output_y, cudaify(lbl_x),
                                   cudaify(lbl_y), conf_x, conf_y)
             loss.backward()
-            optimizer.step()                                                                                                 
+            self.optimizer.step()                                                                                                 
             running_loss += loss.item()
             denom += 1
         return running_loss / denom
@@ -72,14 +71,12 @@ class SingleTrainer(Trainer):
     def _epoch_step(self, model):
         running_loss = 0.
         denom = 0
-        batch_iter = self.train_loader.batch_iter()
-        batch_iter = tqdm(batch_iter, total=len(train_loader))
-        for images, labels in self.train_loader:
-            optimizer.zero_grad()                       
+        for images, labels in tqdm(self.train_loader, total=len(self.train_loader)):
+            self.optimizer.zero_grad()                       
             output, conf = model(cudaify(images))
-            loss = self.criterion(output, cudaify(labels))
+            loss = self.criterion(output, conf, cudaify(labels))
             loss.backward()
-            optimizer.step()                                         
+            self.optimizer.step()                   
             running_loss += loss.item()
             denom += 1
         return running_loss / denom

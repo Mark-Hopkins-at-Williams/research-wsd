@@ -2,9 +2,9 @@ import torch
 
 class MnistLoader:
     
-    def __init__(self, dataset, batch_size=64, shuffle = True, confuser = lambda x: x):
+    def __init__(self, dataset, bsz=64, shuffle = True, confuser = lambda x: x):
         self.loader = torch.utils.data.DataLoader(dataset, 
-                                                  batch_size=batch_size, 
+                                                  batch_size=bsz, 
                                                   shuffle=shuffle)
         self.confuser = confuser
         
@@ -41,27 +41,34 @@ def confuse(labels):
     
 class ConfusedMnistLoader(MnistLoader):
     
-    def __init__(self, dataset, batch_size=64, shuffle=True):
-        super().__init__(dataset, batch_size, shuffle, confuse)
+    def __init__(self, dataset, bsz=64, shuffle=True):
+        super().__init__(dataset, bsz, shuffle, confuse)
         
         
     
-class PairLoader:
-    def __init__(self, dataset, bsz=64, shuffle=True):
+class MnistPairLoader:
+    def __init__(self, dataset, bsz=64, shuffle=True, confuser=lambda x:x):
         self.bsz = bsz
         self.dataset = dataset
         self.single_img_loader1 = torch.utils.data.DataLoader(dataset, batch_size=bsz, shuffle=True)
         self.single_img_loader2 = torch.utils.data.DataLoader(dataset, batch_size=bsz, shuffle=True)
-
+        assert(len(self.single_img_loader1) == len(self.single_img_loader2))
+        self.confuser = confuser
+    
+    def __len__(self):
+        return len(self.single_img_loader1)
     def __iter__(self):
-        return self.batch_iter()
-
-    def batch_iter(self):
         for ((imgs1, lbls1), (imgs2, lbls2)) in zip(self.single_img_loader1, self.single_img_loader2):
+            lbls1 = self.confuser(lbls1)
+            lbls2 = self.confuser(lbls2)
             imgs1 = imgs1.view(imgs1.shape[0], -1)
             imgs2 = imgs2.view(imgs2.shape[0], -1)
             lbls1 = confuse(lbls1)
             lbls2 = confuse(lbls2)            
             yield imgs1, imgs2, lbls1, lbls2
+
+class ConfusedMnistPairLoader(MnistPairLoader):
+    def __init__(self, dataset, bsz=64, shuffle=True):
+        super().__init__(dataset, bsz, shuffle, confuse)
             
 

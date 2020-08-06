@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 import torch.nn.functional as F
 from reed_wsd.util import cudaify
@@ -30,6 +31,8 @@ class BasicFFN(nn.Module):
                  output_size = 10,
                  confidence_extractor = 'max_prob'):
         super().__init__()
+        self.input_size = input_size
+        self.output_size = output_size
         self.confidence_extractor = confidence_extractor_lookup[confidence_extractor]
         self.dropout = nn.Dropout(p=0.2)
         self.linear1 = cudaify(nn.Linear(input_size, hidden_sizes[0]))
@@ -84,5 +87,4 @@ class ConfidentFFN(BasicFFN):
         nextout = self.final(input_vec)
         nextout = self.softmax(nextout)
         return nextout, self.confidence_layer(input_vec)
-    
     

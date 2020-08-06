@@ -1,5 +1,5 @@
 class Loader:
-    def batch_iter(self):
+    def __iter__(self):
         raise NotImplementedError("This feature needs to be implemented in the child class.")
 
     def __len__(self):

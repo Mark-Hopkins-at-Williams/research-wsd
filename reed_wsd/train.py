@@ -1,4 +1,8 @@
-def validate_an_analyze(model, val_loader, decoder, output_size):
+from reed_wsd.plot import PYCurve
+from collections import defaultdict
+import copy
+
+def validate_and_analyze(model, val_loader, decoder, output_size):
     results = list(decoder(model, val_loader))
     pyc_base = PYCurve.from_data(results)
     avg_err_conf = 0
@@ -35,28 +39,26 @@ class Decoder:
         raise NotImplementedError("This feature needs to be implemented.")
 
 class Trainer:
-
+    
     def __init__(self, criterion, optimizer, train_loader, val_loader, decoder, n_epochs):
-	self.model = model
         self.criterion = criterion
-	self.optimizer = optimizer
+        self.optimizer = optimizer
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.n_epochs = n_epochs
-	self.decoder = decoder
+        self.decoder = decoder
 
     def _epoch_step(self, optimizer, model):
         raise NotImplementedError("Must be overridden by inheriting classes.")
     
     def __call__(self, model):
-        time0 = time()
         best_model = None
         best_model_score = float('-inf')
         for e in range(self.n_epochs):
             self.criterion.notify(e)
             batch_loss = self._epoch_step(model)
-            data_dict, precision = validate_and_analyze(model, self.val_loader, self.decoder, output_size=10)
-            print(data_dict)
+            data_dict, precision = validate_and_analyze(model, self.val_loader, self.decoder, output_size=model.output_size)
+            #print(data_dict)
             if precision > best_model_score:
                 print("Updating best model.")
                 best_model = copy.deepcopy(model)
@@ -64,7 +66,6 @@ class Trainer:
             print("Epoch {} - Training loss: {}; Dev precision: {}".format(e,
                                                                           batch_loss,
                                                                           precision))
-            print("\nTraining Time (in minutes) =",(time()-time0)/60)
         data_dict, precision = validate_and_analyze(best_model, self.val_loader, self.decoder, output_size=10)
         print("Best Model Dev precision: {}".format(precision))
         return best_model

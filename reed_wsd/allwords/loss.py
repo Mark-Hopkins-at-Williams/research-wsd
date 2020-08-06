@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from reed_wsd.loss import PairwiseConfidenceLoss, confidence_weighted_loss
+from reed_wsd.loss import confidence_weighted_loss, confidence_loss1, confidence_loss4
 from reed_wsd.loss import ConfidenceLoss
 
 def zone_based_loss(predicted, gold, zones, f):
@@ -62,18 +62,17 @@ class SingleLossWithZones(ConfidenceLoss):
     def __call__(self, predicted, gold, conf, zones):
         raise NotImplementedError("This has to be implemented by the child class.")
 
-class TwinLossWithZones(ConfidenceLoss):
+class PairwiseLossWithZones(ConfidenceLoss):
 
-    def __call__(self, predicted, gold, conf, zones):
-        raise NotImplementedError("This has to be implemented by the child class."
-
+    def __call__(self, output_x, output_y, gold_x, gold_y, conf_x, conf_y, zones_x, zones_y):
+        raise NotImplementedError("This has to be implemented by the child class.")
     
-class NLLLossWithZones(ConfidenceLoss):
+class NLLLossWithZones(SingleLossWithZones):
         
     def __call__(self, predicted, gold, conf, zones):
         return zone_based_loss(predicted, gold, zones, lambda x: -torch.log(x))
 
-class ConfidenceLossWithZones(LossWithZones):
+class ConfidenceLossWithZones1(SingleLossWithZones):
     def __init__(self, p0):
         self.target_p0 = p0
         self.p0 = 0
@@ -82,13 +81,37 @@ class ConfidenceLossWithZones(LossWithZones):
         if e >= 10:
             self.p0 = self.target_p0
     
-    def __call__(self, predicted, gold, conf, zones):
-        revised_pred = apply_zones(predicted, zones, abstain=True)
-        label_ps = revised_pred[list(range(len(revised_pred))), gold]
-        losses = - torch.log(label_ps + self.target_p0 * conf)
-        return torch.mean(losses, dim=-1)
+    def __call__(self, output, gold, confidence, zones):
+        revised_pred = apply_zones(output, zones, abstain=True)
+        return confidence_loss1(output, gold, confidence, self.p0)
 
-class PairwiseConfidenceLossWithZones(PairwiseConfidenceLoss):
+class ConfidenceLossWithZones4(SingleLossWithZones):
+    def __init__(self, p0):
+        self.target_p0 = p0
+        self.p0 = 0
+
+    def notify(self, e):
+        if e >= 10:
+            self.p0 = self.target_p0
+    
+    def __call__(self, output, gold, confidence, zones):
+        revised_pred = apply_zones(output, zones, abstain=True)
+        return confidence_loss4(output, gold, confidence, self.p0)
+
+class ConfidenceLossWithZonesABS(SingleLossWithZones):
+    def __init__(self, p0):
+        self.target_p0 = p0
+        self.p0 = 0
+
+    def notify(self, e):
+        if e >= 10:
+            self.p0 = self.target_p0
+    
+    def __call__(self, output, gold, confidence, zones):
+        revised_pred = apply_zones(output, zones, abstain=True)
+        return confidence_loss4(output, gold, confidence, self.p0)
+
+class PairwiseConfidenceLossWithZones(PairwiseLossWithZones):
 
     def __call__(self, output_x, output_y, gold_x, gold_y, conf_x, conf_y, zones_x, zones_y):
         output_x = apply_zones(output_x, zones_x, abstain=True)

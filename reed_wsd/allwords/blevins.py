@@ -155,7 +155,7 @@ class BEMLoader:
     def __len__(self):
         return math.ceil(self.n_insts / self.batch_size)
 
-    def batch_iter(self):
+    def __iter__(self):
         input_sents_batch = []
         glosses_ids_batch = []
         pos_batch = []
