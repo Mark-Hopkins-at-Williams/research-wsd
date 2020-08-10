@@ -25,16 +25,6 @@ class TestEvaluate(unittest.TestCase):
         gold = [3,6,5,2,2,2,1,4,7,3]
         assert(accuracy(predicted, gold) == (7, 10))
 
-    def test_accuracy2(self):
-        predicted = [3,6,5,ABSTAIN,2,2,2,4,ABSTAIN,3]
-        gold = [3,6,5,2,2,2,1,4,7,3]
-        assert(accuracy(predicted, gold) == (7, 8))
-
-    def test_accuracy3(self):
-        predicted = [3,ABSTAIN,5,ABSTAIN,2,2,2,4,ABSTAIN,3]
-        gold = [3,6,5,2,2,2,1,4,7,3]
-        assert(accuracy(predicted, gold) == (6, 7))
-
     def test_yield(self):
         predicted = [3,6,5,1,2,2,2,4,1,3]
         gold = [3,6,5,2,2,2,1,4,7,3]

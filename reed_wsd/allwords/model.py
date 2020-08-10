@@ -1,26 +1,80 @@
-# -*- coding: utf-8 -*-
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_sequence
-from transformers import BertModel
 from reed_wsd.util import cudaify
+from transformers import BertModel
+from torch.nn.utils.rnn import pad_sequence
 
-class AffineClassifier(nn.Module): 
-    
-    def __init__(self, input_size, num_labels):
-        super(AffineClassifier, self).__init__()
-        print("input_size: {}; output_size: {}".format(input_size, num_labels))
-        self.linear1 = nn.Linear(input_size, num_labels)
-        torch.nn.init.xavier_uniform_(self.linear1.weight)
+def zero_out_probs(input_vec, zones):
+    new_vec = torch.zeros(input_vec.shape, device=input_vec.device)
+    for row in range(len(zones)):
+        start, stop = zones[row]
+        new_vec[row, start: stop] = input_vec[row, start: stop]
+    return new_vec
 
-    def forward(self, input_vec):
-        nextout = input_vec
-        nextout = self.linear1(nextout)
-        return nextout
+def max_prob(input_vec, zones):
+    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
+    new_vec = zero_out_probs(input_vec, zones)
+    normalized = F.normalize(new_vec, dim=-1, p=1)
+    confidence = normalized.max(dim=1).values 
+    return normalized, confidence
 
-class DropoutClassifier(nn.Module): 
- 
+def max_non_abs(input_vec, zones):
+    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
+    new_vec = zero_out_probs(input_vec, zones)
+    new_vec[:, -1] = input_vec[:, -1]
+    normalized = F.normalize(new_vec, dim=-1, p=1)
+    confidence = normalized.max(dim=1).values 
+    return normalized, confidence
+
+def inv_abs(input_vec, zones):
+    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
+    new_vec = zero_out_probs(input_vec, zones)
+    new_vec[:, -1] = input_vec[:, -1]
+    normalized = F.normalize(new_vec, dim=-1, p=1)
+    confidence = 1 - normalized[:, -1]
+    return normalized, confidence
+
+def abstention(input_vec, zones):
+    new_vec = input_vec.clone()
+    new_vec[:, :-1] = F.softmax(input_vec[:, :-1].clamp(min=-25, max=25), dim=1)
+    new_vec = zero_out_probs(new_vec, zones)
+    normalized = F.normalize(new_vec, dim=-1, p=1)
+    normalized[:, -1] = input_vec[:, -1]
+    confidence = normalized[:, -1]
+    return normalized, confidence
+
+apply_zones_lookup = {'max_prob': max_prob,
+                      'max_non_abs': max_non_abs,
+                      'inv_abs': inv_abs,
+                      'abs': abstention}
+
+class SimpleFFN(nn.Module):
+    def __init__(self,
+                 input_size,
+                 output_size,
+                 zone_applicant='max_prob'):
+        super().__init__()
+        self.input_size = input_size
+        self.output_size = output_size
+        self.linear = cudaify(nn.Linear(input_size, output_size))
+        self.zone_applicant = apply_zones_lookup[zone_applicant]
+        torch.nn.init.xavier_uniform_(self.linear.weight)
+        print('confidence:', self.zone_applicant.__name__)
+
+    def forward(self, input_vec, zones):
+        nextout = self.linear(input_vec)
+        return self.zone_applicant(nextout, zones)
+
+class SimpleAbstainingFFN(SimpleFFN):
+    def __init__(self, input_size,
+                 output_size,
+                 zone_applicant='max_non_abs'):
+        super().__init__(input_size, output_size, zone_applicant)
+        self.linear = cudaify(nn.Linear(input_size, output_size + 1))
+
+class DropoutClassifier(nn.Module):
+
     def __init__(self, input_size, hidden_size, num_labels):
         super(DropoutClassifier, self).__init__()
         self.dropout1 = nn.Dropout(p=0.2)
@@ -35,7 +89,7 @@ class DropoutClassifier(nn.Module):
         nextout = self.linear1(nextout).clamp(min=0)
         nextout = self.dropout1(nextout)
         nextout = self.linear2(nextout).clamp(min=0)
-        nextout = self.dropout2(nextout)    
+        nextout = self.dropout2(nextout)
         nextout = self.linear3(nextout)
         return F.log_softmax(nextout, dim=1)
 
@@ -49,6 +103,7 @@ class BEMforWSD(nn.Module):
         self.gpu = gpu
         self.context_encoder = BertModel.from_pretrained('bert-base-uncased')
         self.gloss_encoder = BertModel.from_pretrained('bert-base-uncased')
+        self.output_size = None
 
     def forward(self, contexts, glosses, pos):
         scores = []

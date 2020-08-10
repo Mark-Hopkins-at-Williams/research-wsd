@@ -1,5 +1,6 @@
 import unittest
-from reed_wsd.allwords.networks import BEMforWSD
+from reed_wsd.allwords.model import BEMforWSD
+from reed_wsd.allwords.model import abstention
 import torch
 
 class TestBEMforWSD(unittest.TestCase):
@@ -28,7 +29,7 @@ class TestBEMforWSD(unittest.TestCase):
         assert( torch.equal(result, expected_result))
 
     def test_forward(self):
-        model = BEMforWSD(cuda=False)
+        model = BEMforWSD()
         model.eval()
         #defn_cls
         glosses = [{'input_ids': torch.tensor([[101, 1037, 5164, 1997, 2616, 17087, 1996, 24402, 3513, 1997, 1037, 2653, 102],
@@ -69,6 +70,18 @@ class TestBEMforWSD(unittest.TestCase):
         with torch.no_grad():
             scores = model(contexts, glosses, pos)
         assert(scores.allclose(expected_output))
+
+class TestFFN(unittest.TestCase):
+    def test_abstention(self):
+        input_vec = torch.tensor([[1., 1, 1, 3],
+                                 [1., 0, 1, 2]])
+        zones = [[1, 3], [0, 2]]
+        normalized, confidence = abstention(input_vec, zones)
+        assert(torch.allclose(normalized, torch.tensor([[0, 0.5, 0.5, 3],
+                                                 [0.7310, 0.2690, 0, 2]]),
+                                   atol=0.0001))
+        assert(torch.allclose(confidence, torch.tensor([3., 2]), atol=0.0001))
+
         
 
 if __name__ == '__main__':

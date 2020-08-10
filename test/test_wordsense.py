@@ -156,6 +156,22 @@ class TestWordsense(unittest.TestCase):
         assert(self.compare_matrices(evid, expected_evid))
         assert(self.compare_vectors(resp.float(), expected_resp.float()))
 
+    def test_twin_sense_instance_loader(self):
+        dataset = wordsense.SenseInstanceDataset(self.sents, self.vec_mgr,
+                                                 randomize_sents = False)
+        loader = wordsense.TwinSenseInstanceLoader(dataset, batch_size = 2)
+        batch_iter = loader.batch_iter()
+        ((_, _, evid1, resp1, _), (_, _, evid2, resp2, _)) = next(batch_iter)
+        expected_evid = tensor([[21., 22., 23.],
+                                [72.2, 74.2, 76.2]])
+        expected_resp = tensor([0, 1])
+        assert(self.compare_matrices(evid1, expected_evid))
+        assert(self.compare_vectors(resp1.float(), expected_resp.float()))
+        assert(self.compare_matrices(evid2, expected_evid))
+        assert(self.compare_vectors(resp2.float(), expected_resp.float()))
+        
+
+
 
         
 if __name__ == "__main__":
