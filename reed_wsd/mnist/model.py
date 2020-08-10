@@ -41,6 +41,7 @@ class BasicFFN(nn.Module):
         self.softmax = cudaify(nn.Softmax(dim=1))
         self.relu1 = nn.ReLU()
         self.relu2 = nn.ReLU()
+        print('confidence:', self.confidence_extractor.__name__)
 
     def initial_layers(self, input_vec):
         nextout = cudaify(input_vec)

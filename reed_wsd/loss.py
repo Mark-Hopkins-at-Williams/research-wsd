@@ -28,11 +28,14 @@ class PairwiseConfidenceLoss(ConfidenceLoss):
         return losses.mean()
 
 class CrossEntropyLoss(SingleConfidenceLoss):
+    """
+    this interface is for BEM training
+    """
     def __init__(self):
         super().__init__()
         self.loss = torch.nn.CrossEntropyLoss()
 
-    def __call__(self, output, confidence, gold):
+    def __call__(self, output, gold):
         return self.loss(output, gold)
 
     def __str__(self):
@@ -44,7 +47,7 @@ class NLLLoss(SingleConfidenceLoss):
         self.loss = torch.nn.NLLLoss()
 
     def __call__(self, output, confidence, gold):
-        log_output = torch.log(output.clamp(min=-25, max=25))
+        log_output = torch.log(output.clamp(min=0.00000001))
         return self.loss(log_output, gold)
 
     def __str__(self):

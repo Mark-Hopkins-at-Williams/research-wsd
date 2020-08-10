@@ -36,6 +36,12 @@ def apply_zone_masks(outputs, zones):
     revised = F.normalize(revised, dim=-1, p=1)
     return revised
 
+def predict_simple(output):
+    return output.argmax(dim=1)
+
+def predict_abs(output):
+    return output[:, :-1].argmax(dim=1)
+
 class AllwordsBEMDecoder:
     def __call__(self, net, data):
         net.eval()
@@ -52,9 +58,12 @@ class AllwordsBEMDecoder:
                                    zip(preds,
                                        gold)):
                     (max_score, (pred, g)) = element
-                    yield({'pred': pred.item(), 'gold': g, 'confidence': max_score})
+                    yield({'pred': pred.item(), 'gold': g, 'confidence': max_score.item()})
 
 class AllwordsEmbeddingDecoder:
+    def __init__(self, predictor):
+        self.predictor = predictor
+
     def __call__(self, net, data):
         """
         Runs a trained neural network classifier on validation data, and iterates
@@ -68,12 +77,19 @@ class AllwordsEmbeddingDecoder:
         with torch.no_grad():
             for inst_ids, targets, evidence, response, zones in data:
                 output, conf = net(cudaify(evidence), zones)
-                preds = output.argmax(dim=-1)
-                print(preds, response)
+                preds = self.predictor(output)
                 for element in zip(preds, response, conf):
                     (pred, gold, c) = element
-                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c}
+                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
                     yield pkg
+
+class AllwordsSimpleEmbeddingDecoder(AllwordsEmbeddingDecoder):
+    def __init__(self):
+        super().__init__(predictor=predict_simple)
+
+class AllwordsAbstainingEmbeddingDecoder(AllwordsEmbeddingDecoder):
+    def __init__(self):
+        super().__init__(predictor=predict_abs)
 
 def evaluate(net, data, decoder):
     """

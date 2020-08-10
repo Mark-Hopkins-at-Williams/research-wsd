@@ -1,5 +1,5 @@
 from reed_wsd.loss import NLLLoss, ConfidenceLoss1, PairwiseConfidenceLoss
-from reed_wsd.mnist.networks import BasicFFN, AbstainingFFN
+from reed_wsd.mnist.model import BasicFFN, AbstainingFFN
 from reed_wsd.mnist.train import MnistDecoder, SingleTrainer, PairwiseTrainer
 from reed_wsd.mnist.loader import MnistLoader, ConfusedMnistLoader, ConfusedMnistPairLoader
 import torch

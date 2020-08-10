@@ -2,6 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from reed_wsd.util import cudaify
+from transformers import BertModel
+from torch.nn.utils.rnn import pad_sequence
 
 def zero_out_probs(input_vec, zones):
     new_vec = torch.zeros(input_vec.shape, device=input_vec.device)
@@ -58,6 +60,7 @@ class SimpleFFN(nn.Module):
         self.linear = cudaify(nn.Linear(input_size, output_size))
         self.zone_applicant = apply_zones_lookup[zone_applicant]
         torch.nn.init.xavier_uniform_(self.linear.weight)
+        print('confidence:', self.zone_applicant.__name__)
 
     def forward(self, input_vec, zones):
         nextout = self.linear(input_vec)
@@ -100,6 +103,7 @@ class BEMforWSD(nn.Module):
         self.gpu = gpu
         self.context_encoder = BertModel.from_pretrained('bert-base-uncased')
         self.gloss_encoder = BertModel.from_pretrained('bert-base-uncased')
+        self.output_size = None
 
     def forward(self, contexts, glosses, pos):
         scores = []

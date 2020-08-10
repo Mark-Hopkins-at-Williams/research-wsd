@@ -5,6 +5,7 @@ from reed_wsd.util import cudaify
 
 class SingleEmbeddingTrainer(Trainer):
     def _epoch_step(self, model):
+        model = cudaify(model)
         running_loss = 0.0
         denom = 0
         for (_, _, evidence, response, zones) in tqdm(self.train_loader, total=len(self.train_loader)):
@@ -19,6 +20,7 @@ class SingleEmbeddingTrainer(Trainer):
 
 class PairwiseEmbeddingTrainer(Trainer):
     def _epoch_step(self, model):
+        model = cudaify(model)
         running_loss = 0.0
         denom = 0
         for (pkg1, pkg2) in tqdm(self.train_loader, total=len(self.train_loader)):
@@ -38,6 +40,7 @@ class PairwiseEmbeddingTrainer(Trainer):
 
 class BEMTrainer(Trainer):
     def _epoch_step(self, model):
+        model = cudaify(model)
         running_loss = 0.0
         denom = 0
         for batch in tqdm(self.train_loader, total=len(self.train_loader)):
@@ -48,7 +51,7 @@ class BEMTrainer(Trainer):
             scores = model(contexts, glosses, span)
             loss_size = self.criterion(scores, cudaify(torch.tensor(gold)))
             loss_size.backward()
-            optimizer.step()
+            self.optimizer.step()
             running_loss += loss_size.data.item()
             denom += 1
         return running_loss / denom

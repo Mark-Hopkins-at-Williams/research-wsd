@@ -2,7 +2,7 @@ from reed_wsd.plot import PYCurve
 from collections import defaultdict
 import copy
 
-def validate_and_analyze(model, val_loader, decoder, output_size):
+def validate_and_analyze(model, val_loader, decoder, output_size=None):
     results = list(decoder(model, val_loader))
     pyc_base = PYCurve.from_data(results)
     avg_err_conf = 0
@@ -12,19 +12,22 @@ def validate_and_analyze(model, val_loader, decoder, output_size):
     data_dict = {}
     error_dict = defaultdict(int)
     n_total = len(results)
-    for i in range(output_size):
-        data_dict[i] = [0, 0] # [n_correct, n_wrong, n_abstain]
+    if output_size is not None:
+        for i in range(output_size):
+            data_dict[i] = [0, 0] # [n_correct, n_wrong, n_abstain]
     for result in results:
         prediction = result['pred']
         gold = result['gold']
         confidence = result['confidence']
         if prediction == gold:
-            data_dict[gold][0] += 1
+            if output_size is not None:
+                data_dict[gold][0] += 1
             avg_crr_conf += confidence
             n_correct += 1
         else:
             #print("mistook {} for {}".format(gold, prediction))
-            data_dict[gold][1] += 1
+            if output_size is not None:
+                data_dict[gold][1] += 1
             avg_err_conf += confidence
             error_dict[gold] += 1
             n_error += 1            
