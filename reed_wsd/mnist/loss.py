@@ -1,7 +1,15 @@
 import torch
-import math
 import torch.nn.functional as F
-from reed_wsd.loss import ConfidenceLoss, confidence_weighted_loss
+from reed_wsd.loss import ConfidenceLoss
+
+def confidence_weighted_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y):
+    nll_x = - torch.log(gold_probs_x)
+    nll_y = - torch.log(gold_probs_y)
+    confidence_pair = torch.stack([confidence_x, confidence_y], dim=-1)
+    softmaxed_pair = F.softmax(confidence_pair, dim=-1)
+    nll_pair = torch.stack([nll_x, nll_y], dim=-1)
+    losses = torch.sum(nll_pair * softmaxed_pair, dim=-1)
+    return losses
 
 class SingleConfidenceLoss(ConfidenceLoss):
     def __call__(self, output, confidence, gold):
@@ -38,25 +46,29 @@ class NLLLoss(SingleConfidenceLoss):
     def __str__(self):
         return "NLLLoss"
 
-class ConfidenceLoss1(SingleConfidenceLoss):
-    def __init__(self, p0):
+class AbstainingLoss(SingleConfidenceLoss):
+    def __init__(self, alpha):
         super().__init__()
-        self.p0 = 0.0
-        self.target_p0 = p0
+        self.alpha = 0.0
+        self.target_alpha = alpha
         self.notify(0)
 
     def notify(self, epoch):
-        if epoch >= 10:
-            self.p0 = self.target_p0
+        if epoch >= 3:
+            self.alpha = self.target_alpha
 
     def __call__(self, output, confidence, gold):
+        #print(output[0])
+        #print(confidence[0])
+        #print(gold[0])
         label_ps = output[list(range(len(output))), gold]
-        losses = label_ps + (self.p0 * confidence)
+        abstains = output[:,-1]
+        losses = label_ps + (self.alpha * abstains)
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
 
     def __str__(self):
-        return "ConfidenceLoss1_p0_" + str(self.p0)
+        return "Abstaining_p0_" + str(self.p0)
 
 class ConfidenceLoss4(SingleConfidenceLoss):
     def __init__(self, p0):

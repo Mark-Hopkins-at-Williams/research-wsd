@@ -1,11 +1,45 @@
-import json
 import os
-from os.path import join
 import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn import metrics 
 
 LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
+
+def plot_roc(predictions):
+    fpr, tpr, auc = roc_curve(predictions)
+    plt.title('Receiver Operating Characteristic')
+    plt.plot(fpr, tpr, 'b', label = 'AUROC = %0.2f' % auc)
+    plt.legend(loc = 'lower right')
+    axes = plt.gca()
+    axes.set_ylim([-0.05, 1.05])
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    plt.show()
+
+def plot_pr(predictions):
+    precision, recall, auc = pr_curve(predictions)
+    plt.title('Precision-Recall')
+    plt.plot(recall, precision, 'b', label = 'AUPR = %0.2f' % auc)
+    plt.legend(loc = 'lower right')
+    axes = plt.gca()
+    axes.set_ylim([-0.05, 1.05])
+    plt.ylabel('Precision')
+    plt.xlabel('Recall')
+    plt.show()
+    
+def pr_curve(predictions):
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
+    precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
+    auc = metrics.auc(recall, precision)
+    return precision, recall, auc
+
+def roc_curve(predictions):
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
+    fpr, tpr, _ = metrics.roc_curve(y_true, y_scores, pos_label=1)
+    auc = metrics.auc(fpr, tpr)
+    return fpr, tpr, auc
 
 class PYCurve:
     def __init__(self, scatters):
@@ -44,6 +78,7 @@ class PYCurve:
     
     @classmethod
     def from_data(cls, decoded):
+        print(decoded)
         return cls(cls.precision_yield_curve(decoded))
 
     def aupy(self):
