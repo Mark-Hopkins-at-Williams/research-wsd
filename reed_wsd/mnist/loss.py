@@ -2,6 +2,10 @@ import torch
 import torch.nn.functional as F
 from reed_wsd.loss import ConfidenceLoss
 
+class ConfidenceLoss:
+    def notify(self, epoch):
+        pass
+
 def confidence_weighted_loss(confidence_x, confidence_y, gold_probs_x, gold_probs_y):
     nll_x = - torch.log(gold_probs_x)
     nll_y = - torch.log(gold_probs_y)
@@ -24,6 +28,9 @@ class PairwiseConfidenceLoss(ConfidenceLoss):
         return losses.mean()
 
 class CrossEntropyLoss(SingleConfidenceLoss):
+    """
+    this interface is for BEM training
+    """    
     def __init__(self):
         super().__init__()
         self.loss = torch.nn.CrossEntropyLoss()
