@@ -1,8 +1,8 @@
 #from reed_wsd.loss import NLLLoss, PairwiseConfidenceLoss
 from reed_wsd.mnist.model import BasicFFN, AbstainingFFN, ConfidentFFN
 from reed_wsd.mnist.loss import AbstainingLoss, NLLLoss, PairwiseConfidenceLoss
-from reed_wsd.mnist.train import MnistSimpleDecoder, MnistAbstainingDecoder
-from reed_wsd.mnist.train import MnistSingleTrainer, MnistPairwiseTrainer
+from reed_wsd.mnist.train import MnistDecoder# MnistAbstainingDecoder
+from reed_wsd.mnist.train import SingleTrainer, PairwiseTrainer
 from reed_wsd.mnist.loader import ConfusedMnistLoader, ConfusedMnistPairLoader
 import torch
 from os.path import join
@@ -40,9 +40,9 @@ def random_guesser():
     criterion = NLLLoss()
     model = BasicFFN(confidence_extractor = 'random')#input_size: 784, hidden_size: [128, 64], output_size: 10
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistSimpleDecoder()
+    decoder = MnistDecoder()
     n_epochs = 200
-    trainer = MnistSingleTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
+    trainer = SingleTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
     best_model = trainer(model)
     return best_model
 
@@ -50,9 +50,9 @@ def baseline():
     criterion = NLLLoss()
     model = BasicFFN()#input_size: 784, hidden_size: [128, 64], output_size: 10
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistSimpleDecoder()
+    decoder = MnistDecoder()
     n_epochs = 200
-    trainer = MnistSingleTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
+    trainer = SingleTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
     best_model = trainer(model)
     return best_model
 
@@ -60,9 +60,9 @@ def abstaining():
     criterion = AbstainingLoss(0.5)
     model = AbstainingFFN(confidence_extractor='max_non_abs')
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistAbstainingDecoder()
+    decoder = MnistDecoder()
     n_epochs = 200
-    trainer = MnistSingleTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
+    trainer = SingleTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
     best_model = trainer(model)
     return best_model
 
@@ -72,9 +72,9 @@ def confidence_twin():
     valloader = ConfusedMnistLoader(valset, bsz = 64, shuffle=True)
     model = ConfidentFFN()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistSimpleDecoder()
+    decoder = MnistDecoder()
     n_epochs = 200
-    trainer = MnistPairwiseTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
+    trainer = PairwiseTrainer(criterion, optimizer, trainloader, valloader, decoder, n_epochs)
     best_model = trainer(model)
     return best_model
 

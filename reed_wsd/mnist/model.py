@@ -45,7 +45,6 @@ class BasicFFN(nn.Module):
         self.softmax = cudaify(nn.Softmax(dim=1))
         self.relu1 = nn.ReLU()
         self.relu2 = nn.ReLU()
-        print('confidence:', self.confidence_extractor.__name__)
 
     def initial_layers(self, input_vec):
         nextout = cudaify(input_vec)
@@ -74,7 +73,7 @@ class AbstainingFFN(BasicFFN):
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
                  output_size = 10,
-                 confidence_extractor = 'max_non_abs'):
+                 confidence_extractor = 'inv_abs'):
         super().__init__(input_size, hidden_sizes, output_size, confidence_extractor)
         self.final = cudaify(nn.Linear(hidden_sizes[1], output_size + 1))
 
