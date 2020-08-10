@@ -1,10 +1,12 @@
-from reed_wsd.plot import PYCurve
+from reed_wsd.plot import pr_curve, roc_curve, plot_roc, plot_pr
 from collections import defaultdict
 import copy
 
 def validate_and_analyze(model, val_loader, decoder, output_size=None):
     results = list(decoder(model, val_loader))
-    pyc_base = PYCurve.from_data(results)
+    _, _, auroc = roc_curve(results)
+    _, _, aupr = pr_curve(results)
+    plot_roc(results)
     avg_err_conf = 0
     avg_crr_conf = 0
     n_error = 0
@@ -31,9 +33,12 @@ def validate_and_analyze(model, val_loader, decoder, output_size=None):
             avg_err_conf += confidence
             error_dict[gold] += 1
             n_error += 1            
+    print('')
     print('average error confidence:', avg_err_conf / n_error)
     print('average correct confidence:', avg_crr_conf / n_correct)
-    print('aupy: {}'.format(pyc_base.aupy()))
+    print('auroc: {}'.format(auroc))
+    print('aupr: {}'.format(aupr))
+    print(data_dict)
     return data_dict, n_correct / n_total
 
 class Decoder:

@@ -18,10 +18,14 @@ def max_prob(output_tensor):
 def abstention(output_tensor):
     return output_tensor[:, -1]
 
+def random_confidence(output_tensor):
+    return torch.randn(output_tensor.shape[0])
+
 confidence_extractor_lookup = {'inv_abs': inv_abstain_prob,
                                'max_non_abs': max_nonabstain_prob,
                                'abs': abstention,
-                               'max_prob': max_prob}
+                               'max_prob': max_prob,
+                               'random': random_confidence}
 
 class BasicFFN(nn.Module): 
  
@@ -70,7 +74,7 @@ class AbstainingFFN(BasicFFN):
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
                  output_size = 10,
-                 confidence_extractor = 'inv_abs'):
+                 confidence_extractor = 'max_non_abs'):
         super().__init__(input_size, hidden_sizes, output_size, confidence_extractor)
         self.final = cudaify(nn.Linear(hidden_sizes[1], output_size + 1))
 
