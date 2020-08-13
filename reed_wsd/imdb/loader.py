@@ -4,14 +4,15 @@ import json
 from torch.utils.data import Dataset
 import random
 
-class IMDBDataset:
+class IMDBDataset(Dataset):
     def __init__(self, data):
+        super().__init__()
         self.ds = data
 
     @classmethod
     def from_json(cls, data_path, stage):
         assert(stage in ['train', 'test'])
-        with open(file_path, 'r') as f:
+        with open(data_path, 'r') as f:
             data = json.load(f)[stage]
         return cls(data)
         
