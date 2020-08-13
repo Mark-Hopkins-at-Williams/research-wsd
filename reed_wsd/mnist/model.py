@@ -18,10 +18,14 @@ def max_prob(output_tensor):
 def abstention(output_tensor):
     return output_tensor[:, -1]
 
+def random_confidence(output_tensor):
+    return torch.randn(output_tensor.shape[0])
+
 confidence_extractor_lookup = {'inv_abs': inv_abstain_prob,
                                'max_non_abs': max_nonabstain_prob,
                                'abs': abstention,
-                               'max_prob': max_prob}
+                               'max_prob': max_prob,
+                               'random': random_confidence}
 
 class BasicFFN(nn.Module): 
  
@@ -41,7 +45,6 @@ class BasicFFN(nn.Module):
         self.softmax = cudaify(nn.Softmax(dim=1))
         self.relu1 = nn.ReLU()
         self.relu2 = nn.ReLU()
-        print('confidence:', self.confidence_extractor.__name__)
 
     def initial_layers(self, input_vec):
         nextout = cudaify(input_vec)

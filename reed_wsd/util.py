@@ -1,5 +1,4 @@
 import torch
-import sys
 
 def approx(x, y, num_sig=3):
     return abs(x-y) < 1.0 * (10 ** (-num_sig))
@@ -19,6 +18,6 @@ def cudaify(x):
             cuda = torch.device('cuda:2')
         else:
             cuda = torch.device('cuda:0')
-        return x.cuda(cuda)
+        return x.to(cuda)
     else: 
         return x

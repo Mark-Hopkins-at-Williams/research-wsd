@@ -3,7 +3,8 @@ from reed_wsd.mnist.model import BasicFFN, AbstainingFFN
 from reed_wsd.allwords.wordsense import SenseInstanceDataset, SenseTaggedSentences, SenseInstanceLoader, TwinSenseInstanceLoader
 from reed_wsd.allwords.vectorize import DiskBasedVectorManager
 from reed_wsd.allwords.blevins import BEMDataset, BEMLoader
-from reed_wsd.mnist.train import MnistSimpleDecoder, MnistAbstainingDecoder
+from reed_wsd.mnist.train import SimpleDecoder as MnistSimpleDecoder
+from reed_wsd.mnist.train import AbstainingDecoder as MnistAbstainingDecoder
 from reed_wsd.allwords.evaluate import AllwordsSimpleEmbeddingDecoder, AllwordsAbstainingEmbeddingDecoder, AllwordsBEMDecoder
 from reed_wsd.loss import CrossEntropyLoss, NLLLoss, ConfidenceLoss1, ConfidenceLoss4, PairwiseConfidenceLoss
 from reed_wsd.allwords.train import SingleEmbeddingTrainer, PairwiseEmbeddingTrainer, BEMTrainer
@@ -26,9 +27,6 @@ transform = transforms.Compose([transforms.ToTensor(),
                                transforms.Normalize((0.5,), (0.5,)),
                                ])
 
-
-
-
 corpus_id_lookup = {'semcor': 'data/WSD_Evaluation_Framework/Training_Corpora/SemCor/semcor.data.xml',
                         'semev07': 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2007/semeval2007.data.xml',
                         'semev13': 'data/WSD_Evaluation_Framework/Evaluation_Datasets/semeval2013/semeval2013.data.xml',
@@ -36,17 +34,34 @@ corpus_id_lookup = {'semcor': 'data/WSD_Evaluation_Framework/Training_Corpora/Se
                         'sensev2': 'data/WSD_Evaluation_Framework/Evaluation_Datasets/senseval2/senseval2.data.xml',
                         'sensev3': 'data/WSD_Evaluation_Framework/Evaluation_Datasets/senseval3/senseval3.data.xml'}
 
-
 criterion_lookup = {'crossentropy': CrossEntropyLoss,
                     'nll': NLLLoss,
                     'conf1': ConfidenceLoss1,
                     'conf4': ConfidenceLoss4,
                     'pairwise': PairwiseConfidenceLoss}
 
-
-
 class TaskFactory:
     def __init__(self, config):
+        #check dependency
+        assert(config['task'] in ['mnist', 'allwords'])
+        if config['task'] == 'mnist':
+            assert(config['architecture'] != 'bem')
+        if config['architecture'] == 'simple':
+            assert(config['confidence'] == 'max_prob')
+            assert(config['criterion']['name'] == 'nll')
+            assert(config['style'] == 'single')
+        if config['architecture'] == 'abstaining':
+            assert(config['confidence'] in ['max_non_abs', 'inv_abs', 'abs'])
+            assert(config['criterion']['name'] in ['conf1', 'conf4', 'pairwise'])
+        if config['architecture'] == 'bem':
+            assert(config['criterion']['name'] == 'crossentropy')
+            assert(config['style'] == 'single')
+        if config['style'] == 'single':
+            assert(config['criterion']['name'] in ['crossentropy', 'nll', 'conf1', 'conf4'])
+        if config['style'] == 'pairwise':
+            assert(config['criterion']['name'] == 'pairwise')
+            assert(config['architecture'] == 'abstaining')
+
         self.config = config
     
     def train_loader_factory(self):
@@ -67,7 +82,7 @@ class TaskFactory:
     def criterion_factory(self):
         config = self.config['criterion']
         if config['name'] in ['conf1', 'conf4']:
-            criterion = criterion_lookup[config['name']](p0=config['p0'])
+            criterion = criterion_lookup[config['name']](p0=config['p0'], warmup_epochs=config['warmup_epochs'])
         if config['name'] in ['crossentropy', 'nll', 'pairwise']:
             criterion = criterion_lookup[config['name']]()
         return criterion
@@ -76,26 +91,6 @@ class TaskFactory:
         raise NotImplementedError("Cannot call on abstract class.")
 
     def trainer_factory(self):
-        config = self.config
-        assert(config['task'] in ['mnist', 'allwords'])
-        if config['task'] == 'mnist':
-            assert(config['architecture'] != 'bem')
-        if config['architecture'] == 'simple':
-            assert(config['confidence'] == 'max_prob')
-            assert(config['criterion']['name'] == 'nll')
-            assert(config['style'] == 'single')
-        if config['architecture'] == 'abstaining':
-            assert(config['confidence'] in ['max_non_abs', 'inv_abs', 'abs'])
-            assert(config['criterion']['name'] in ['conf1', 'conf4', 'pairwise'])
-        if config['architecture'] == 'bem':
-            assert(config['criterion']['name'] == 'crossentropy')
-            assert(config['style'] == 'single')
-        if config['style'] == 'single':
-            assert(config['criterion']['name'] in ['crossentropy', 'nll', 'conf1', 'conf4'])
-        if config['style'] == 'pairwise':
-            assert(config['criterion']['name'] == 'pairwise')
-            assert(config['architecture'] == 'abstaining')
-    
         train_loader = self.train_loader_factory()
         val_loader = self.val_loader_factory()
         decoder = self.decoder_factory()
@@ -114,6 +109,10 @@ class TaskFactory:
         print('val loader:', type(val_loader).__name__)
         print('decoder:', type(decoder).__name__)
         print('n_epochs', n_epochs)
+        if hasattr(criterion, 'warmup_epochs'):
+            print('warmup epochs:', criterion.warmup_epochs)
+        else:
+            print('warmup epochs: N/A')
     
         return trainer, model        
 
@@ -129,6 +128,8 @@ class AllwordsTaskFactory(TaskFactory):
         self._decoder_lookup = {'simple': AllwordsSimpleEmbeddingDecoder,
                                  'abstaining': AllwordsAbstainingEmbeddingDecoder,
                                  'bem': AllwordsBEMDecoder}
+        assert(self.config['task'] == 'allwords')
+
 
     @staticmethod
     def init_loader(stage, architecture, style, corpus_id):
@@ -151,34 +152,35 @@ class AllwordsTaskFactory(TaskFactory):
         return loader
         
     def train_loader_factory(self):
+        if config['architecture'] == 'bem' or config['architecture'] == 'simple':
+            assert(config['style'] == 'single')
         return AllwordsTaskFactory.init_loader('train', 
                                     self.config['architecture'], 
                                     self.config['style'], 
                                     corpus_id_lookup['semcor'])
 
     def val_loader_factory(self):
+        if self.config['architecture'] == 'bem' or self.config['architecture'] == 'simple':
+            assert(self.config['style'] == 'single')
         return AllwordsTaskFactory.init_loader('test', 
-                                    config['architecture'], 
-                                    config['style'], 
+                                    self.config['architecture'], 
+                                    self.config['style'], 
                                     corpus_id_lookup[config['dev_corpus']])
 
     def decoder_factory(self):
-        return self._decoder_lookup[config['architecture']]()
+        return self._decoder_lookup[self.config['architecture']]()
     
     def model_factory(self, data):
         if config['architecture'] == 'bem':
-            model = self._model_lookup[config['architecture']](gpu=True)
+            model = self._model_lookup[self.config['architecture']](gpu=True)
         else:
-            model = self._model_lookup[config['architecture']](input_size=768,
+            model = self._model_lookup[self.config['architecture']](input_size=768,
                                                                   output_size=data.num_senses(),
                                                                   zone_applicant=self.config['confidence'])
         return model
  
     def optimizer_factory(self, model):
         return optim.Adam(model.parameters(), lr=0.001)
-
-    def criterion_factory(self):
-        return criterion_lookup[config['name']](p0=self.config['p0'])
  
     def select_trainer(self):
         if config['architecture'] == 'bem':
@@ -207,12 +209,12 @@ class MnistTaskFactory(TaskFactory):
             if style == 'single':
                 if confused:
                     loader = ConfusedMnistLoader(ds, bsz, shuffle=True)
-                else:
+                if not confused:
                     loader = MnistLoader(ds, bsz, shuffle=True)
             if style == 'pairwise':
                 if confused:
                     loader = ConfusedMnistPairLoader(ds, bsz, shuffle=True)
-                else:
+                if not confused:
                     loader = MnistPairLoader(ds, bsz, shuffle=True)
         if stage == 'test':
             ds = datasets.MNIST(mnist_test_dir, download=True, train=False, transform=transform)
@@ -250,13 +252,8 @@ class MnistTaskFactory(TaskFactory):
             trainer = MnistPairwiseTrainer
         return trainer
 
-
-
-
 task_factories = {'mnist': MnistTaskFactory,
                   'allwords': AllwordsTaskFactory}
-
-
 
 def run_experiment(config):
     task_factory = task_factories[config['task']](config)
@@ -265,28 +262,15 @@ def run_experiment(config):
     return best_model
 
 if __name__ == "__main__":
-    """
     config =  {'task': 'allwords',
-	       'architecture': 'bem',
+	       'architecture': 'abstaining',
 	       'confidence': 'inv_abs',
-	       'criterion': {'name': 'crossentropy',
-                             'p0': None},
+               'criterion': { 'name': 'conf4', 'p0': 0.5, 'warmup_epochs': 2},
 	       'confused': None,
 	       'style': 'single',
 	       'dev_corpus': 'semev07',
 	       'bsz': 16,
-	       'n_epochs': 20          
-	     }
-    """
-    config =  {'task': 'mnist',
-	       'architecture': 'simple',
-	       'confidence': 'max_prob',
-	       'criterion': { 'name': 'nll', 'p0': None },
-	       'confused': None,
-	       'style': 'single',
-	       'dev_corpus': 'semev07',
-	       'bsz': 64,
-	       'n_epochs': 10
+	       'n_epochs': 20
 	     }    
     
     run_experiment(config)
