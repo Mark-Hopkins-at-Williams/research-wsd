@@ -26,7 +26,6 @@ def confuse(labels):
     new_labels = torch.randint(0, 2, one_seven_shape) 
     new_labels[new_labels == 0] = 7    
     labels[one_and_sevens] = new_labels
-    """
     one_and_sevens = (labels == 2) + (labels == 3)
     one_seven_shape = labels[one_and_sevens].shape
     new_labels = torch.randint(0, 2, one_seven_shape)
@@ -39,7 +38,6 @@ def confuse(labels):
     new_labels[new_labels > 0] = 4
     new_labels[new_labels == 0] = 5
     labels[one_and_sevens] = new_labels
-    """
     return labels        
     
 class ConfusedMnistLoader(MnistLoader):
