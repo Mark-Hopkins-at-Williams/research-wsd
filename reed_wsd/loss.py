@@ -54,14 +54,15 @@ class NLLLoss(SingleConfidenceLoss):
         return "NLLLoss"
 
 class ConfidenceLoss1(SingleConfidenceLoss):
-    def __init__(self, p0):
+    def __init__(self, p0=0.5, warmup_epochs=5):
         super().__init__()
         self.p0 = 0.0
+        self.warmup_epochs = warmup_epochs
         self.target_p0 = p0
         self.notify(0)
 
     def notify(self, epoch):
-        if epoch >= 10:
+        if epoch >= self.warmup_epochs:
             self.p0 = self.target_p0
 
     def __call__(self, output, confidence, gold):
@@ -74,9 +75,10 @@ class ConfidenceLoss1(SingleConfidenceLoss):
         return "ConfidenceLoss1_p0_" + str(self.p0)
 
 class ConfidenceLoss4(SingleConfidenceLoss):
-    def __init__(self, p0):
+    def __init__(self, p0=0.5, warmup_epochs=5):
         super().__init__()
         self.p0 = 0.0
+        self.warmup_epochs = warmup_epochs
         self.target_p0 = p0
         self.notify(0)
 
