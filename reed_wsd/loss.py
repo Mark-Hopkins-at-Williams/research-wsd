@@ -1,5 +1,4 @@
 import torch
-import math
 import torch.nn.functional as F
 
 class ConfidenceLoss:
@@ -30,12 +29,12 @@ class PairwiseConfidenceLoss(ConfidenceLoss):
 class CrossEntropyLoss(SingleConfidenceLoss):
     """
     this interface is for BEM training
-    """
+    """    
     def __init__(self):
         super().__init__()
         self.loss = torch.nn.CrossEntropyLoss()
 
-    def __call__(self, output, gold):
+    def __call__(self, output, confidence, gold):
         return self.loss(output, gold)
 
     def __str__(self):
@@ -53,26 +52,24 @@ class NLLLoss(SingleConfidenceLoss):
     def __str__(self):
         return "NLLLoss"
 
-class ConfidenceLoss1(SingleConfidenceLoss):
-    def __init__(self, p0=0.5, warmup_epochs=5):
+class AbstainingLoss(SingleConfidenceLoss):
+    def __init__(self, alpha=0.5, warmup_epochs=3):
         super().__init__()
-        self.p0 = 0.0
+        self.alpha = 0.0
         self.warmup_epochs = warmup_epochs
-        self.target_p0 = p0
+        self.target_alpha = alpha
         self.notify(0)
 
     def notify(self, epoch):
         if epoch >= self.warmup_epochs:
-            self.p0 = self.target_p0
+            self.alpha = self.target_alpha
 
     def __call__(self, output, confidence, gold):
         label_ps = output[list(range(len(output))), gold]
-        losses = label_ps + (self.p0 * confidence)
+        abstains = output[:,-1]
+        losses = label_ps + (self.alpha * abstains)
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
-
-    def __str__(self):
-        return "ConfidenceLoss1_p0_" + str(self.p0)
 
 class ConfidenceLoss4(SingleConfidenceLoss):
     def __init__(self, p0=0.5, warmup_epochs=5):

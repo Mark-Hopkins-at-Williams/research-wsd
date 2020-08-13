@@ -5,26 +5,11 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 """
 
 import torch
-import copy
-from time import time
-from torch import optim
 from reed_wsd.util import cudaify
-from collections import defaultdict
-from reed_wsd.plot import PYCurve, plot_curves
-from reed_wsd.mnist.model import AbstainingFFN, ConfidentFFN
-from reed_wsd.train import validate_and_analyze, Trainer
-from reed_wsd.train import Decoder
+from reed_wsd.train import Trainer, Decoder
 from tqdm import tqdm
 
-def predict_simple(output):
-    return output.argmax(dim=0)
-
-def predict_abs(output):
-    return output[:-1].argmax(dim=0)
-
 class MnistDecoder(Decoder):
-    def __init__(self, predictor):
-        self.predictor = predictor
     
     def __call__(self, net, data):
         net.eval()
@@ -36,19 +21,12 @@ class MnistDecoder(Decoder):
                     ps, conf = net(cudaify(img))                
                 ps = ps.squeeze(dim=0)
                 c = conf.squeeze(dim=0).item()
-                pred = self.predictor(ps).item()
+                pred = ps.argmax(dim=0).item()
                 gold = labels[i].item()
                 yield {'pred': pred, 'gold': gold, 'confidence': c}
 
-class MnistSimpleDecoder(MnistDecoder):
-    def __init__(self):
-        super().__init__(predict_simple)
 
-class MnistAbstainingDecoder(MnistDecoder):
-    def __init__(self):
-        super().__init__(predict_abs)
-
-class MnistPairwiseTrainer(Trainer):
+class PairwiseTrainer(Trainer):
          
     def _epoch_step(self, model):
         running_loss = 0.
@@ -65,7 +43,7 @@ class MnistPairwiseTrainer(Trainer):
             denom += 1
         return running_loss / denom
      
-class MnistSingleTrainer(Trainer):
+class SingleTrainer(Trainer):
 
     def _epoch_step(self, model):
         running_loss = 0.
@@ -81,14 +59,3 @@ class MnistSingleTrainer(Trainer):
         return running_loss / denom
 
 
-def plot_saved_models(val_loader, 
-                      filenames = ['saved/pair_baseline.pt', 
-                                   'saved/pair_neg_abs.pt']):
-    curves = []
-    for filename in filenames:
-        net_base = AbstainingFFN()
-        net_base.load_state_dict(torch.load(filename, map_location=torch.device('cpu')))
-        decoded = list(decoder(net_base, val_loader))
-        pyc_base = PYCurve.from_data(decoded)
-        curves.append((pyc_base, filename))
-    plot_curves(*curves)

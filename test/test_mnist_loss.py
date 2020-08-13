@@ -1,9 +1,11 @@
 import unittest
 import torch
 from reed_wsd.mnist.loss import NLLLoss, PairwiseConfidenceLoss
+from reed_wsd.mnist.loss import AbstainingLoss
 
-class TestNLLLoss(unittest.TestCase):
-    def test_call(self):
+
+class TestMnistLoss(unittest.TestCase):
+    def test_nll_loss(self):
         criterion = NLLLoss()
         in_vec = torch.tensor([[0.3, 0.2, 0.5],
                                [0.1, 0.1, 0.8]])
@@ -11,8 +13,28 @@ class TestNLLLoss(unittest.TestCase):
         expected_loss1 = 0.6931
         expected_loss2 = 2.3026
         expected_loss = torch.tensor((expected_loss1 + expected_loss2) / 2)
-        loss = criterion(in_vec, gold)
+        loss = criterion(in_vec, None, gold)
         assert(torch.allclose(loss, expected_loss, atol=0.0001))
+
+    def test_abstaining_loss1(self):
+        criterion = AbstainingLoss(alpha = 0.5)
+        criterion.notify(5)
+        in_vec = torch.tensor([[0.25, 0.25, 0.1, 0.4]])
+        gold = torch.tensor([2])
+        abstains = torch.tensor([0.4])
+        loss = criterion(in_vec,  abstains, gold)
+        expected_loss = torch.tensor(1.2039728043259361) # i.e., -log(0.3)
+        assert(torch.allclose(loss, expected_loss, atol=0.0001))
+
+        
+    def test_abstaining_loss2(self):
+        criterion = AbstainingLoss(alpha = 0.5)
+        in_vec = torch.tensor([[0.3, 0.2, 0.1, 0.4],
+                               [0.1, 0.1, 0.6, 0.2]])
+        gold = torch.tensor([2, 1])
+        abstains = torch.tensor([0.4, 0.2])
+        loss = criterion(in_vec,  abstains, gold)
+
 
 class TestPairwiseConfidenceLoss(unittest.TestCase):
     def test_call(self):

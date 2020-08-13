@@ -6,5 +6,5 @@ googledata.json
 completedata.json
 data/semcor/
 reed_wsd/mnist/data/
+reed_wsd/mnist/saved/
 reed_wsd/allwords/saved/
-/test.dat
