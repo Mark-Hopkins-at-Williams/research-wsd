@@ -1,5 +1,4 @@
 import torch
-import sys
 
 def approx(x, y, num_sig=3):
     return abs(x-y) < 1.0 * (10 ** (-num_sig))

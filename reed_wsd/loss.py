@@ -64,9 +64,6 @@ class AbstainingLoss(SingleConfidenceLoss):
             self.alpha = self.target_alpha
 
     def __call__(self, output, confidence, gold):
-        #print(output[0])
-        #print(confidence[0])
-        #print(gold[0])
         label_ps = output[list(range(len(output))), gold]
         abstains = output[:,-1]
         losses = label_ps + (self.alpha * abstains)

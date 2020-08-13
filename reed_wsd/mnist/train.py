@@ -6,10 +6,7 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 
 import torch
 from reed_wsd.util import cudaify
-from reed_wsd.plot import PYCurve, plot_curves
-from reed_wsd.mnist.model import AbstainingFFN
-from reed_wsd.train import Trainer
-from reed_wsd.train import Decoder
+from reed_wsd.train import Trainer, Decoder
 from tqdm import tqdm
 
 class MnistDecoder(Decoder):
@@ -27,22 +24,6 @@ class MnistDecoder(Decoder):
                 pred = ps.argmax(dim=0).item()
                 gold = labels[i].item()
                 yield {'pred': pred, 'gold': gold, 'confidence': c}
-
-
-def decoder(net, data):
-    net.eval()
-    for images, labels in data:
-        for i in range(len(labels)):
-            img = images[i].view(1, 784)
-            # Turn off gradients to speed up this part
-            with torch.no_grad():
-                ps, conf = net(cudaify(img))                
-            ps = ps.squeeze(dim=0)
-            c = conf.squeeze(dim=0).item()
-            pred = ps.argmax(dim=0).item()
-            gold = labels[i].item()
-            yield {'pred': pred, 'gold': gold, 'confidence': c}
-    
 
 
 class PairwiseTrainer(Trainer):
@@ -78,14 +59,3 @@ class SingleTrainer(Trainer):
         return running_loss / denom
 
 
-def plot_saved_models(val_loader, 
-                      filenames = ['saved/pair_baseline.pt', 
-                                   'saved/pair_neg_abs.pt']):
-    curves = []
-    for filename in filenames:
-        net_base = AbstainingFFN()
-        net_base.load_state_dict(torch.load(filename, map_location=torch.device('cpu')))
-        decoded = list(decoder(net_base, val_loader))
-        pyc_base = PYCurve.from_data(decoded)
-        curves.append((pyc_base, filename))
-    plot_curves(*curves)
