@@ -1,4 +1,5 @@
 from reed_wsd.plot import pr_curve, roc_curve, plot_roc, plot_pr
+from reed_wsd.util import cudaify
 from collections import defaultdict
 import copy
 
@@ -33,13 +34,12 @@ def validate_and_analyze(model, val_loader, decoder, output_size=None):
             avg_err_conf += confidence
             error_dict[gold] += 1
             n_error += 1            
-    print('')
-    print('average error confidence:', avg_err_conf / n_error)
-    print('average correct confidence:', avg_crr_conf / n_correct)
-    print('auroc: {}'.format(auroc))
-    print('aupr: {}'.format(aupr))
-    print(data_dict)
-    return data_dict, n_correct / n_total
+    return {'prediction_by_class': data_dict,
+            'avg_err_conf': avg_err_conf / n_error,
+            'avg_crr_conf': avg_crr_conf / n_correct,
+            'auroc': auroc,
+            'aupr': aupr,
+            'precision': n_correct / n_total}
 
 class Decoder:
 
@@ -60,21 +60,25 @@ class Trainer:
         raise NotImplementedError("Must be overridden by inheriting classes.")
     
     def __call__(self, model):
+        model = cudaify(model)
         best_model = None
         best_model_score = float('-inf')
         for e in range(self.n_epochs):
             self.criterion.notify(e)
             batch_loss = self._epoch_step(model)
-            data_dict, precision = validate_and_analyze(model, self.val_loader, self.decoder, output_size=model.output_size)
+            analytics = validate_and_analyze(model, self.val_loader, self.decoder, output_size=model.output_size)
+            precision = analytics['precision']
             #print(data_dict)
             if precision > best_model_score:
                 print("Updating best model.")
                 best_model = copy.deepcopy(model)
                 best_model_score = precision
-            print("Epoch {} - Training loss: {}; Dev precision: {}".format(e,
-                                                                          batch_loss,
-                                                                          precision))
-        data_dict, precision = validate_and_analyze(best_model, self.val_loader, self.decoder, output_size=10)
-        print("Best Model Dev precision: {}".format(precision))
-        return best_model
+            print("Epoch {} - Training loss: {}".format(e,
+                                                        batch_loss))
+            print(analytics)
+        final_analytics = validate_and_analyze(best_model, self.val_loader, self.decoder, output_size=model.output_size)
+        print("Best Model analytics:")
+        print(final_analytics)
+        final_analytics['model'] = best_model
+        return final_analytics
 

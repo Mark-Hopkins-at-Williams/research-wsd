@@ -72,23 +72,23 @@ class AbstainingLoss(SingleConfidenceLoss):
         return -torch.mean(torch.log(losses))
 
 class ConfidenceLoss4(SingleConfidenceLoss):
-    def __init__(self, p0=0.5, warmup_epochs=5):
+    def __init__(self, alpha=0.5, warmup_epochs=5):
         super().__init__()
-        self.p0 = 0.0
+        self.alpha = 0.0
         self.warmup_epochs = warmup_epochs
-        self.target_p0 = p0
+        self.target_alpha = alpha
         self.notify(0)
 
     def notify(self, epoch):
-        if epoch >= 2:
-            self.p0 = self.target_p0
+        if epoch >= self.warmup_epochs:
+            self.alpha = self.target_alpha
 
     def __call__(self, output, confidence, gold):
         label_ps = output[list(range(len(output))), gold]
         label_ps_woa = output[:, :-1]
         label_ps_woa = F.normalize(label_ps_woa, p=1, dim=1)
         label_ps_woa = label_ps_woa[list(range(len(label_ps_woa))), gold]
-        losses = label_ps_woa * (label_ps + (self.p0 * confidence))
+        losses = label_ps_woa * (label_ps + (self.alpha * confidence))
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
 

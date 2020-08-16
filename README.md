@@ -1,6 +1,26 @@
 Reed Word Sense Disambiguation
 ------------------------------
 
+### To Run Experiments
+compile a list of configurations in a json file, and run
+    
+    python3 experiment.py path_to_config_file path_where_you_save_results
+
+Possible configurations are listed below
+
+    config =  {'task': 'mnist'/'allwords'/'imdb',
+               'architecture': 'abstaining'/'simple'/'bem',
+               'confidence': 'inv_abs'/'max_prob'/'max_non_abs',
+               'criterion': {'name': 'pairwise'/'nll'/'crossentropy'/'conf1'/'conf4',
+			     'alpha': float,
+			     'warmup_epochs': int},
+               'confused': bool,
+               'style': 'pairwise'/'single',
+               'dev_corpus': corpus_id,
+               'bsz': int,
+               'n_epochs': int
+             }
+
 ### To locally install the reed_wsd package:
 
 From the top-level directory:
@@ -87,4 +107,5 @@ If you want to upload your data, use command
 	dvc push -r myremote
 
 For more details how `dvc remote` works, see [here](https://dvc.org/doc/command-reference/remote#remote).
+
     

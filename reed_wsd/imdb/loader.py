@@ -59,6 +59,9 @@ class IMDBTwinLoader:
         self.loader2 = IMDBLoader(self.ds, self.bsz, shuffle=True)
         assert(len(self.loader1) == len(self.loader2))
 
+    def __len__(self):
+        return len(self.ds) // self.bsz + 1
+
     def __iter__(self):
         for pkg1, pkg2 in zip(self.loader1, self.loader2):
             evidence_batch1, gold_batch1 = pkg1
