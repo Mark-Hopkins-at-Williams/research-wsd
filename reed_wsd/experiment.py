@@ -105,7 +105,7 @@ class TaskFactory:
         model = self.model_factory(train_loader)
         optimizer = self.optimizer_factory(model)
         criterion = self.criterion_factory()
-        n_epochs = config['n_epochs']
+        n_epochs = self.config['n_epochs']
         trainer_class = self.select_trainer()
         trainer = trainer_class(criterion, optimizer, train_loader, 
                                 val_loader, decoder, n_epochs)
@@ -140,23 +140,23 @@ class AllwordsTaskFactory(TaskFactory):
 
 
     @staticmethod
-    def init_loader(stage, architecture, style, corpus_id):
+    def init_loader(stage, architecture, style, corpus_id, bsz):
         data_dir = allwords_data_dir
         filename = join(data_dir, 'raganato.json')
         sents = SenseTaggedSentences.from_json(filename, corpus_id)
         if architecture == "bem":
             ds = BEMDataset(sents)
-            loader = BEMLoader(ds, config['bsz'])
+            loader = BEMLoader(ds, bsz)
         if architecture == 'simple' or architecture == 'abstaining': 
             vecmgr = DiskBasedVectorManager(join(join(data_dir, 'vecs'), corpus_id))
             ds = SenseInstanceDataset(sents, vecmgr)
             if stage == 'train':
                 if style == 'single':
-                    loader = SenseInstanceLoader(ds, batch_size=config['bsz'])
+                    loader = SenseInstanceLoader(ds, batch_size=bsz)
                 if style == 'pairwise':
-                    loader = TwinSenseInstanceLoader(ds, batch_size=config['bsz'])
+                    loader = TwinSenseInstanceLoader(ds, batch_size=bsz)
             if stage == 'test':
-                loader = SenseInstanceLoader(ds, batch_size=config['bsz'])
+                loader = SenseInstanceLoader(ds, batch_size=bsz)
         return loader
         
     def train_loader_factory(self):
@@ -173,13 +173,13 @@ class AllwordsTaskFactory(TaskFactory):
         return AllwordsTaskFactory.init_loader('test', 
                                     self.config['architecture'], 
                                     self.config['style'], 
-                                    corpus_id_lookup[config['dev_corpus']])
+                                    corpus_id_lookup[self.config['dev_corpus']])
 
     def decoder_factory(self):
         return self._decoder_lookup[self.config['architecture']]()
     
     def model_factory(self, data):
-        if config['architecture'] == 'bem':
+        if self.config['architecture'] == 'bem':
             model = self._model_lookup[self.config['architecture']](gpu=True)
         else:
             model = self._model_lookup[self.config['architecture']](input_size=768,
@@ -191,12 +191,12 @@ class AllwordsTaskFactory(TaskFactory):
         return optim.Adam(model.parameters(), lr=0.001)
  
     def select_trainer(self):
-        if config['architecture'] == 'bem':
+        if self.config['architecture'] == 'bem':
             trainer = BEMTrainer
         else:
-            if config['style'] == 'single':
+            if self.config['style'] == 'single':
                 trainer = SingleEmbeddingTrainer
-            if config['style'] == 'pairwise':
+            if self.config['style'] == 'pairwise':
                 trainer = PairwiseEmbeddingTrainer
         return trainer       
 
@@ -312,12 +312,11 @@ def run_experiment(config):
 class Experiment:
     def __init__(self, config):
         self.config = config
-        task_factory = task_factories[config['task']](config)
-        self.trainer, self.model = task_factory.trainer_factory()
+        self.task_factory = task_factories[config['task']](config)
 
     def run(self):
-        self.__init__(self, self.config)
-        results = self.trainer(self.model)
+        trainer, model = self.task_factory.trainer_factory()    
+        results = trainer(model)
         self.result = results
         return results
     
