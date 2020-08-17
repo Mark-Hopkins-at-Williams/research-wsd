@@ -1,0 +1,1 @@
+[{"task": "mnist", "architecture": "simple", "confidence": "max_prob", "criterion": {"name": "nll", "alpha": 0, "warmup_epochs": 0}, "confused": true, "style": "single", "dev_corpus": null, "bsz": 64, "n_epochs": 20}]

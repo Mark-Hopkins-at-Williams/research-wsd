@@ -21,3 +21,10 @@ def cudaify(x):
         return x.to(cuda)
     else: 
         return x
+
+
+def predict_simple(output):
+    return output.argmax(dim=1)
+
+def predict_abs(output):
+    return output[:, :-1].argmax(dim=1)

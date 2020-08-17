@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from reed_wsd.mnist.model import confidence_extractor_lookup
+from reed_wsd.mnist.model import confidence_extractor_lookup # TODO: put at reed_wsd level?
 
 class SingleLayerFFN(nn.Module):
     def __init__(self,
