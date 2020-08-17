@@ -1,8 +1,8 @@
 import torch
-import os
 import json
 from torch.utils.data import Dataset
 import random
+import math
 
 class IMDBDataset(Dataset):
     def __init__(self, data):
@@ -33,7 +33,7 @@ class IMDBLoader:
             random.shuffle(self.index_list)
 
     def __len__(self):
-        return len(self.ds) // self.bsz + 1
+        return math.ceil(len(self.ds) / self.bsz)
         
     def __iter__(self):
         evidence_batch = []
@@ -58,6 +58,9 @@ class IMDBTwinLoader:
         self.loader1 = IMDBLoader(self.ds, self.bsz, shuffle=True)
         self.loader2 = IMDBLoader(self.ds, self.bsz, shuffle=True)
         assert(len(self.loader1) == len(self.loader2))
+
+    def __len__(self):
+        return len(self.ds) // self.bsz + 1
 
     def __iter__(self):
         for pkg1, pkg2 in zip(self.loader1, self.loader2):

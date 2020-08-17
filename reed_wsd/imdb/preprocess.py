@@ -13,9 +13,8 @@ def passage_to_vec(passage, tokenizer, bert, max_seq_length=512):
     tknz_output = tokenizer(passage,
                             add_special_tokens=True, 
                             return_tensors='pt',
-                            verbose=False)
-    if tknz_output['input_ids'].shape[1] >= max_seq_length:
-        return None
+                            verbose=False,
+                            truncation=True)
     tknz_output = cudaify(tknz_output)
     with torch.no_grad():
         last_hidden_states = bert(**tknz_output)[0].squeeze(0)
@@ -43,17 +42,15 @@ class IMDBPreprocessor:
         comment_vec = passage_to_vec(comment,
                                      self.tokenizer,
                                      self.bert)
-        if comment_vec is not None:
-            return {'vec': comment_vec.cpu().numpy().tolist(),
-                    'gold': int(positive)}
+        return {'vec': comment_vec.cpu().numpy().tolist(),
+                'gold': int(positive)}
     
     def _vectorize_folder(self, folder_path, positive):
         instances = []
         file_names = os.listdir(folder_path)
         for f_name in tqdm(file_names):
-            inst = self.vectorize_file(path.join(folder_path, f_name), positive)
-            if inst is not None: 
-                instances.append(inst)
+            inst = self._vectorize_file(path.join(folder_path, f_name), positive)
+            instances.append(inst)
         return instances
 
 

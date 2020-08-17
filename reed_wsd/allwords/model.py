@@ -49,7 +49,7 @@ apply_zones_lookup = {'max_prob': max_prob,
                       'inv_abs': inv_abs,
                       'abs': abstention}
 
-class SimpleFFN(nn.Module):
+class SingleLayerFFNWithZones(nn.Module):
     def __init__(self,
                  input_size,
                  output_size,
@@ -66,7 +66,7 @@ class SimpleFFN(nn.Module):
         nextout = self.linear(input_vec)
         return self.zone_applicant(nextout, zones)
 
-class SimpleAbstainingFFN(SimpleFFN):
+class AbstainingSingleLayerFFNWithZones(SingleLayerFFNWithZones):
     def __init__(self, input_size,
                  output_size,
                  zone_applicant='max_non_abs'):
