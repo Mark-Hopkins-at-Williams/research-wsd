@@ -5,10 +5,9 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 """
 
 import torch
-from reed_wsd.util import cudaify
+from reed_wsd.util import cudaify, predict_simple, predict_abs
 from reed_wsd.train import Trainer, Decoder
 from tqdm import tqdm
-from reed_wsd.allwords.evaluate import predict_simple, predict_abs
 
 class MnistDecoder(Decoder):
     def __init__(self, predictor):
