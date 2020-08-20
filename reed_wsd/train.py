@@ -4,6 +4,7 @@ from collections import defaultdict
 import copy
 
 def validate_and_analyze(model, val_loader, decoder, output_size=None):
+    model.eval()
     results = list(decoder(model, val_loader))
     _, _, auroc = roc_curve(results)
     _, _, aupr = pr_curve(results)
@@ -79,6 +80,5 @@ class Trainer:
         final_analytics = validate_and_analyze(best_model, self.val_loader, self.decoder, output_size=model.output_size)
         print("Best Model analytics:")
         print(final_analytics)
-        final_analytics['model'] = best_model
-        return final_analytics
+        return best_model, final_analytics
 

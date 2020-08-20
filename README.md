@@ -1,6 +1,29 @@
 Reed Word Sense Disambiguation
 ------------------------------
 
+## Installing the reed_wsd package:
+The repo only works when it is installed as a package
+
+From the top-level directory:
+
+    pip install -e .
+
+## Preprocessing Data
+Before doing any training, it is necessary to download and preprocess the data first.
+### To download and preprocess the Raganato 2017 data:
+
+From the top-level directory, run:
+
+    cd reed_wsd/allwords
+    bash ./install.sh
+
+### To download and preprocess the imdb data:
+
+From top-level directory, run:
+
+    cd reed_wsd/imdb
+    bash ./install.sh
+
 ### To Run Experiments
 compile a list of configurations in a json file, and run
     
@@ -27,27 +50,6 @@ From the top-level directory:
 
     pip install -e .
 
-### To download and preprocess the Raganato 2017 data:
-
-From the top-level directory, run:
-
-    cd allwords
-    bash ./install.sh
-
-### To run the main training script
-
-From the top-level directory, run:
-
-    cd allwords
-    python3 allwords/run.py ./data
-
-### To run the confidence analysis
-
-From the top-level directory, run:
-	
-    cd allwords
-    python3 allwords/confidence.py ./data    
-
 ### To run the official scoring script
 
 The scorer ("Scorer.java") is provided by Raganato et al (2017).
@@ -69,6 +71,7 @@ Please note that the official scoring programs are case sensitive and may be
 sensitive if a different default character encoding is used.  The answer
 format is the same of the gold-standard format. 
 
+## Testing
 ### To run all unit tests
 
 From the top-level directory, run: 
@@ -83,7 +86,7 @@ From the top-level directory, run:
     cd allwords
     python3 -m unittest test.test_align
     
-### DVC
+## DVC
 
 If you pull from this repo now, `dvc` is already initialized.
 You can download the data from remote storage using command
