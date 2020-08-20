@@ -20,6 +20,7 @@ from torchvision import datasets, transforms
 import json
 import copy
 import sys
+from functools import reduce
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 mnist_dir = join(file_dir, 'mnist')
@@ -46,6 +47,34 @@ criterion_lookup = {'crossentropy': CrossEntropyLoss,
                     'conf1': AbstainingLoss,
                     'conf4': ConfidenceLoss4,
                     'pairwise': PairwiseConfidenceLoss}
+
+def add_list(this, other):
+    assert(len(this) == len(other))
+    return [(this[i] + other[i]) for i in range(len(this))]
+
+def div_list(ls, divisor):
+    return [element / divisor for element in ls]
+
+def add_data_dict(this, other):
+    assert(this.keys() == other.keys())
+    return {key: add_list(this[key], other[key]) for key in this.keys()}
+
+def div_data_dict(d, divisor):
+    return {key: div_list(d[key], divisor) for key in d.keys()}
+
+def add_analytics_dict(this, other):
+    print('\n')
+    print(this, other)
+    assert(this.keys() == other.keys())
+    return {key: (this[key] + other[key]) if key != 'prediction_by_class'
+                                     else add_data_dict(this[key], other[key])
+                                     for key in this.keys()}
+
+def div_analytics_dict(d, divisor):
+    return {key: (d[key] / divisor) if key != 'prediction_by_class'
+                                     else div_data_dict(d[key], divisor)
+                                     for key in d.keys()}
+
 
 class TaskFactory:
     def __init__(self, config):
@@ -290,7 +319,7 @@ class IMDBTaskFactory(TaskFactory):
         return self._model_lookup[self.config['architecture']](confidence_extractor=self.config['confidence'])
         
     def optimizer_factory(self, model):
-        return optim.Adam(model.parameters(), lr=0.001)
+        return optim.Adam(model.parameters(), lr=0.0005)
     
     def select_trainer(self):
         if self.config['style'] == 'single':
@@ -310,33 +339,40 @@ def run_experiment(config):
     return best_model
 
 class Experiment:
-    def __init__(self, config):
+    def __init__(self, config, reps=10):
         self.config = config
+        self.reps = reps
         self.task_factory = task_factories[config['task']](config)
 
     def run(self):
-        trainer, model = self.task_factory.trainer_factory()    
-        results = trainer(model)
-        self.result = results
+        measurements = []
+        for i in range(self.reps):
+            print('\nTRIAL {}'.format(i))
+            trainer, model = self.task_factory.trainer_factory()    
+            _, results = trainer(model)
+            measurements.append(results)
+        measurement_sum = reduce(add_analytics_dict, measurements)
+        avg_measurement = div_analytics_dict(measurement_sum, self.reps)
+        self.result = avg_measurement
         return results
     
     def return_analytics(self):
         result = copy.deepcopy(self.result)
-        result.pop('model')
         return result
 
 class ExperimentSequence:
-    def __init__(self, experiments):
+    def __init__(self, experiments, reps):
         self.experiments = experiments
+        self.reps = reps
     
     @classmethod
-    def from_json(cls, configs_path):
+    def from_json(cls, configs_path, reps=10):
         with open(configs_path, 'r') as f:
             configs = json.load(f)
         experiments = []
         for config in configs:
-            experiments.append(Experiment(config))
-        return cls(experiments)
+            experiments.append(Experiment(config, reps))
+        return cls(experiments, reps)
 
     def run_and_save(self, out_path):
         results = []
