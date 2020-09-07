@@ -1,6 +1,6 @@
 from reed_wsd.mnist.model import BasicFFN, AbstainingFFN, ConfidentFFN
 from reed_wsd.loss import AbstainingLoss, NLLLoss, PairwiseConfidenceLoss
-from reed_wsd.mnist.train import MnistDecoder
+from reed_wsd.mnist.train import MnistAbstainingDecoder, MnistSimpleDecoder
 from reed_wsd.mnist.train import SingleTrainer, PairwiseTrainer
 from reed_wsd.mnist.loader import ConfusedMnistLoader, ConfusedMnistPairLoader
 import torch
@@ -33,7 +33,7 @@ def random_guesser():
     #input_size: 784, hidden_size: [128, 64], output_size: 10
     model = BasicFFN(confidence_extractor = 'random')
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistDecoder()
+    decoder = MnistSimpleDecoder()
     n_epochs = 20
     trainer = SingleTrainer(criterion, optimizer, trainloader, 
                             valloader, decoder, n_epochs)
@@ -45,7 +45,7 @@ def baseline():
     #input_size: 784, hidden_size: [128, 64], output_size: 10
     model = BasicFFN()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistDecoder()
+    decoder = MnistSimpleDecoder()
     n_epochs = 20
     trainer = SingleTrainer(criterion, optimizer, trainloader, 
                             valloader, decoder, n_epochs)
@@ -56,7 +56,7 @@ def abstaining():
     criterion = AbstainingLoss(0.5)
     model = AbstainingFFN(confidence_extractor='max_non_abs')
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistDecoder()
+    decoder = MnistAbstainingDecoder()
     n_epochs = 30
     trainer = SingleTrainer(criterion, optimizer, trainloader, 
                             valloader, decoder, n_epochs)
@@ -69,7 +69,7 @@ def confidence_twin():
     valloader = ConfusedMnistLoader(valset, bsz = 64, shuffle=True)
     model = ConfidentFFN()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
-    decoder = MnistDecoder()
+    decoder = MnistAbstainingDecoder()
     n_epochs = 20
     trainer = PairwiseTrainer(criterion, optimizer, trainloader, 
                               valloader, decoder, n_epochs)
