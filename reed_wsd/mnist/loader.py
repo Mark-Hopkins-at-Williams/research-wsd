@@ -33,7 +33,7 @@ def confuse_all(labels):
     labels[one_and_sevens] = new_labels
     return labels        
 
-confuser_lookup = {'two': confuse_two,
+confuser_lookup = {'two': confuse_all,
                    'all': confuse_all}
 
 class MnistLoader:
