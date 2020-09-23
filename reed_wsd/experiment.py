@@ -194,7 +194,8 @@ class AllwordsTaskFactory(TaskFactory):
         return AllwordsTaskFactory.init_loader('train', 
                                     self.config['architecture'], 
                                     self.config['style'], 
-                                    corpus_id_lookup['semcor'])
+                                    corpus_id_lookup['semcor'],
+                                    self.config['bsz'])
 
     def val_loader_factory(self):
         if self.config['architecture'] == 'bem' or self.config['architecture'] == 'simple':
@@ -202,7 +203,8 @@ class AllwordsTaskFactory(TaskFactory):
         return AllwordsTaskFactory.init_loader('test', 
                                     self.config['architecture'], 
                                     self.config['style'], 
-                                    corpus_id_lookup[self.config['dev_corpus']])
+                                    corpus_id_lookup[self.config['dev_corpus']],
+                                    self.config['bsz'])
 
     def decoder_factory(self):
         return self._decoder_lookup[self.config['architecture']]()
