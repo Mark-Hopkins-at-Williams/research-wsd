@@ -19,9 +19,9 @@ class MnistDecoder(Decoder):
             with torch.no_grad():
                 outputs, conf = net(cudaify(images))
             preds = self.predictor(outputs)
-            for element in zip(preds, labels, conf):
-                p, g, c = element
-                yield {'pred': p.item(), 'gold': g.item(), 'confidence': c.item()}
+            for element in zip(preds, labels, conf, images):
+                p, g, c, im = element
+                yield {'evidence': im, 'pred': p.item(), 'gold': g.item(), 'confidence': c.item()}
 
 class MnistSimpleDecoder(MnistDecoder):
     def __init__(self):

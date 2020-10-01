@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import math
 
 class ConfidenceLoss:
     def notify(self, epoch):
@@ -15,6 +16,17 @@ def confidence_weighted_loss(confidence_x, confidence_y, gold_probs_x, gold_prob
     return losses
 
 class SingleConfidenceLoss(ConfidenceLoss):
+    def __init__(self, alpha=0.5, warmup_epochs=5):
+        super().__init__()
+        self.alpha = 0.0
+        self.warmup_epochs = warmup_epochs
+        self.target_alpha = alpha
+        self.notify(0)
+
+    def notify(self, epoch):
+        if epoch >= self.warmup_epochs:
+            self.alpha = self.target_alpha
+
     def __call__(self, output, confidence, gold):
         raise NotImplementedError("This feature has to be implemented in the child class.")
 
@@ -53,35 +65,15 @@ class NLLLoss(SingleConfidenceLoss):
         return "NLLLoss"
 
 class AbstainingLoss(SingleConfidenceLoss):
-    def __init__(self, alpha=0.5, warmup_epochs=3):
-        super().__init__()
-        self.alpha = 0.0
-        self.warmup_epochs = warmup_epochs
-        self.target_alpha = alpha
-        self.notify(0)
-
-    def notify(self, epoch):
-        if epoch >= self.warmup_epochs:
-            self.alpha = self.target_alpha
 
     def __call__(self, output, confidence, gold):
         label_ps = output[list(range(len(output))), gold]
-        abstains = output[:,-1]
-        losses = label_ps + (self.alpha * abstains)
+        losses = label_ps + (self.alpha * confidence)
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
 
-class ConfidenceLoss4(SingleConfidenceLoss):
-    def __init__(self, alpha=0.5, warmup_epochs=5):
-        super().__init__()
-        self.alpha = 0.0
-        self.warmup_epochs = warmup_epochs
-        self.target_alpha = alpha
-        self.notify(0)
 
-    def notify(self, epoch):
-        if epoch >= self.warmup_epochs:
-            self.alpha = self.target_alpha
+class ConfidenceLoss4(SingleConfidenceLoss):
 
     def __call__(self, output, confidence, gold):
         label_ps = output[list(range(len(output))), gold]
@@ -92,5 +84,3 @@ class ConfidenceLoss4(SingleConfidenceLoss):
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
 
-    def __str__(self):
-        return "ConfidenceLoss4_p0_" + str(self.p0)

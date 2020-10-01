@@ -119,6 +119,7 @@ class TaskFactory:
     def criterion_factory(self):
         config = self.config['criterion']
         if config['name'] in ['conf1', 'conf4']:
+            print(config['warmup_epochs'])
             criterion = criterion_lookup[config['name']](alpha=config['alpha'], warmup_epochs=config['warmup_epochs'])
         if config['name'] in ['crossentropy', 'nll', 'pairwise']:
             criterion = criterion_lookup[config['name']]()
@@ -381,8 +382,8 @@ class ExperimentSequence:
         for experiment in self.experiments:
             experiment.run()
             results.append(experiment.return_analytics())
-        with open(out_path, 'w') as f:
-            json.dump(results, f)
+            with open(out_path, 'w') as f:
+                json.dump(results, f)
 
             
 

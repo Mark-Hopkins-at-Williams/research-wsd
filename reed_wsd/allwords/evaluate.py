@@ -54,7 +54,7 @@ class AllwordsEmbeddingDecoder:
                 preds = self.predictor(output)
                 for element in zip(preds, response, conf):
                     (pred, gold, c) = element
-                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
+                    pkg = {'evidence':evidence, 'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
                     yield pkg
 
 class AllwordsSimpleEmbeddingDecoder(AllwordsEmbeddingDecoder):

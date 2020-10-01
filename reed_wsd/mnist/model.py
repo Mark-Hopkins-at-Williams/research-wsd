@@ -21,11 +21,15 @@ def abstention(output_tensor):
 def random_confidence(output_tensor):
     return torch.randn(output_tensor.shape[0])
 
+def true_score(output_tensor):
+    return [None] * output_tensor.shape[0]
+
 confidence_extractor_lookup = {'inv_abs': inv_abstain_prob,
                                'max_non_abs': max_nonabstain_prob,
                                'abs': abstention,
                                'max_prob': max_prob,
-                               'random': random_confidence}
+                               'random': random_confidence,
+                               'truescore': true_score}
 
 class BasicFFN(nn.Module): 
  

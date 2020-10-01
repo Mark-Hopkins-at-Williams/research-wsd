@@ -2,12 +2,12 @@ from reed_wsd.plot import pr_curve, roc_curve, plot_roc, plot_pr
 from reed_wsd.util import cudaify
 from collections import defaultdict
 import copy
+from trustscore import TrustScore
+import torch
 
 def validate_and_analyze(model, val_loader, decoder, output_size=None):
     model.eval()
     results = list(decoder(model, val_loader))
-    _, _, auroc = roc_curve(results)
-    _, _, aupr = pr_curve(results)
     plot_roc(results)
     avg_err_conf = 0
     avg_crr_conf = 0
@@ -15,6 +15,8 @@ def validate_and_analyze(model, val_loader, decoder, output_size=None):
     n_correct = 0
     data_dict = {}
     error_dict = defaultdict(int)
+    evidences = []
+    preds = []
     n_total = len(results)
     if output_size is not None:
         for i in range(output_size):
@@ -23,6 +25,8 @@ def validate_and_analyze(model, val_loader, decoder, output_size=None):
         prediction = result['pred']
         gold = result['gold']
         confidence = result['confidence']
+        evidences.append(result['evidence'])
+        preds.append(result['pred'])
         if prediction == gold:
             if output_size is not None:
                 data_dict[gold][0] += 1
@@ -35,6 +39,15 @@ def validate_and_analyze(model, val_loader, decoder, output_size=None):
             avg_err_conf += confidence
             error_dict[gold] += 1
             n_error += 1            
+    trust_model = TrustScore()
+    evidences = torch.stack(evidences).numpy()
+    preds = torch.tensor(preds).numpy()
+    trust_model.fit(evidences, preds)
+    trust_score = trust_model.get_score(evidences, preds)
+    for i, score in enumerate(trust_score):
+        results[i]['truescore'] = score.item()
+    _, _, auroc = roc_curve(results)
+    _, _, aupr = pr_curve(results)
     return {'prediction_by_class': data_dict,
             'avg_err_conf': avg_err_conf / n_error,
             'avg_crr_conf': avg_crr_conf / n_correct,

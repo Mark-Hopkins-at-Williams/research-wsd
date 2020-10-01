@@ -44,10 +44,17 @@ def abstention(input_vec, zones):
     confidence = normalized[:, -1]
     return normalized, confidence
 
+def true_score(input_vec, zones):
+    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
+    new_vec = zero_out_probs(input_vec, zones)
+    normalized = F.normalize(new_vec, dim=-1, p=1)
+    return normalized, [None] * input_vec.shape[0]
+
 apply_zones_lookup = {'max_prob': max_prob,
                       'max_non_abs': max_non_abs,
                       'inv_abs': inv_abs,
-                      'abs': abstention}
+                      'abs': abstention,
+                      'truescore': true_score}
 
 class SingleLayerFFNWithZones(nn.Module):
     def __init__(self,
