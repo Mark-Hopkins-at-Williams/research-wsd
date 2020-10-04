@@ -5,9 +5,9 @@ import copy
 from trustscore import TrustScore
 import torch
 
-def validate_and_analyze(model, val_loader, decoder, output_size=None):
+def validate_and_analyze(model, train_loader, val_loader, decoder, output_size=None):
     model.eval()
-    results = list(decoder(model, val_loader))
+    results = list(decoder(model, val_loader, trust_model))
     plot_roc(results)
     avg_err_conf = 0
     avg_crr_conf = 0
@@ -45,7 +45,7 @@ def validate_and_analyze(model, val_loader, decoder, output_size=None):
     trust_model.fit(evidences, preds)
     trust_score = trust_model.get_score(evidences, preds)
     for i, score in enumerate(trust_score):
-        results[i]['truescore'] = score.item()
+        results[i]['trustscore'] = score.item()
     _, _, auroc = roc_curve(results)
     _, _, aupr = pr_curve(results)
     return {'prediction_by_class': data_dict,
@@ -80,7 +80,7 @@ class Trainer:
         for e in range(self.n_epochs):
             self.criterion.notify(e)
             batch_loss = self._epoch_step(model)
-            analytics = validate_and_analyze(model, self.val_loader, self.decoder, output_size=model.output_size)
+            analytics = validate_and_analyze(model, self.train_loader, self.val_loader, self.decoder, output_size=model.output_size)
             precision = analytics['precision']
             #print(data_dict)
             if precision > best_model_score:

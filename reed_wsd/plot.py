@@ -31,7 +31,7 @@ def pr_curve(predictions):
     want_truescore = (predictions[0]['confidence'] is None)
     y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
     if want_truescore:
-        y_scores = [pred['truescore'] for pred in predictions]
+        y_scores = [pred['trustscore'] for pred in predictions]
     else:
         y_scores = [pred['confidence'] for pred in predictions]
     precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
@@ -39,9 +39,10 @@ def pr_curve(predictions):
     return precision, recall, auc
 
 def roc_curve(predictions):
+    want_truescore = (predictions[0]['confidence'] is None)
     y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
     if want_truescore:
-        y_scores = [pred['truescore'] for pred in predictions]
+        y_scores = [pred['trustscore'] for pred in predictions]
     else:
         y_scores = [pred['confidence'] for pred in predictions]
     fpr, tpr, _ = metrics.roc_curve(y_true, y_scores, pos_label=1)
