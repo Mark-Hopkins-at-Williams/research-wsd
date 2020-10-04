@@ -339,7 +339,7 @@ def run_experiment(config):
     return best_model
 
 class Experiment:
-    def __init__(self, config, reps=10):
+    def __init__(self, config, reps=1):
         self.config = config
         self.reps = reps
         self.task_factory = task_factories[config['task']](config)
