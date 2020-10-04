@@ -5,13 +5,27 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 """
 
 import torch
-from reed_wsd.util import cudaify, predict_simple, predict_abs
+from reed_wsd.util import cudaify
 from reed_wsd.train import Trainer, Decoder
 from tqdm import tqdm
 
-class MnistDecoder(Decoder):
+class MnistSimpleDecoder(Decoder):
     def __init__(self, predictor):
         self.predictor = predictor
+    
+    def __call__(self, net, data):
+        net.eval()
+        for images, labels in data:
+            with torch.no_grad():
+                outputs, conf = net(cudaify(images))
+            preds = self.predictor(outputs)
+            for element in zip(preds, labels, conf):
+                p, g, c = element
+                yield {'pred': p.item(), 'gold': g.item(), 'confidence': c.item()}
+
+class MnistAbstainingDecoder(Decoder):
+    def __init__(self):
+        pass
     
     def __call__(self, net, data):
         net.eval()
@@ -26,15 +40,6 @@ class MnistDecoder(Decoder):
                 pred = ps.argmax(dim=0).item()
                 gold = labels[i].item()
                 yield {'pred': pred, 'gold': gold, 'confidence': c}
-
-class MnistSimpleDecoder(MnistDecoder):
-    def __init__(self):
-        super().__init__(None)
-
-class MnistAbstainingDecoder(MnistDecoder):
-    def __init__(self):
-        super().__init__(None)
-            
 
 class PairwiseTrainer(Trainer):
          
