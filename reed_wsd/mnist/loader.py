@@ -33,7 +33,7 @@ def confuse_all(labels):
     labels[one_and_sevens] = new_labels
     return labels        
 
-confuser_lookup = {'two': confuse_all,
+confuser_lookup = {'two': confuse_two,
                    'all': confuse_all}
 
 class MnistLoader:
@@ -55,7 +55,7 @@ class MnistLoader:
     
 class ConfusedMnistLoader(MnistLoader):
     
-    def __init__(self, dataset, bsz=64, confuser='two', shuffle=True):
+    def __init__(self, dataset, bsz=64, confuser='all', shuffle=True):
         super().__init__(dataset, bsz, shuffle, confuser_lookup[confuser])
         
         
@@ -85,7 +85,7 @@ class MnistPairLoader:
             yield imgs1, imgs2, lbls1, lbls2
 
 class ConfusedMnistPairLoader(MnistPairLoader):
-    def __init__(self, dataset, bsz=64, confuser='two', shuffle=True):
+    def __init__(self, dataset, bsz=64, confuser='all', shuffle=True):
         super().__init__(dataset, bsz, shuffle, confuser_lookup[confuser])
             
 
