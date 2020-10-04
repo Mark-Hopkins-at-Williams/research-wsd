@@ -55,7 +55,7 @@ class MnistLoader:
     
 class ConfusedMnistLoader(MnistLoader):
     
-    def __init__(self, dataset, bsz=64, confuser='two', shuffle=True):
+    def __init__(self, dataset, bsz=64, confuser='all', shuffle=True):
         super().__init__(dataset, bsz, shuffle, confuser_lookup[confuser])
         
         
@@ -85,7 +85,7 @@ class MnistPairLoader:
             yield imgs1, imgs2, lbls1, lbls2
 
 class ConfusedMnistPairLoader(MnistPairLoader):
-    def __init__(self, dataset, bsz=64, confuser='two', shuffle=True):
+    def __init__(self, dataset, bsz=64, confuser='all', shuffle=True):
         super().__init__(dataset, bsz, shuffle, confuser_lookup[confuser])
             
 
