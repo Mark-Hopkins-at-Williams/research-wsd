@@ -36,25 +36,18 @@ def inv_abs(input_vec, zones):
     return normalized, confidence
 
 def abstention(input_vec, zones):
-    new_vec = input_vec.clone()
+    confidence = input_vec[:, -1]
+    new_vec = torch.zeros(input_vec.shape)
     new_vec[:, :-1] = F.softmax(input_vec[:, :-1].clamp(min=-25, max=25), dim=1)
     new_vec = zero_out_probs(new_vec, zones)
     normalized = F.normalize(new_vec, dim=-1, p=1)
     normalized[:, -1] = input_vec[:, -1]
-    confidence = normalized[:, -1]
     return normalized, confidence
-
-def true_score(input_vec, zones):
-    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
-    new_vec = zero_out_probs(input_vec, zones)
-    normalized = F.normalize(new_vec, dim=-1, p=1)
-    return normalized, [None] * input_vec.shape[0]
 
 apply_zones_lookup = {'max_prob': max_prob,
                       'max_non_abs': max_non_abs,
                       'inv_abs': inv_abs,
-                      'abs': abstention,
-                      'truescore': true_score}
+                      'abs': abstention}
 
 class SingleLayerFFNWithZones(nn.Module):
     def __init__(self,
@@ -68,6 +61,7 @@ class SingleLayerFFNWithZones(nn.Module):
         self.zone_applicant = apply_zones_lookup[zone_applicant]
         torch.nn.init.xavier_uniform_(self.linear.weight)
         print('confidence:', self.zone_applicant.__name__)
+        self.trust_model = None
 
     def forward(self, input_vec, zones):
         nextout = self.linear(input_vec)

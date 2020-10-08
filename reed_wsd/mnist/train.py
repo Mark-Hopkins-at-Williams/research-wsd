@@ -7,39 +7,50 @@ https://towardsdatascience.com/handwritten-digit-mnist-pytorch-977b5338e627
 import torch
 from reed_wsd.util import cudaify
 from reed_wsd.train import Trainer, Decoder
+from reed_wsd.util import predict_simple, predict_abs
 from tqdm import tqdm
+import numpy as np
 
-class MnistSimpleDecoder(Decoder):
+class MnistDecoder(Decoder):
     def __init__(self, predictor):
         self.predictor = predictor
     
-    def __call__(self, net, data):
+    def __call__(self, net, data, trust_model):
         net.eval()
-        for images, labels in data:
+        for images, labels in tqdm(data, total=len(data)):
             with torch.no_grad():
                 outputs, conf = net(cudaify(images))
             preds = self.predictor(outputs)
-            print(outputs[:10], preds[:10])
-            for element in zip(preds, labels, conf, images):
-                p, g, c, im = element
-                yield {'evidence': im, 'pred': p.item(), 'gold': g.item(), 'confidence': c.item()}
+            if trust_model is not None:
+                trust_scores = trust_model.get_score(images.cpu().numpy(), 
+                                                         preds.cpu().numpy())
+            else:
+                trust_scores = [None] * images.shape[0]
+            for element in zip(preds, labels, conf, images, trust_scores):
+                p, g, c, im, t = element
+                yield {'evidence': im,
+                       'pred': p.item(),
+                       'gold': g.item(),
+                       'confidence': c.item(), 
+                       'trustscore': t}
 
 class MnistSimpleDecoder(MnistDecoder):
     def __init__(self):
         super().__init__(predict_simple)
 
+"""
 class MnistAbstainingDecoder(MnistDecoder):
     def __init__(self):
         super().__init__(predict_abs)
-
 """
+
 class MnistAbstainingDecoder(Decoder):
     def __init__(self):
         pass
     
-    def __call__(self, net, data):
+    def __call__(self, net, data, trust_model):
         net.eval()
-        for images, labels in data:
+        for images, labels in tqdm(data, total=len(data)):
             for i in range(len(labels)):
                 img = images[i].view(1, 784)
                 # Turn off gradients to speed up this part
@@ -49,8 +60,14 @@ class MnistAbstainingDecoder(Decoder):
                 c = conf.squeeze(dim=0).item()
                 pred = ps.argmax(dim=0).item()
                 gold = labels[i].item()
-                yield {'pred': pred, 'gold': gold, 'confidence': c}
-"""
+                if trust_model is not None:
+                    trust_scores = trust_model.get_score(img.unsqueeze(dim=0).cpu().numpy(), 
+                                                         pred.unsqueeze(dim=0).cpu().numpy())
+                    trust_score = trust_scores[0]
+                else:
+                    trust_score = None
+                yield {'evidence': img, 'pred': pred, 'gold': gold, 'confidence': c,
+                        'trustscore': trust_score}
 
 class PairwiseTrainer(Trainer):
          

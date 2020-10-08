@@ -5,31 +5,35 @@ from reed_wsd.util import cudaify
 
 def inv_abstain_prob(output_tensor):
     probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
-    return (1. - probs[:,-1])
+    return probs, (1. - probs[:,-1])
     
 def max_nonabstain_prob(output_tensor):
     probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
-    return probs[:,:-1].max(dim=1).values
+    return probs, probs[:,:-1].max(dim=1).values
 
 def max_prob(output_tensor):
     probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
-    return probs.max(dim=1).values
+    return probs, probs.max(dim=1).values
 
 def abstention(output_tensor):
-    return output_tensor[:, -1]
+    non_abs = output_tensor[:, :-1]
+    abstention_class = output_tensor[:, -1]
+    softmaxed_non_abs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
+    combined = torch.cat([softmaxed_non_abs, 
+                            abstention_class.view(
+                            softmaxed_non_abs.shape[0], -1)],
+                            dim=-1)
+    return combined, abstention_class
 
 def random_confidence(output_tensor):
-    return torch.randn(output_tensor.shape[0])
-
-def trust_score(output_tensor):
-    return [None] * output_tensor.shape[0]
+    probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
+    return probs, output_tensor, torch.randn(output_tensor.shape[0])
 
 confidence_extractor_lookup = {'inv_abs': inv_abstain_prob,
                                'max_non_abs': max_nonabstain_prob,
                                'abs': abstention,
                                'max_prob': max_prob,
-                               'random': random_confidence,
-                               'trustscore': trust_score}
+                               'random': random_confidence}
 
 class BasicFFN(nn.Module): 
  
@@ -49,6 +53,7 @@ class BasicFFN(nn.Module):
         self.softmax = cudaify(nn.Softmax(dim=1))
         self.relu1 = nn.ReLU()
         self.relu2 = nn.ReLU()
+        self.trust_model = None
 
     def initial_layers(self, input_vec):
         nextout = cudaify(input_vec)
@@ -62,9 +67,8 @@ class BasicFFN(nn.Module):
     
     def final_layers(self, input_vec):
         nextout = self.final(input_vec)
-        confidences = self.confidence_extractor(nextout)
-        nextout = self.softmax(nextout.clamp(min=-25, max=25))
-        return nextout, confidences
+        output, confidences = self.confidence_extractor(nextout)
+        return output, confidences
 
     def forward(self, input_vec):
         nextout = self.initial_layers(input_vec)

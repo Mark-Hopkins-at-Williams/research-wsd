@@ -68,7 +68,8 @@ class AbstainingLoss(SingleConfidenceLoss):
 
     def __call__(self, output, confidence, gold):
         label_ps = output[list(range(len(output))), gold]
-        losses = label_ps + (self.alpha * confidence)
+        abs_ps = output[:, -1]
+        losses = label_ps + (self.alpha * abs_ps)
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
 

@@ -21,6 +21,7 @@ import json
 import copy
 import sys
 from functools import reduce
+from trustscore import TrustScore
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 mnist_dir = join(file_dir, 'mnist')
@@ -75,7 +76,6 @@ def div_analytics_dict(d, divisor):
                                      else div_data_dict(d[key], divisor)
                                      for key in d.keys()}
 
-
 class TaskFactory:
     def __init__(self, config):
         #check dependency
@@ -83,7 +83,7 @@ class TaskFactory:
         if config['task'] in ['mnist', 'imdb']:
             assert(config['architecture'] != 'bem')
         if config['architecture'] == 'simple':
-            assert(config['confidence'] == 'max_prob')
+            assert(config['confidence'] in ['max_prob'])
             assert(config['criterion']['name'] == 'nll')
             assert(config['style'] == 'single')
         if config['architecture'] == 'abstaining':
@@ -128,6 +128,18 @@ class TaskFactory:
     def select_trainer(self):
         raise NotImplementedError("Cannot call on abstract class.")
 
+    def trust_model_factory(self, train_loader):
+        if self.config['trustscore']:
+            trust_model = TrustScore()
+            train_instances = list(train_loader)
+            train_evidence = torch.cat([evidence for evidence, label in train_instances]).numpy()
+            train_label = torch.cat([label for evidence, label in train_instances]).numpy()
+            trust_model.fit(train_evidence, train_label)
+            return trust_model
+        else:
+            return None
+
+
     def trainer_factory(self):
         train_loader = self.train_loader_factory()
         val_loader = self.val_loader_factory()
@@ -137,8 +149,9 @@ class TaskFactory:
         criterion = self.criterion_factory()
         n_epochs = self.config['n_epochs']
         trainer_class = self.select_trainer()
+        trust_model = self.trust_model_factory(train_loader)
         trainer = trainer_class(criterion, optimizer, train_loader, 
-                                val_loader, decoder, n_epochs)
+                                val_loader, decoder, n_epochs, trust_model)
     
         print('model:', type(model).__name__)
         print('criterion:', type(criterion).__name__)
@@ -280,7 +293,8 @@ class MnistTaskFactory(TaskFactory):
         return self._decoder_lookup[self.config['architecture']]()
 
     def model_factory(self, data):
-        return self._model_lookup[self.config['architecture']](confidence_extractor=self.config['confidence'])
+        model = self._model_lookup[self.config['architecture']](confidence_extractor=self.config['confidence'])
+        return model
 
     def optimizer_factory(self, model):
         return optim.SGD(model.parameters(), lr=0.003, momentum=0.9)
@@ -319,7 +333,15 @@ class IMDBTaskFactory(TaskFactory):
         return self._decoder_lookup[self.config['architecture']]()
 
     def model_factory(self, data):
-        return self._model_lookup[self.config['architecture']](confidence_extractor=self.config['confidence'])
+        model = self._model_lookup[self.config['architecture']](confidence_extractor=self.config['confidence'])
+        if self.config['confidence'] == 'trustscore':
+            trust_model = TrustScore()
+            train_instances = list(data)
+            train_evidence = torch.cat([evidence for evidence, label in train_instances]).numpy()
+            train_label = torch.cat([label for evidence, label in train_instances]).numpy()
+            trust_model.fit(train_evidence, train_label)
+            model.trust_model = trust_model
+        return model
         
     def optimizer_factory(self, model):
         return optim.Adam(model.parameters(), lr=0.0005)

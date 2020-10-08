@@ -28,24 +28,24 @@ def plot_pr(predictions):
     plt.show()
     
 def pr_curve(predictions):
-    want_truescore = (predictions[0]['confidence'] is None)
     y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
-    if want_truescore:
-        y_scores = [pred['trustscore'] for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
+    y_trustscores = [pred['trustscore'] for pred in predictions]
+    if y_trustscores[0] is None:
+        precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
     else:
-        y_scores = [pred['confidence'] for pred in predictions]
-    precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
+        precision, recall, _ = metrics.precision_recall_curve(y_true, y_trustscores)
     auc = metrics.auc(recall, precision)
     return precision, recall, auc
 
 def roc_curve(predictions):
-    want_truescore = (predictions[0]['confidence'] is None)
     y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
-    if want_truescore:
-        y_scores = [pred['trustscore'] for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
+    y_trustscores = [pred['trustscore'] for pred in predictions]
+    if y_trustscores[0] is None:
+        fpr, tpr, _ = metrics.roc_curve(y_true, y_scores, pos_label=1)
     else:
-        y_scores = [pred['confidence'] for pred in predictions]
-    fpr, tpr, _ = metrics.roc_curve(y_true, y_scores, pos_label=1)
+        fpr, tpr, _ = metrics.roc_curve(y_true, y_trustscores, pos_label=1)
     auc = metrics.auc(fpr, tpr)
     return fpr, tpr, auc
 

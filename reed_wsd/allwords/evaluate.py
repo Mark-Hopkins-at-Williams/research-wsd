@@ -38,7 +38,7 @@ class AllwordsEmbeddingDecoder:
     def __init__(self, predictor):
         self.predictor = predictor
 
-    def __call__(self, net, data):
+    def __call__(self, net, data, trust_model):
         """
         Runs a trained neural network classifier on validation data, and iterates
         through the top prediction for each datum.
@@ -52,9 +52,15 @@ class AllwordsEmbeddingDecoder:
             for inst_ids, targets, evidence, response, zones in data:
                 output, conf = net(cudaify(evidence), zones)
                 preds = self.predictor(output)
-                for element in zip(preds, response, conf):
-                    (pred, gold, c) = element
-                    pkg = {'evidence':evidence, 'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
+                if trust_model is not None:
+                    trust_scores = trust_model(evidence.cpu().numpy(), 
+                                               preds.cpu().numpy())
+                else:
+                    trust_scores = [None] * evidence.shape[0]
+                for element in zip(evidence, preds, response, conf, trust_scores):
+                    (e, pred, gold, c, t) = element
+                    pkg = {'evidence': e, 'pred': pred, 'gold': gold.item(), 'confidence': c.item(),
+                           'trustscore': t}
                     yield pkg
 
 class AllwordsSimpleEmbeddingDecoder(AllwordsEmbeddingDecoder):
