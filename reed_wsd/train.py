@@ -2,7 +2,7 @@ from reed_wsd.plot import pr_curve, roc_curve, plot_roc, plot_pr
 from reed_wsd.util import cudaify
 from collections import defaultdict
 import copy
-from trustscore import TrustScore
+from reed_wsd.trustscore import TrustScore
 import torch
 
 class Decoder:

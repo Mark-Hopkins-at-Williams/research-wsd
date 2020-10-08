@@ -21,7 +21,7 @@ import json
 import copy
 import sys
 from functools import reduce
-from trustscore import TrustScore
+from reed_wsd.trustscore import TrustScore
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 mnist_dir = join(file_dir, 'mnist')

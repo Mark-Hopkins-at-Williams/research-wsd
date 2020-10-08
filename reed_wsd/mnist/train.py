@@ -43,7 +43,6 @@ class MnistAbstainingDecoder(MnistDecoder):
     def __init__(self):
         super().__init__(predict_abs)
 """
-
 class MnistAbstainingDecoder(Decoder):
     def __init__(self):
         pass
