@@ -22,6 +22,7 @@ import copy
 import sys
 from functools import reduce
 from reed_wsd.trustscore import TrustScore
+import torch
 
 file_dir = os.path.dirname(os.path.realpath(__file__))
 mnist_dir = join(file_dir, 'mnist')

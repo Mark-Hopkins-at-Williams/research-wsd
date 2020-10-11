@@ -51,7 +51,7 @@ class AllwordsEmbeddingDecoder:
         with torch.no_grad():
             for inst_ids, targets, evidence, response, zones in data:
                 output, conf = net(cudaify(evidence), zones)
-                preds = self.predictor(output)
+                preds = output.argmax(dim=-1)
                 if trust_model is not None:
                     trust_scores = trust_model(evidence.cpu().numpy(), 
                                                preds.cpu().numpy())
@@ -65,9 +65,9 @@ class AllwordsEmbeddingDecoder:
 
 class AllwordsSimpleEmbeddingDecoder(AllwordsEmbeddingDecoder):
     def __init__(self):
-        super().__init__(predictor=predict_simple)
+        super().__init__(predictor=None)
 
 class AllwordsAbstainingEmbeddingDecoder(AllwordsEmbeddingDecoder):
     def __init__(self):
-        super().__init__(predictor=predict_abs)
+        super().__init__(predictor=None)
 

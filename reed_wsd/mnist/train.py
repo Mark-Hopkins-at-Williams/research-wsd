@@ -11,6 +11,7 @@ from reed_wsd.util import predict_simple, predict_abs
 from tqdm import tqdm
 import numpy as np
 
+"""
 class MnistDecoder(Decoder):
     def __init__(self, predictor):
         self.predictor = predictor
@@ -38,18 +39,18 @@ class MnistSimpleDecoder(MnistDecoder):
     def __init__(self):
         super().__init__(predict_simple)
 
-"""
 class MnistAbstainingDecoder(MnistDecoder):
     def __init__(self):
         super().__init__(predict_abs)
 """
-class MnistAbstainingDecoder(Decoder):
-    def __init__(self):
-        pass
+
+class MnistDecoder(Decoder):
+    def __init__(self, predictor):
+        self.predictor = predictor
     
     def __call__(self, net, data, trust_model):
         net.eval()
-        for images, labels in tqdm(data, total=len(data)):
+        for images, labels in data:
             for i in range(len(labels)):
                 img = images[i].view(1, 784)
                 # Turn off gradients to speed up this part
@@ -60,13 +61,19 @@ class MnistAbstainingDecoder(Decoder):
                 pred = ps.argmax(dim=0).item()
                 gold = labels[i].item()
                 if trust_model is not None:
-                    trust_scores = trust_model.get_score(img.unsqueeze(dim=0).cpu().numpy(), 
-                                                         pred.unsqueeze(dim=0).cpu().numpy())
-                    trust_score = trust_scores[0]
+                    trust_score = trust_model.get_score(img.cpu().numpy(), 
+                                                         torch.tensor(pred).numpy())
                 else:
                     trust_score = None
-                yield {'evidence': img, 'pred': pred, 'gold': gold, 'confidence': c,
-                        'trustscore': trust_score}
+                yield {'evidence': img, 'pred': pred, 'gold': gold, 'confidence': c, 'trustscore': trust_score}
+
+class MnistSimpleDecoder(MnistDecoder):
+    def __init__(self):
+        super().__init__(None)
+
+class MnistAbstainingDecoder(MnistDecoder):
+    def __init__(self):
+        super().__init__(None)
 
 class PairwiseTrainer(Trainer):
          
