@@ -81,6 +81,8 @@ class TaskFactory:
     def __init__(self, config):
         #check dependency
         assert(config['task'] in ['mnist', 'allwords', 'imdb'])
+        if config['trustscore'] == True:
+            assert(config['architecture'] == 'simple')
         if config['task'] in ['mnist', 'imdb']:
             assert(config['architecture'] != 'bem')
         if config['architecture'] == 'simple':
