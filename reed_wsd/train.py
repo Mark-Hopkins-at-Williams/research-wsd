@@ -62,23 +62,12 @@ class Trainer:
     
     def __call__(self, model):
         model = cudaify(model)
-        best_model = None
-        best_model_score = float('-inf')
         for e in range(self.n_epochs):
             self.criterion.notify(e)
             batch_loss = self._epoch_step(model)
             analytics = validate_and_analyze(model, self.val_loader, self.decoder, output_size=model.output_size)
             precision = analytics['precision']
-            #print(data_dict)
-            if precision > best_model_score:
-                print("Updating best model.")
-                best_model = copy.deepcopy(model)
-                best_model_score = precision
-            print("Epoch {} - Training loss: {}".format(e,
-                                                        batch_loss))
             print(analytics)
-        final_analytics = validate_and_analyze(best_model, self.val_loader, self.decoder, output_size=model.output_size)
-        print("Best Model analytics:")
-        print(final_analytics)
-        return best_model, final_analytics
+            print("training loss: " + batch_loss)
+        return best_model, analytics
 

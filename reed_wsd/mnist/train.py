@@ -31,7 +31,7 @@ class MnistAbstainingDecoder(Decoder):
         net.eval()
         for images, labels in data:
             for i in range(len(labels)):
-                img = images[i].view(1, 784)
+                img = images[i].view(1, -1)
                 # Turn off gradients to speed up this part
                 with torch.no_grad():
                     ps, conf = net(cudaify(img))                

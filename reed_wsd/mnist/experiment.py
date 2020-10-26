@@ -77,5 +77,6 @@ def confidence_twin():
     return best_model
 
 if __name__ == "__main__":
-    confidence_twin()
+    abstaining()
+    
     
