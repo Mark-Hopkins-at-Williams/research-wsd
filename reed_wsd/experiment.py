@@ -337,13 +337,6 @@ class IMDBTaskFactory(TaskFactory):
 
     def model_factory(self, data):
         model = self._model_lookup[self.config['architecture']](confidence_extractor=self.config['confidence'])
-        if self.config['confidence'] == 'trustscore':
-            trust_model = TrustScore()
-            train_instances = list(data)
-            train_evidence = torch.cat([evidence for evidence, label in train_instances]).numpy()
-            train_label = torch.cat([label for evidence, label in train_instances]).numpy()
-            trust_model.fit(train_evidence, train_label)
-            model.trust_model = trust_model
         return model
         
     def optimizer_factory(self, model):
@@ -394,7 +387,7 @@ class ExperimentSequence:
         self.reps = reps
     
     @classmethod
-    def from_json(cls, configs_path, reps=10):
+    def from_json(cls, configs_path, reps=1):
         with open(configs_path, 'r') as f:
             configs = json.load(f)
         experiments = []
@@ -405,8 +398,10 @@ class ExperimentSequence:
     def run_and_save(self, out_path):
         results = []
         for experiment in self.experiments:
+            print(experiment.config)
             experiment.run()
-            results.append(experiment.return_analytics())
+            results.append((experiment.config,
+                            experiment.return_analytics()))
             with open(out_path, 'w') as f:
                 json.dump(results, f)
 
