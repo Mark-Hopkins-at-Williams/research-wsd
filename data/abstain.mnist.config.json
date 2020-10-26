@@ -5,5 +5,6 @@
   "confuse": "all", 
   "style": "single", 
   "dev_corpus": null, 
+  "trustscore": true,
   "bsz": 64, 
   "n_epochs": 30}]
