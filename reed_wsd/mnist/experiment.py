@@ -59,7 +59,7 @@ def abstaining():
     decoder = MnistAbstainingDecoder()
     n_epochs = 30
     trainer = SingleTrainer(criterion, optimizer, trainloader, 
-                            valloader, decoder, n_epochs)
+                            valloader, decoder, n_epochs, None)
     best_model = trainer(model)
     return best_model
 
@@ -78,4 +78,4 @@ def confidence_twin():
 
 if __name__ == "__main__":
     abstaining()
-    
+   
