@@ -1,0 +1,1 @@
+[[{"task": "mnist", "architecture": "abstaining", "confidence": "max_non_abs", "criterion": {"name": "conf1", "alpha": 0.5, "warmup_epochs": 5}, "confuse": "all", "style": "single", "dev_corpus": null, "bsz": 64, "n_epochs": 30}, {"avg_err_conf": 0.5784322714502113, "avg_crr_conf": 0.8186497268076238, "auroc": 0.8073313019433883, "aupr": 0.9322905922549118, "precision": 0.7329}]]

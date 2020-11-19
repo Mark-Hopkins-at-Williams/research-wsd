@@ -1,6 +1,8 @@
 import os
 import matplotlib.pyplot as plt
 from sklearn import metrics 
+from reed_wsd.util import ABS
+import numpy as np
 
 LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -28,18 +30,52 @@ def plot_pr(predictions):
     plt.show()
     
 def pr_curve(predictions):
-    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
-    y_scores = [pred['confidence'] for pred in predictions]
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions
+              if pred['pred'] != ABS]
+    y_scores = [pred['confidence'] for pred in predictions
+                if pred['pred'] != ABS]
+    if len(y_true) == 0 or len(y_scores) == 0:
+        return None, None, None
     precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
     auc = metrics.auc(recall, precision)
     return precision, recall, auc
 
 def roc_curve(predictions):
-    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
-    y_scores = [pred['confidence'] for pred in predictions]
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions
+              if pred['pred'] != ABS]
+    y_scores = [pred['confidence'] for pred in predictions
+                if pred['pred'] != ABS]
+    if len(y_true) == 0 or len(y_scores) == 0:
+        return None, None, None
     fpr, tpr, _ = metrics.roc_curve(y_true, y_scores, pos_label=1)
     auc = metrics.auc(fpr, tpr)
     return fpr, tpr, auc
+
+def risk_coverage_curve(predictions):
+    # this functions plots unconditional error rate against coverage
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions
+              if pred['pred'] != ABS]
+    y_scores = [pred['confidence'] for pred in predictions
+                if pred['pred'] != ABS]
+    if len(y_true) == 0 or len(y_scores) == 0:
+        return None, None, None
+    precision, _, thresholds = metrics.precision_recall_curve(y_true, y_scores)
+    y_scores = sorted(y_scores)
+    coverage = []
+    N = len(y_scores)
+    j = 0
+    for i, t in enumerate(thresholds):
+        while j < len(y_scores) and y_scores[j] < t:
+            j += 1
+        coverage.append((N - j) / N)
+    coverage += [0.]
+    conditional_err = 1 - precision
+    unconditional_err = conditional_err * coverage
+    coverage = np.array(coverage)
+    capacity = 1 - metrics.auc(coverage, unconditional_err) 
+    return coverage, unconditional_err, capacity
+
+
 
 class PYCurve:
     def __init__(self, scatters):

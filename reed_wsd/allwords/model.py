@@ -6,43 +6,38 @@ from transformers import BertModel
 from torch.nn.utils.rnn import pad_sequence
 
 def zero_out_probs(input_vec, zones):
-    new_vec = torch.zeros(input_vec.shape, device=input_vec.device)
+    new_vec = torch.Tensor.new_fill(input_vec.shape, torch.tensor(float('-inf')), device=input_vec.device)
     for row in range(len(zones)):
         start, stop = zones[row]
         new_vec[row, start: stop] = input_vec[row, start: stop]
     return new_vec
 
 def max_prob(input_vec, zones):
-    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
-    new_vec = zero_out_probs(input_vec, zones)
-    normalized = F.normalize(new_vec, dim=-1, p=1)
-    confidence = normalized.max(dim=1).values 
-    return normalized, confidence
+    zoned_output = zero_out_probs(input_vec, zones)
+    probs = F.softmax(zoned_output.clamp(min=-25, max=25), dim=1)
+    confidence = probs.max(dim=1).values
+    return zone_output, confidence
 
 def max_non_abs(input_vec, zones):
-    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
-    new_vec = zero_out_probs(input_vec, zones)
-    new_vec[:, -1] = input_vec[:, -1]
-    normalized = F.normalize(new_vec, dim=-1, p=1)
-    confidence = normalized.max(dim=1).values 
-    return normalized, confidence
+    zoned_output = zero_out_probs(input_vec, zones)
+    zoned_output[:, -1] = input_vec[:, -1]
+    probs = F.softmax(zoned_output.clamp(min=-25, max=25), dim=1)
+    confidence = probs[:, :-1].max(dim=1).values
+    return zoned_output, confidence
 
 def inv_abs(input_vec, zones):
-    input_vec = F.softmax(input_vec.clamp(min=-25, max=25), dim=1)
-    new_vec = zero_out_probs(input_vec, zones)
-    new_vec[:, -1] = input_vec[:, -1]
-    normalized = F.normalize(new_vec, dim=-1, p=1)
-    confidence = 1 - normalized[:, -1]
-    return normalized, confidence
+    zoned_output = zero_out_probs(input_vec, zones)
+    zoned_output[:, -1] = input_vec[:, -1]
+    probs = F.softmax(zoned_output.clamp(min=-25, max=25), dim=1)
+    confidence = 1. - probs[:, -1]
+    return zoned_output, confidence
 
 def abstention(input_vec, zones):
-    new_vec = input_vec.clone()
-    new_vec[:, :-1] = F.softmax(input_vec[:, :-1].clamp(min=-25, max=25), dim=1)
-    new_vec = zero_out_probs(new_vec, zones)
-    normalized = F.normalize(new_vec, dim=-1, p=1)
-    normalized[:, -1] = input_vec[:, -1]
-    confidence = normalized[:, -1]
-    return normalized, confidence
+    abs_features = input_vec[:, -1]
+    zoned_output = zero_out_probs(input_vec, zones)
+    zoned_output[:, -1] = abs_features
+    confidence = abs_features
+    return zoned_output, confidence
 
 apply_zones_lookup = {'max_prob': max_prob,
                       'max_non_abs': max_non_abs,

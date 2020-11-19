@@ -59,7 +59,6 @@ class BasicFFN(nn.Module):
     def final_layers(self, input_vec):
         nextout = self.final(input_vec)
         confidences = self.confidence_extractor(nextout)
-        nextout = self.softmax(nextout.clamp(min=-25, max=25))
         return nextout, confidences
 
     def forward(self, input_vec):

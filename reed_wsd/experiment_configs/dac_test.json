@@ -1,0 +1,13 @@
+[{"task": "imdb",
+  "architecture": "abstaining",
+  "confidence": "max_non_abs",
+  "criterion": {"name": "dac",
+	  	"alpha": 0.5,
+		"warmup_epochs": 20,
+  		"alpha_init_factor": 64},
+  "confuse": "all",
+  "style": "single",
+  "dev_corpus": null,
+  "bsz": 64,
+  "n_epochs": 200,
+  "trustscore": false}]

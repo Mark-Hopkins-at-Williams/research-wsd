@@ -1,7 +1,7 @@
 import torch
 import os
 import torch.nn.functional as F
-from reed_wsd.util import cudaify, predict_abs, predict_simple
+from reed_wsd.util import cudaify, predict_abs, predict_simple, ABS
 
 
 LARGE_NEGATIVE = 0
@@ -34,7 +34,7 @@ class AllwordsBEMDecoder:
                     (max_score, (pred, g)) = element
                     yield({'pred': pred.item(), 'gold': g, 'confidence': max_score.item()})
 
-class AllwordsEmbeddingDecoder:
+class AllwordsAbstainingEmbeddingDecoder:
     def __init__(self, predictor):
         self.predictor = predictor
 
@@ -51,17 +51,34 @@ class AllwordsEmbeddingDecoder:
         with torch.no_grad():
             for inst_ids, targets, evidence, response, zones in data:
                 output, conf = net(cudaify(evidence), zones)
-                preds = self.predictor(output)
+                abs_i = len(output.shape[1]) - 1 # last class is abstention class
+                preds = output.argmax(dim=-1)
+                preds[preds == abs_i] = -1
                 for element in zip(preds, response, conf):
                     (pred, gold, c) = element
                     pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
                     yield pkg
 
-class AllwordsSimpleEmbeddingDecoder(AllwordsEmbeddingDecoder):
-    def __init__(self):
-        super().__init__(predictor=predict_simple)
+class AllwordsSimpleEmbeddingDecoder:
+    def __init__(self, predictor):
+        self.predictor = predictor
 
-class AllwordsAbstainingEmbeddingDecoder(AllwordsEmbeddingDecoder):
-    def __init__(self):
-        super().__init__(predictor=predict_abs)
+    def __call__(self, net, data):
+        """
+        Runs a trained neural network classifier on validation data, and iterates
+        through the top prediction for each datum.
+        
+        TODO: write some unit tests for this function
+        
+        """
+        net.eval()
+        net = cudaify(net)
+        with torch.no_grad():
+            for inst_ids, targets, evidence, response, zones in data:
+                output, conf = net(cudaify(evidence), zones)
+                preds = output.argmax(dim=-1)
+                for element in zip(preds, response, conf):
+                    (pred, gold, c) = element
+                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
+                    yield pkg
 
