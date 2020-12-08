@@ -54,22 +54,22 @@ class Trainer:
         n_published = 0
         n_total = len(results)
         for result in results:
+            if result['abstained']:
+                n_published += 1
             prediction = result['pred']
             gold = result['gold']
             confidence = result['confidence']
-            if prediction != ABS:
-                n_published += 1
-                if prediction == gold:
-                    avg_crr_conf += confidence
-                    n_correct += 1
-                else:
-                    #print("mistook {} for {}".format(gold, prediction))
-                    avg_err_conf += confidence
-                    n_error += 1            
+            if prediction == gold:
+                avg_crr_conf += confidence
+                n_correct += 1
+            else:
+                #print("mistook {} for {}".format(gold, prediction))
+                avg_err_conf += confidence
+                n_error += 1            
         return {'avg_err_conf': avg_err_conf / n_error if n_error > 0 else 0,
                 'avg_crr_conf': avg_crr_conf / n_correct if n_correct > 0 else 0,
                 'auroc': auroc,
                 'aupr': aupr,
                 'capacity': capacity,
-                'precision': n_correct / n_published if n_published > 0 else 0,
+                'precision': n_correct / n_total if n_published > 0 else 0,
                 'coverage': n_published / n_total if n_total > 0 else 0}

@@ -30,10 +30,8 @@ def plot_pr(predictions):
     plt.show()
     
 def pr_curve(predictions):
-    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions
-              if pred['pred'] != ABS]
-    y_scores = [pred['confidence'] for pred in predictions
-                if pred['pred'] != ABS]
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
     if len(y_true) == 0 or len(y_scores) == 0:
         return None, None, None
     precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
@@ -41,10 +39,8 @@ def pr_curve(predictions):
     return precision, recall, auc
 
 def roc_curve(predictions):
-    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions
-              if pred['pred'] != ABS]
-    y_scores = [pred['confidence'] for pred in predictions
-                if pred['pred'] != ABS]
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
     if len(y_true) == 0 or len(y_scores) == 0:
         return None, None, None
     fpr, tpr, _ = metrics.roc_curve(y_true, y_scores, pos_label=1)
@@ -53,10 +49,8 @@ def roc_curve(predictions):
 
 def risk_coverage_curve(predictions):
     # this functions plots unconditional error rate against coverage
-    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions
-              if pred['pred'] != ABS]
-    y_scores = [pred['confidence'] for pred in predictions
-                if pred['pred'] != ABS]
+    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
+    y_scores = [pred['confidence'] for pred in predictions]
     if len(y_true) == 0 or len(y_scores) == 0:
         return None, None, None
     precision, _, thresholds = metrics.precision_recall_curve(y_true, y_scores)

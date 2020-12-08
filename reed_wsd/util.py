@@ -30,3 +30,8 @@ def predict_simple(output):
 
 def predict_abs(output):
     return output[:, :-1].argmax(dim=1)
+
+def entropy(tensor):
+    surprise = -torch.log(surprise.clamp(min=10e-15))
+    entropy = (surprise * tensor).sum(-1)
+    return entropy

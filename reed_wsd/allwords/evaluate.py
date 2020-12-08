@@ -38,7 +38,7 @@ class AllwordsAbstainingEmbeddingDecoder:
     def __init__(self, predictor):
         self.predictor = predictor
 
-    def __call__(self, net, data):
+    def __call__(self, net, data, trust_model=None):
         """
         Runs a trained neural network classifier on validation data, and iterates
         through the top prediction for each datum.
@@ -51,19 +51,21 @@ class AllwordsAbstainingEmbeddingDecoder:
         with torch.no_grad():
             for inst_ids, targets, evidence, response, zones in data:
                 output, conf = net(cudaify(evidence), zones)
+                ps = F.softmax(output.clamp(min=-25, max=25), dim=-1)
                 abs_i = len(output.shape[1]) - 1 # last class is abstention class
-                preds = output.argmax(dim=-1)
-                preds[preds == abs_i] = -1
-                for element in zip(preds, response, conf):
-                    (pred, gold, c) = element
-                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
+                preds = ps[:, :-1].argmax(dim=-1)
+                max_weight_class = ps.argmax(dim=-1)
+                is_abs = (max_weight_class == abs_i)
+                for element in zip(preds, response, conf, is_abs):
+                    (pred, gold, c, abstained) = element
+                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item(), 'abstained': abstained.item()}
                     yield pkg
 
 class AllwordsSimpleEmbeddingDecoder:
     def __init__(self, predictor):
         self.predictor = predictor
 
-    def __call__(self, net, data):
+    def __call__(self, net, data, trust_model):
         """
         Runs a trained neural network classifier on validation data, and iterates
         through the top prediction for each datum.
@@ -76,9 +78,16 @@ class AllwordsSimpleEmbeddingDecoder:
         with torch.no_grad():
             for inst_ids, targets, evidence, response, zones in data:
                 output, conf = net(cudaify(evidence), zones)
-                preds = output.argmax(dim=-1)
-                for element in zip(preds, response, conf):
+                ps = F.softmax(output.clamp(min=-25, max=25), dim=-1)
+                preds = ps.argmax(dim=-1)
+		if trust_model is not None:
+		    trust_score = trust_model.get_score(evidence.cpu().numpy(),
+							preds.cpu().numpy())
+                    trust_score = torch.from_numpy(trust_score)
+		else:
+		    trust_score = [None] * targets.shape[0]
+                for element in zip(preds, response, conf, trust_score):
                     (pred, gold, c) = element
-                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item()}
+                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item(), 'abstained': False, 'trustscore': t.item()}
                     yield pkg
 

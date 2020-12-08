@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from reed_wsd.util import cudaify
+from reed_wsd.util import cudaify, entropy
 from transformers import BertModel
 from torch.nn.utils.rnn import pad_sequence
 
@@ -38,6 +38,21 @@ def abstention(input_vec, zones):
     zoned_output[:, -1] = abs_features
     confidence = abs_features
     return zoned_output, confidence
+
+def entropy_confidence(input_vec, zones):
+    zoned_output = zero_out_probs(input_vec, zones)
+    zoned_output[:, -1] = input_vec[:, -1]
+    probs = F.softmax(zoned_output.clamp(min=-25, max=25), dim=1)
+    s = entropy(probs[:, :-1])
+    return -s
+
+def entropy_confidence(input_vec, zones):
+    zoned_output = zero_out_probs(input_vec, zones)
+    zoned_output[:, -1] = input_vec[:, -1]
+    probs = F.softmax(zoned_output.clamp(min=-25, max=25), dim=1)
+    norm = torch.linalg.norm(probs[:, :-1], ord=2)
+    return -norm
+    
 
 apply_zones_lookup = {'max_prob': max_prob,
                       'max_non_abs': max_non_abs,
