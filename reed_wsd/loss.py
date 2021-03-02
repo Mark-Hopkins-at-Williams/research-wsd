@@ -15,7 +15,7 @@ class ConfidenceLoss(torch.nn.Module):
 
 def confidence_weighted_loss(confidence_x, confidence_y, nll_x, nll_y):
     confidence_pair = torch.stack([confidence_x, confidence_y], dim=-1)
-    softmaxed_pair = F.softmax(confidence_pair, dim=-1)
+    softmaxed_pair = F.softmax(confidence_pair, dim=-1).detach()
     nll_pair = torch.stack([nll_x, nll_y], dim=-1)
     losses = torch.sum(nll_pair * softmaxed_pair, dim=-1)
     return losses
@@ -26,6 +26,7 @@ class SingleConfidenceLoss(ConfidenceLoss):
 
     def __call__(self, output, confidence, gold):
         raise NotImplementedError("This feature has to be implemented in the child class.")
+
 
 class PairwiseConfidenceLoss(ConfidenceLoss):
 
@@ -64,6 +65,49 @@ class NLLLoss(SingleConfidenceLoss):
     def __str__(self):
         return "NLLLoss"
 
+class WeightedNLLLoss(SingleConfidenceLoss):
+    def __init__(self, warmup_epochs, horizon):
+        super().__init__()
+        self.warmup = True
+        self.warmup_epochs = warmup_epochs
+        self.horizon = horizon
+
+    def notify(self, epoch):
+        if epoch >= self.warmup_epochs:
+            self.warmup = False
+
+    def __call__(self, output, confidence, gold):
+        if not self.warmup:
+            if output.shape[0] % self.horizon != 0:
+                output = output[:output.shape[0] // self.horizon * self.horizon] # get rid of the remainder
+
+            #shuffle the output & the gold labels
+            rand_idx = torch.randperm(output.size()[0])
+            output = output[rand_idx]
+            gold = gold[rand_idx]
+
+            # calculate the cross-entropy loss
+            losses = F.cross_entropy(output, gold, reduction='none')
+            label_ps = torch.exp(-losses)
+
+            # group losses and label_ps into horizon groups
+            losses = losses.reshape(-1, self.horizon)
+            label_ps = label_ps.reshape(-1, self.horizon)
+            
+            #compute the relative weight
+            weights = F.softmax(label_ps, dim=-1).detach() # weights should not be taken gradient over
+
+            # weight the loss
+            weighted_loss = weights * losses
+            
+            # ungroup the weighted loss by horizon and return the mean
+            weighted_loss = weighted_loss.flatten()
+            return weighted_loss.mean()
+            
+        else:
+            return F.cross_entropy(output, gold, reduction='mean')
+        
+
 class AbstainingLoss(SingleConfidenceLoss):
     def __init__(self, alpha=0.5, warmup_epochs=3):
         super().__init__()
@@ -83,6 +127,21 @@ class AbstainingLoss(SingleConfidenceLoss):
         losses = label_ps + (self.alpha * abstains)
         losses = torch.clamp(losses, min = 0.000000001)
         return -torch.mean(torch.log(losses))
+
+class ConsciousLoss(ConfidenceLoss):
+
+    def __call__(self, output, confidence, gold):
+        output = F.softmax(output.clamp(min=-25, max=25), dim=1)
+        preds = output.argmax(dim=-1)
+        if_correct = (preds == gold).float().detach()
+        gold_ps = output[list(range(len(output))), gold]
+        nll_losses = -torch.log(torch.clamp(gold_ps, min = 0.000000001))
+        confidence_losses = - torch.log(torch.clamp( (confidence ** if_correct) * 
+                                                     ((1 - confidence) ** (1-if_correct)), 
+                                                     min=0.000000001))
+        return torch.mean(nll_losses + confidence_losses)
+        
+
 
 class ConfidenceLoss4(SingleConfidenceLoss):
     def __init__(self, alpha=0.5, warmup_epochs=5):
@@ -109,62 +168,6 @@ class ConfidenceLoss4(SingleConfidenceLoss):
         return "ConfidenceLoss4_p0_" + str(self.p0)
 
 
-"""
-class DACLoss(SingleConfidenceLoss):
-    
-    def __init__(self, target_alpha, warmup_epochs,
-                       total_epochs, alpha_init_factor, mu=0.05):
-        self.target_alpha = target_alpha
-        self.warmup_epochs = warmup_epochs
-        self.total_epochs = total_epochs
-        self.alpha_init_factor = alpha_init_factor
-        self.alpha = None
-        self.mu = mu
-        self.nll = NLLLoss()
-        self.avg_beta = 0.
-
-    def notify(self, epoch):
-        self.epoch = epoch
-
-    def _beta(self, output, gold):
-        abs_prob = torch.clamp(output[:, -1], max = 1. - epsilon)
-        label_ps = output[list(range(len(output))), gold]
-        true_class_prob = 1 - abs_prob
-        normalized_true_prob = label_ps / true_class_prob
-        normalized_true_prob = torch.clamp(normalized_true_prob, min = epsilon)
-        thresholds = true_class_prob * (- torch.log(normalized_true_prob))
-        return thresholds.mean()
-
-    def update_alpha(self, output, gold):
-        if self.epoch < self.warmup_epochs:
-            beta = self._beta(output, gold).detach()
-            if self.epoch == 0:
-                self.avg_beta = beta
-            else:
-                self.avg_beta = (1 - self.mu) * self.avg_beta + self.mu * beta
-        if self.epoch == self.warmup_epochs:
-            self.alpha = self.avg_beta / self.alpha_init_factor
-            self.delta = ((self.target_alpha - self.alpha) /
-                         (self.total_epochs - self.epoch))
-        if self.epoch > self.warmup_epochs:
-            self.alpha += self.delta
-
-    def __call__(self, output, confidence, gold):
-        self.update_alpha(output, gold)
-        if self.epoch < self.warmup_epochs:
-            return self.nll(output, confidence, gold)
-        else:
-            assert(self.alpha is not None)
-            true_class_loss = self._beta(output, gold)
-            abs_prob = torch.clamp(output[:, -1], max = 1. - epsilon)
-            true_probs_sum = 1 - abs_prob
-            true_probs_sum = torch.clamp(true_probs_sum, min = epsilon)
-            abs_loss = self.alpha * torch.log(1 / true_probs_sum)
-            abs_loss = abs_loss.mean()
-            loss = true_class_loss + abs_loss
-            return loss
-
-"""
 
 
 class DACLoss(SingleConfidenceLoss):

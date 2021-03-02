@@ -3,9 +3,36 @@ import matplotlib.pyplot as plt
 from sklearn import metrics 
 from reed_wsd.util import ABS
 import numpy as np
+import seaborn as sns
+from scipy.stats import gaussian_kde
 
 LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
+
+def plot_coverage(coverages_abs, coverages_dac, save_path=None):
+    epochs_abs = list(range(len(coverages_abs)))
+    epochs_dac = list(range(len(coverages_dac)))
+
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:red'
+    ax1.set_xlabel('epoch')
+    ax1.set_ylabel('coverage')
+    p1, = ax1.plot(range(len(coverages_dac)), coverages_dac, color=color, label="Thulasidasan")
+    ax1.tick_params(axis='x', labelcolor=color)
+
+    ax2 = ax1.twiny()  # instantiate a second axes that shares the same y-axis
+
+    color = 'tab:blue'
+    ax1.set_xlabel('epoch')
+    p2, = ax2.plot(range(len(coverages_abs)), coverages_abs, color=color, label="abstaining")
+    ax2.tick_params(axis='x', labelcolor=color)
+
+    plt.legend(handles=[p1, p2], bbox_to_anchor=(1.05, 1), loc='upper left')
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    if save_path is not None:
+        plt.savefig(save_path)
+    
 
 def plot_roc(predictions):
     fpr, tpr, auc = roc_curve(predictions)
@@ -28,10 +55,95 @@ def plot_pr(predictions):
     plt.ylabel('Precision')
     plt.xlabel('Recall')
     plt.show()
+
+
+class ConfidenceCurve:
+
+    def __init__(self, predictions, groups_fn, groups_label, bandwidth=0.1):
+        """
+        predictions: a list of predictions made on a validation/test set
+        groups_fn: a list of boolean functions that take an instance and return True
+                   if the instance belongs to a desired group and return False if don't
+        groups_label: a list of labels describing the groups
+        bandwidth: bandwidth for Gaussian Kernel Density Estimation (KDE)
+
+        """
+        self._predictions = predictions
+        self._groups_fn = groups_fn
+        self._groups_label = groups_label
+        self._bandwidth = bandwidth
+
+    def plot_and_save(save_path):
+        print("ploting and saving Confidence Distribution to " + str(save_path))
+        predictions_by_class_group = []
+        for fn in self._groups_fn:
+            points = sorted([pred['confidence'] for pred in predictions
+                     if fn(pred)])
+            predictions_by_class_group.append(points)
+
+        for group, i in enumerate(predictions_by_class_group):
+            density = gaussian_kde(group)
+            density.covariance_factor = lambda : self._bandwidth
+            density._compute_covariance()
+            plt.plot(corrects, density(group), label=str(self._groups_label[i]))
+
+        plt.title('Confidence Distribution of Certain Classes')
+        
+        plt.legend()
+        plt.xlabel('Confidence')
+        plt.savefig(save_path)
+        plt.clf()
+        plt.show()
+
     
-def pr_curve(predictions):
-    y_true = [int(pred['pred'] == pred['gold']) for pred in predictions]
-    y_scores = [pred['confidence'] for pred in predictions]
+
+def plot_and_save_confidence_distr(predictions, save_path, band_width=0.1):
+    corrects = sorted([pred['confidence'] for pred in predictions
+                 if pred['pred'] == pred['gold']])
+    incorrects = sorted([pred['confidence'] for pred in predictions
+                 if pred['pred'] != pred['gold']])
+    plt.title('Confidence Distribution')
+    # density of corrects
+    density = gaussian_kde(corrects)
+    density.covariance_factor = lambda : band_width
+    density._compute_covariance()
+    plt.plot(corrects, density(corrects), label="correct")
+    # density of incorrects
+    density = gaussian_kde(incorrects)
+    density.covariance_factor = lambda : band_width
+    density._compute_covariance()
+    plt.plot(incorrects, density(incorrects), label="incorrect")
+    plt.legend()
+    plt.xlabel('Confidence')
+    plt.savefig(save_path)
+    plt.clf()
+    plt.show()
+    
+def plot_confidence_distr_by_class(predictions, class_groups, save_path):
+    predictions_by_class_group = []
+    for group in class_groups:
+        points = sorted([pred['confidence'] for pred in predictions
+                 if pred['gold'] in group])
+        predictions_by_class_group.append(points)
+
+    for group, i in enumerate(predictions_by_class_group):
+        density = gaussian_kde(group)
+        density.covariance_factor = lambda : 0.1
+        density._compute_covariance()
+        plt.plot(corrects, density(group), label=str(class_groups[i]))
+
+    plt.title('Confidence Distribution of Certain Classes')
+    
+    plt.legend()
+    plt.xlabel('Confidence')
+    plt.savefig(save_path)
+    plt.clf()
+    plt.show()
+
+def pr_curve(predictions, succ_as_positive=True):
+    y_true = [abs(int(not succ_as_positive) - 
+                  int(pred['pred'] == pred['gold'])) for pred in predictions]
+    y_scores = [((-1) ** int(not succ_as_positive)) * pred['confidence'] for pred in predictions]
     if len(y_true) == 0 or len(y_scores) == 0:
         return None, None, None
     precision, recall, _ = metrics.precision_recall_curve(y_true, y_scores)
@@ -141,3 +253,13 @@ def plot_curves(*pycs):
     plt.xlabel('recall')
     plt.ylabel('precision')
     plt.show()
+
+
+if __name__ == "__main__":
+    import json
+    with open("mnist_coverages.json", "r") as f:
+        coverages_abs = json.load(f)
+    with open("mnist_dac_coverages.json", "r") as f:
+        coverages_dac = json.load(f)
+    plot_coverage(coverages_abs, coverages_dac, "mnist_coverage.png")
+

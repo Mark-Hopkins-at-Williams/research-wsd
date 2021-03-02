@@ -45,7 +45,7 @@ class DiskBasedVectorManager(VectorManager):
             output = {'sentid': sent_id,
                       'tokens': toks,
                       'vecs': vectors}
-            writer.write(json.dumps(output))
+            json.dump(output, writer)
 
 def normalize(word):
     words = word.split("_")

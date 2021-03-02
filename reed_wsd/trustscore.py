@@ -77,19 +77,25 @@ class TrustScore:
     y: corresponding labels.
     """
     self.n_labels = np.max(y) + 1
+    labels = sorted(list(set(y)))
     self.kdtrees = [None] * self.n_labels
     if self.filtering == "uncertainty":
       X_filtered, y_filtered = self.filter_by_uncertainty(X, y)
-    for label in xrange(self.n_labels):
+    self.labels = []
+    for label in labels:
       if self.filtering == "none":
         X_to_use = X[np.where(y == label)[0]]
-        self.kdtrees[label] = KDTree(X_to_use)
+        if X_to_use.shape[0] >= 2:
+            self.kdtrees[label] = KDTree(X_to_use)
+            self.labels.append(label)
       elif self.filtering == "density":
         X_to_use = self.filter_by_density(X[np.where(y == label)[0]])
         self.kdtrees[label] = KDTree(X_to_use)
+        self.labels.append(label)
       elif self.filtering == "uncertainty":
         X_to_use = X_filtered[np.where(y_filtered == label)[0]]
         self.kdtrees[label] = KDTree(X_to_use)
+        self.labels.append(label)
 
       if len(X_to_use) == 0:
         print(
@@ -109,8 +115,8 @@ class TrustScore:
     The trust score, which is ratio of distance to closest class that was not
     the predicted class to the distance to the predicted class.
     """
-    d = np.tile(None, (X.shape[0], self.n_labels))
-    for label_idx in xrange(self.n_labels):
+    d = np.tile(float('inf'), (X.shape[0], self.n_labels))
+    for label_idx in self.labels:
       d[:, label_idx] = self.kdtrees[label_idx].query(X, k=2)[0][:, -1]
 
     sorted_d = np.sort(d, axis=1)

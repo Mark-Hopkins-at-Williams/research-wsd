@@ -2,7 +2,8 @@ import torch
 import os
 import torch.nn.functional as F
 from reed_wsd.util import cudaify, predict_abs, predict_simple, ABS
-
+import numpy as np
+from tqdm import tqdm
 
 LARGE_NEGATIVE = 0
 file_dir = os.path.dirname(os.path.realpath(__file__))
@@ -35,8 +36,6 @@ class AllwordsBEMDecoder:
                     yield({'pred': pred.item(), 'gold': g, 'confidence': max_score.item()})
 
 class AllwordsAbstainingEmbeddingDecoder:
-    def __init__(self, predictor):
-        self.predictor = predictor
 
     def __call__(self, net, data, trust_model=None):
         """
@@ -49,21 +48,19 @@ class AllwordsAbstainingEmbeddingDecoder:
         net.eval()
         net = cudaify(net)
         with torch.no_grad():
-            for inst_ids, targets, evidence, response, zones in data:
+            for inst_ids, targets, evidence, response, zones in tqdm(data, total=len(data)):
                 output, conf = net(cudaify(evidence), zones)
                 ps = F.softmax(output.clamp(min=-25, max=25), dim=-1)
-                abs_i = len(output.shape[1]) - 1 # last class is abstention class
+                abs_i = output.shape[1] - 1 # last class is abstention class
                 preds = ps[:, :-1].argmax(dim=-1)
                 max_weight_class = ps.argmax(dim=-1)
                 is_abs = (max_weight_class == abs_i)
                 for element in zip(preds, response, conf, is_abs):
                     (pred, gold, c, abstained) = element
-                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item(), 'abstained': abstained.item()}
+                    pkg = {'pred': pred.item(), 'gold': gold.item(), 'confidence': c.item(), 'abstained': abstained.item()}
                     yield pkg
 
 class AllwordsSimpleEmbeddingDecoder:
-    def __init__(self, predictor):
-        self.predictor = predictor
 
     def __call__(self, net, data, trust_model):
         """
@@ -76,18 +73,28 @@ class AllwordsSimpleEmbeddingDecoder:
         net.eval()
         net = cudaify(net)
         with torch.no_grad():
-            for inst_ids, targets, evidence, response, zones in data:
+            for inst_ids, targets, evidence, response, zones in tqdm(data, total=len(data)):
                 output, conf = net(cudaify(evidence), zones)
                 ps = F.softmax(output.clamp(min=-25, max=25), dim=-1)
                 preds = ps.argmax(dim=-1)
-		if trust_model is not None:
-		    trust_score = trust_model.get_score(evidence.cpu().numpy(),
-							preds.cpu().numpy())
+                if trust_model is not None:
+                    trust_score = trust_model.get_score(evidence.cpu().numpy(),
+                                                        preds.cpu().numpy())
+                    trust_score = trust_score.astype(np.float64)
                     trust_score = torch.from_numpy(trust_score)
-		else:
-		    trust_score = [None] * targets.shape[0]
+                else:
+                    trust_score = [None] * len(targets)
                 for element in zip(preds, response, conf, trust_score):
-                    (pred, gold, c) = element
-                    pkg = {'pred': pred, 'gold': gold.item(), 'confidence': c.item(), 'abstained': False, 'trustscore': t.item()}
+                    (pred, gold, c, t) = element
+                    if t is not None:
+                        pkg = {'pred': pred.item(), 
+                               'gold': gold.item(),
+                               'confidence': t.item(),
+                               'abstained': False}
+                    else:
+                        pkg = {'pred': pred, 
+                               'gold': gold.item(),
+                               'confidence': c.item(),
+                               'abstained': False}
                     yield pkg
 

@@ -9,25 +9,27 @@ import torch.nn.functional as F
 from reed_wsd.util import cudaify, ABS
 from reed_wsd.train import Trainer, Decoder
 from tqdm import tqdm
+import numpy as np
 
 class MnistSimpleDecoder(Decoder):
     def __call__(self, net, data, trust_model):
         net.eval()
         for images, labels in tqdm(data, total=len(data)):
             with torch.no_grad():
-                outputs, conf = net(cudaify(images))
+                output, conf = net(cudaify(images))
                 ps = F.softmax(output.clamp(min=-25, max=25), dim=1)
             preds = ps.argmax(dim=1)
             if trust_model is not None:
                 trust_score = trust_model.get_score(images.cpu().numpy(), 
                                                     preds.cpu().numpy())
+                trust_score = trust_score.astype(np.float64)
                 trust_score = torch.from_numpy(trust_score)
             else:
                 trust_score = [None] * labels.shape[0]
             for element in zip(preds, labels, conf, trust_score):
                 p, g, c, t = element
                 if t is not None:
-                    yield {'pred': p.item(), 'gold': g.item(), 'confidence': c.item(), 'abstained': False,  'trustscore': t.item()}
+                    yield {'pred': p.item(), 'gold': g.item(), 'confidence': t.item(), 'abstained': False}
                 else:
                     yield {'pred': p.item(), 'gold': g.item(), 'confidence': c.item(), 'abstained': False}
                     
