@@ -1,5 +1,6 @@
 import torch
 from transformers import BertModel, BertTokenizer
+from reed_wsd.util import cudaify
 
 
 def tokenize_with_target(tokenizer, sent, target_i):
@@ -31,7 +32,7 @@ class BertSentenceVectorizer:
     """
     def __init__(self):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.model = BertModel.from_pretrained('bert-base-uncased')
+        self.model = cudaify(BertModel.from_pretrained('bert-base-uncased'))
 
     def __call__(self, sent):
         # Add special tokens takes care of adding [CLS], [SEP], <s>... tokens 
@@ -40,7 +41,7 @@ class BertSentenceVectorizer:
         bert_toks = self.tokenizer.convert_ids_to_tokens(input_ids)
         input_ids = torch.tensor([input_ids])
         with torch.no_grad():
-            last_hidden_states = self.model(input_ids)[0]
+            last_hidden_states = self.model(cudaify(input_ids))[0]
             last_hidden_states = last_hidden_states.squeeze(0)
             return bert_toks, last_hidden_states
         

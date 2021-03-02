@@ -1,7 +1,9 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from reed_wsd.util import cudaify
+from reed_wsd.util import cudaify, entropy
+from torch.distributions import Categorical
+
 
 def inv_abstain_prob(output_tensor):
     probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
@@ -21,11 +23,26 @@ def abstention(output_tensor):
 def random_confidence(output_tensor):
     return torch.randn(output_tensor.shape[0])
 
+def entropy_confidence(output_tensor):
+    probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
+    true_classes = probs[:, :-1]
+    s = entropy(true_classes)
+    return -s
+
+def norm_confidence(output_tensor):
+    probs = F.softmax(output_tensor.clamp(min=-25, max=25), dim=-1)
+    true_classes = probs[:, :-1]
+    norm = torch.linalg.norm(true_classes, ord=2, dim=-1)
+    return norm
+
 confidence_extractor_lookup = {'inv_abs': inv_abstain_prob,
                                'max_non_abs': max_nonabstain_prob,
                                'abs': abstention,
                                'max_prob': max_prob,
-                               'random': random_confidence}
+                               'random': random_confidence,
+                               'entropy': entropy_confidence,
+                               'norm': norm_confidence,
+                               'conscious': None}
 
 class BasicFFN(nn.Module): 
  
@@ -59,7 +76,6 @@ class BasicFFN(nn.Module):
     def final_layers(self, input_vec):
         nextout = self.final(input_vec)
         confidences = self.confidence_extractor(nextout)
-        nextout = self.softmax(nextout.clamp(min=-25, max=25))
         return nextout, confidences
 
     def forward(self, input_vec):
@@ -73,17 +89,18 @@ class AbstainingFFN(BasicFFN):
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
                  output_size = 10,
-                 confidence_extractor = 'inv_abs'):
+                 confidence_extractor = 'max_non_abs'):
         super().__init__(input_size, hidden_sizes, output_size, confidence_extractor)
         self.final = cudaify(nn.Linear(hidden_sizes[1], output_size + 1))
 
 
-class ConfidentFFN(BasicFFN): 
+class ConfidenceFFN(BasicFFN): 
  
     def __init__(self, 
                  input_size = 784, 
                  hidden_sizes = [128, 64], 
-                 output_size = 10):
+                 output_size = 10,
+                 confidence_extractor = None):
         super().__init__(input_size, hidden_sizes, output_size)
         self.confidence_layer = cudaify(nn.Linear(hidden_sizes[1], 1))
 
