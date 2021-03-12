@@ -1,5 +1,14 @@
 Selective Prediction Research, Reed College
 ------------------------------
+## Project Structure
+
+### old
+
+Folder `old` stores the research of summer 2019. The project explores the WSD task with BERT and ELMo.
+
+### reed_wsd
+
+Folder `reed_wsd` stores the research on selective prediction. The instructions below are for the selective prediction project.
 
 ## Installing the reed_wsd package:
 The repo only works when it is installed as a package
