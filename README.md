@@ -25,11 +25,28 @@ From top-level directory, run:
     bash ./install.sh
 
 ### To Run Experiments
-compile a list of configurations in a json file, and run
-    
-    python3 experiment.py path_to_config_file path_where_you_save_results
+You can specify the following arguments to `python3 experiment.py` to run experiments.
 
-Possible configurations are listed below
+	positional arguments:
+	  config_path           path to experiment configs
+	  result_path           path where experimental results are stored
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -vl VALID_PATH, --valid_path VALID_PATH
+				path to which validation results are stored
+	  -lg LOG_PATH, --log_path LOG_PATH
+				path to the log file
+	  -r REPS, --reps REPS  number of repititions for each experiment
+
+    
+For example,
+
+    python3 experiment.py config_path results_path -vl valid/test.json -lg logs/test.log
+
+`-r` flag has default value 1.
+
+A configuration dictionary looks like this:
 
     config =  {'task': 'mnist'/'allwords'/'imdb',
                'architecture': 'abstaining'/'simple'/'bem',
