@@ -1,5 +1,14 @@
-Reed Word Sense Disambiguation
+Selective Prediction Research, Reed College
 ------------------------------
+## Project Structure
+
+### old
+
+Folder `old` stores the research of summer 2019. The project explores the WSD task with BERT and ELMo.
+
+### reed_wsd
+
+Folder `reed_wsd` stores the research on selective prediction. The instructions below are for the selective prediction project.
 
 ## Installing the reed_wsd package:
 The repo only works when it is installed as a package
@@ -25,11 +34,28 @@ From top-level directory, run:
     bash ./install.sh
 
 ### To Run Experiments
-compile a list of configurations in a json file, and run
-    
-    python3 experiment.py path_to_config_file path_where_you_save_results
+You can specify the following arguments to `python3 experiment.py` to run experiments.
 
-Possible configurations are listed below
+	positional arguments:
+	  config_path           path to experiment configs
+	  result_path           path where experimental results are stored
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -vl VALID_PATH, --valid_path VALID_PATH
+				path to which validation results are stored
+	  -lg LOG_PATH, --log_path LOG_PATH
+				path to the log file
+	  -r REPS, --reps REPS  number of repititions for each experiment
+
+    
+For example,
+
+    python3 experiment.py config_path results_path -vl valid/test.json -lg logs/test.log
+
+`-r` flag has default value 1.
+
+A configuration dictionary looks like this:
 
     config =  {'task': 'mnist'/'allwords'/'imdb',
                'architecture': 'abstaining'/'simple'/'bem',
@@ -44,11 +70,6 @@ Possible configurations are listed below
                'n_epochs': int
              }
 
-### To locally install the reed_wsd package:
-
-From the top-level directory:
-
-    pip install -e .
 
 ### To run the official scoring script
 
@@ -72,6 +93,9 @@ sensitive if a different default character encoding is used.  The answer
 format is the same of the gold-standard format. 
 
 ## Testing
+
+**Note that some unit tests are deprecated now.** One won't pass the tests. Clean-up in the unit test is needed.
+
 ### To run all unit tests
 
 From the top-level directory, run: 
@@ -79,36 +103,11 @@ From the top-level directory, run:
     cd allwords
     python3 -m unittest
 
+
 ### To run a particular unit test module (e.g. test/test_align.py)
 
 From the top-level directory, run:
 
     cd allwords
     python3 -m unittest test.test_align
-    
-## DVC
-
-If you pull from this repo now, `dvc` is already initialized.
-You can download the data from remote storage using command
-
-	dvc pull -r myremote
-
-To check if there are any updates among your added data files, use command
-
-	dvc status
-
-To add a file or directory to your dvc cache, use command
-
-	dvc add to_be_added
-
-Adding or editing your added data files might update `.dvc`, `dvc.config` and other
-files dvc uses to version your data, remember to add those files to your git commits
-to record the versioning of data in your remote repo.
-
-If you want to upload your data, use command
-
-	dvc push -r myremote
-
-For more details how `dvc remote` works, see [here](https://dvc.org/doc/command-reference/remote#remote).
-
-    
+ 
